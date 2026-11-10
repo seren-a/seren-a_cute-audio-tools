@@ -111,7 +111,7 @@ class Rig:
 
 rig = Rig()
 con = rig.g.CONSOLE or ''
-check('3 Ziel(e)' in con and 'E16+Twister v8.11 geladen' in con, f'Start: 3 Hallspuren über Präfix RVB gefunden')
+check('3 Ziel(e)' in con and 'E16+Twister v8.11.1 geladen' in con, f'Start: 3 Hallspuren über Präfix RVB gefunden')
 rig.run(0.1, 5)
 check(rig.title() == 'Vox', f'Seite 1 Titel = ausgewählte Spur ({rig.title()})')
 check([rig.label(i) for i in (1, 2, 3)] == ['Kirc', 'Raum', 'Plat'], f'Sends 1-3 = Hallspuren ohne Präfix ({[rig.label(i) for i in (1, 2, 3)]})')

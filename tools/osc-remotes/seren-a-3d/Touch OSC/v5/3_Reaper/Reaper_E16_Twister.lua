@@ -101,7 +101,7 @@ local ACCEL     = { { 2, 1 }, { 4, 2 }, { 7, 4 }, { 12, 8 }, { 1e9, 16 } }  -- t
 local DEBUG     = false                -- every MIDI event into the console
 -- =====================================================================
 
-local VERSION = "v8.10"
+local VERSION = "v8.11.1"
 local r = reaper
 local floor, abs, log, max, min = math.floor, math.abs, math.log, math.max, math.min
 local EXT = "seren_MultiEQ"
@@ -119,7 +119,11 @@ local lockedCache = {}
 local e16Force, mftForce = true, true
 local opened                           -- window the script opened: { tr, fx }
 
-local function msg(s) r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
+-- Console: quiet by default. Warnings (second argument true) always show, the rest only when
+-- "Meldungen in der Reaper-Konsole" is on in Reaper_E16_Einstellungen.lua (ExtState seren_E16/console = 1).
+local function msg(s, always)
+  if always or r.GetExtState("seren_E16", "console") == "1" then r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
+end
 
 -- ---------------------------------------------------------------- helpers
 local function num(s)
@@ -131,6 +135,26 @@ local function decimals(s)
   return d and #d or 0
 end
 local function clamp(v, a, b) return v < a and a or v > b and b or v end
+
+-- v8.11: fader limit per kind of track (E16 window): 0 / 6 / 12 dB or off, for normal tracks (+ master),
+-- group/folder tracks and tracks with receives. Turning up never jumps down when a fader already sits above.
+local function capDb(tr)
+  local key = "capTrack"
+  if tr ~= r.GetMasterTrack(0) then
+    if r.GetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH") == 1 then key = "capGroup"
+    elseif r.GetTrackNumSends(tr, -1) > 0 then key = "capRecv" end
+  end
+  local v = r.GetExtState("seren_E16", key)
+  if v == "" then v = "0" end
+  return tonumber(v)                                -- nil = off
+end
+local function capVol(tr, old, new)               -- linear volumes
+  local c = capDb(tr)
+  if not c then return new end
+  local lim = 10 ^ (c / 20)
+  if new > lim and new > old then return math.max(old, lim) end
+  return new
+end
 local function db(v) return v > 0 and 20 * log(v, 10) or -150 end
 local SND = {}                         -- Sends / Ziele module (v8.0), filled further down
 
@@ -485,13 +509,15 @@ end
 
 local function masterStep(d, m)
   local ms = r.GetMasterTrack(0)
-  local v = clamp(db(r.GetMediaTrackInfo_Value(ms, "D_VOL")) + d * m * MASTER_STEP, MASTER_DB[1], MASTER_DB[2])
-  r.SetMediaTrackInfo_Value(ms, "D_VOL", 10 ^ (v / 20))
+  local old = r.GetMediaTrackInfo_Value(ms, "D_VOL")
+  local top = math.max(capDb(ms) or 24, db(old))       -- v8.11: upper end = fader limit (window), was always 0 dB
+  local v = clamp(db(old) + d * m * MASTER_STEP, MASTER_DB[1], top)
+  r.SetMediaTrackInfo_Value(ms, "D_VOL", capVol(ms, old, 10 ^ (v / 20)))
 end
 
 local function omniBypass()
   local q = OMNI[1]
-  if not q then msg("kein OmniCompressor") return end
+  if not q then msg("kein OmniCompressor", true) return end
   r.TrackFX_SetEnabled(q.tr, q.fx, not r.TrackFX_GetEnabled(q.tr, q.fx))
 end
 
@@ -789,7 +815,7 @@ end
 -- targets: project ExtState "seren_E16/targets" (GUIDs), else the old reverb-remote assignment, else name prefix.
 local function sndModule()
 local SEXT = "seren_E16"
-local SDEF = { capSend = "1", capFader = "1", masterNav = "1", layout = "split", dedicated = "1", push = "prepost", preFx = "0", targets = "assigned", prefix = "RVB",
+local SDEF = { capSend = "1", masterNav = "1", layout = "split", dedicated = "1", push = "prepost", preFx = "0", targets = "assigned", prefix = "RVB",
   cSend = "cyan", cPre = "weiss", cMute = "rot", cMeter = "pink", cFader = "hellblau", cMaster = "orange",
   cTrack = "weiss", triple = "1", dbl = "0", twister = "1", spur = "1" }
 -- name, E16 slot text, full name, OXI App palette (E16), Twister colour map, RGB for the Twister View
@@ -1206,7 +1232,7 @@ local function capped(v, nv, on)               -- v8.5: max 0 dB (what is alread
 end
 local function volStep(t, dbs)
   local v = r.GetMediaTrackInfo_Value(t, "D_VOL")
-  r.SetMediaTrackInfo_Value(t, "D_VOL", capped(v, toVol(toDb(v) + dbs), scfg.capFader == "1"))
+  r.SetMediaTrackInfo_Value(t, "D_VOL", capVol(t, v, toVol(toDb(v) + dbs)))
 end
 local function cycleMode(m)
   if scfg.preFx == "1" then return m == 0 and 3 or m == 3 and 1 or 0 end
@@ -1499,7 +1525,7 @@ local function act(dev, e, a, L)                     -- a press action
       msg((s.k == "feq" and "H" or string.char(64 + s.inst)) .. s.band .. (locked(s.inst, s.band, s.k) and ": Frequenz gesperrt" or ": Frequenz frei"))
     else
       local pe = q.P.e and q.P.e[s.band]
-      if pe then toggle(q, pe) else msg("Band an/aus: kein Parameter gefunden") end
+      if pe then toggle(q, pe) else msg("Band an/aus: kein Parameter gefunden", true) end
     end
     flash(dev, e, nil, a == "eqlock" and "lock" or "on")
     return
@@ -1650,7 +1676,7 @@ end
 
 -- ---------------------------------------------------------------- start / main loop
 local function describe(list, what)
-  if #list == 0 then msg(what .. ": keins gefunden") return end
+  if #list == 0 then msg(what .. ": keins gefunden", true) return end
   for i, q in ipairs(list) do
     local parts = {}
     for k, v in pairs(q.P) do parts[#parts + 1] = k .. " " .. #v end
@@ -1697,12 +1723,11 @@ local function rescan(now)
       fe[1] = { tr = fd[1].tr, fx = pv, where = fd[1].where, master = fd[1].master, guid = r.TrackFX_GetFXGUID(fd[1].tr, pv) or "" }
     end
   end
-  -- v8.10: MultiEQ A/B only from the selected track (then master/monitoring), no longer from two different tracks
+  -- v8.10/8.11: MultiEQ A/B only from the selected track (both if it has two), no longer from other tracks or the master
   local eq
   if r.GetExtState("seren_E16", "eqScope") == "all" then eq = collect("multieq", allTracks(), "first")
   else
-    eq = collect("multieq", selT, "none")
-    if #eq == 0 then eq = collect("multieq", {}, "first") end
+    eq = collect("multieq", selT, "none")        -- v8.11: no master fallback, a clear view
   end
   if fe[1] then for i = #eq, 1, -1 do if eq[i].guid == fe[1].guid then table.remove(eq, i) end end end
   while #eq > 2 do table.remove(eq) end
@@ -1744,7 +1769,7 @@ local function frame()
   local now = r.time_precise()
   if r.GetExtState(EXT, "token") ~= token then          -- a newer start took over: stop quietly
     stopped = true
-    msg(VERSION .. ": eine neuere Instanz läuft, diese hört auf")
+    msg(VERSION .. ": eine neuere Instanz läuft, diese hört auf", true)
     return
   end
   rescan(now)
@@ -1799,8 +1824,8 @@ local function learnConflicts()
     end
   end
   if #hit > 0 then
-    msg("Achtung: MIDI-Learn auf Bank-4-CCs, das reagiert doppelt:")
-    for _, h in ipairs(hit) do msg("  " .. h) end
+    msg("Achtung: MIDI-Learn auf Bank-4-CCs, das reagiert doppelt:", true)
+    for _, h in ipairs(hit) do msg("  " .. h, true) end
   end
 end
 
@@ -1823,9 +1848,9 @@ local function init()
   end
   local alive = tonumber(r.GetExtState(EXT, "alive"))
   if alive and r.time_precise() - alive < 1.5 then
-    msg("Achtung: es lief schon ein MultiEQ-Skript. Neuere Fassungen beenden sich jetzt selbst;")
-    msg("eine alte (v5.1-v5.3.1) läuft weiter und stört (Blinken, Bypass, Ratio). Reaper neu starten oder")
-    msg("in der Aktionsliste die alte Instanz beenden (Aktion nochmal starten > 'Terminate instances').")
+    msg("Achtung: es lief schon ein MultiEQ-Skript. Neuere Fassungen beenden sich jetzt selbst;", true)
+    msg("eine alte (v5.1-v5.3.1) läuft weiter und stört (Blinken, Bypass, Ratio). Reaper neu starten oder", true)
+    msg("in der Aktionsliste die alte Instanz beenden (Aktion nochmal starten > 'Terminate instances').", true)
     r.ShowMessageBox("Es läuft schon ein MultiEQ-Skript (vielleicht die alte Version).\n" ..
       "Zwei Instanzen stören sich: Blinken, Bypass und Ratio gehen dann nicht richtig.\n\n" ..
       "Bitte Reaper neu starten oder die alte Instanz beenden.", "MultiEQ " .. VERSION, 0)

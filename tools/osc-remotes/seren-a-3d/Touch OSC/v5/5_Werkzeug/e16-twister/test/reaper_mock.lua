@@ -6,6 +6,7 @@ TRACKS, STATE, EXTS = {}, 1, {}
 function evIn(dev, st, d1, d2) SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, string.char(st, d1, d2), dev}) end
 local function info(tr, k) return tr.info[k] end
 PEXT = {}
+EXTS['seren_E16/console'] = '1'      -- tests read the console output; the real default is quiet
 function FX(tr, f) if f >= 0x1000000 then return tr.rec[f - 0x1000000 + 1] end return tr.fx[f + 1] end
 reaper = {
   GetNumMIDIOutputs = function() return #OUTS end,

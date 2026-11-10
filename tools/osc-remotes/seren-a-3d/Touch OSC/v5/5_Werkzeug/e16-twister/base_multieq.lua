@@ -116,7 +116,11 @@ local lockedCache = {}
 local e16Force, mftForce = true, true
 local opened                           -- window the script opened: { tr, fx }
 
-local function msg(s) r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
+-- Console: quiet by default. Warnings (second argument true) always show, the rest only when
+-- "Meldungen in der Reaper-Konsole" is on in Reaper_E16_Einstellungen.lua (ExtState seren_E16/console = 1).
+local function msg(s, always)
+  if always or r.GetExtState("seren_E16", "console") == "1" then r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
+end
 
 -- ---------------------------------------------------------------- helpers
 local function num(s)
@@ -509,7 +513,7 @@ end
 
 local function omniBypass()
   local q = OMNI[1]
-  if not q then msg("kein OmniCompressor") return end
+  if not q then msg("kein OmniCompressor", true) return end
   r.TrackFX_SetEnabled(q.tr, q.fx, not r.TrackFX_GetEnabled(q.tr, q.fx))
 end
 
@@ -813,7 +817,7 @@ local function act(dev, e, a, L)                     -- a press action
       msg((s.k == "feq" and "H" or string.char(64 + s.inst)) .. s.band .. (locked(s.inst, s.band, s.k) and ": Frequenz gesperrt" or ": Frequenz frei"))
     else
       local pe = q.P.e and q.P.e[s.band]
-      if pe then toggle(q, pe) else msg("Band an/aus: kein Parameter gefunden") end
+      if pe then toggle(q, pe) else msg("Band an/aus: kein Parameter gefunden", true) end
     end
     flash(dev, e, nil, a == "eqlock" and "lock" or "on")
     return
@@ -957,7 +961,7 @@ end
 
 -- ---------------------------------------------------------------- start / main loop
 local function describe(list, what)
-  if #list == 0 then msg(what .. ": keins gefunden") return end
+  if #list == 0 then msg(what .. ": keins gefunden", true) return end
   for i, q in ipairs(list) do
     local parts = {}
     for k, v in pairs(q.P) do parts[#parts + 1] = k .. " " .. #v end
@@ -1050,7 +1054,7 @@ local function frame()
   local now = r.time_precise()
   if r.GetExtState(EXT, "token") ~= token then          -- a newer start took over: stop quietly
     stopped = true
-    msg(VERSION .. ": eine neuere Instanz läuft, diese hört auf")
+    msg(VERSION .. ": eine neuere Instanz läuft, diese hört auf", true)
     return
   end
   rescan(now)
@@ -1103,8 +1107,8 @@ local function learnConflicts()
     end
   end
   if #hit > 0 then
-    msg("Achtung: MIDI-Learn auf Bank-4-CCs, das reagiert doppelt:")
-    for _, h in ipairs(hit) do msg("  " .. h) end
+    msg("Achtung: MIDI-Learn auf Bank-4-CCs, das reagiert doppelt:", true)
+    for _, h in ipairs(hit) do msg("  " .. h, true) end
   end
 end
 
@@ -1127,9 +1131,9 @@ local function init()
   end
   local alive = tonumber(r.GetExtState(EXT, "alive"))
   if alive and r.time_precise() - alive < 1.5 then
-    msg("Achtung: es lief schon ein MultiEQ-Skript. Neuere Fassungen beenden sich jetzt selbst;")
-    msg("eine alte (v5.1-v5.3.1) läuft weiter und stört (Blinken, Bypass, Ratio). Reaper neu starten oder")
-    msg("in der Aktionsliste die alte Instanz beenden (Aktion nochmal starten > 'Terminate instances').")
+    msg("Achtung: es lief schon ein MultiEQ-Skript. Neuere Fassungen beenden sich jetzt selbst;", true)
+    msg("eine alte (v5.1-v5.3.1) läuft weiter und stört (Blinken, Bypass, Ratio). Reaper neu starten oder", true)
+    msg("in der Aktionsliste die alte Instanz beenden (Aktion nochmal starten > 'Terminate instances').", true)
     r.ShowMessageBox("Es läuft schon ein MultiEQ-Skript (vielleicht die alte Version).\n" ..
       "Zwei Instanzen stören sich: Blinken, Bypass und Ratio gehen dann nicht richtig.\n\n" ..
       "Bitte Reaper neu starten oder die alte Instanz beenden.", "MultiEQ " .. VERSION, 0)

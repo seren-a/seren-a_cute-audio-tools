@@ -2,6 +2,7 @@
 
 | Version | Datum | Wichtigste Neuerung | Außerdem |
 | --- | --- | --- | --- |
+| **v8.11.1** | 11.11.26 | **Reaper-Konsole bleibt leer**: `Reaper_E16_Twister.lua` meldet nichts mehr beim Start oder Ebenenwechsel, nur noch Warnungen. Ein Haken in `Reaper_E16_Einstellungen.lua` (Reaper-Konsole) schaltet die Meldungen wieder ein | gleiches Skript, Einstellungsfenster neu starten |
 | **v8.15** | 10.11.26 | **iPad und Monitor starten mit deiner Voreinstellung**: Ansicht (Modus, 32er/Layout, Horizont) und die ganze Config werden in Reaper gespeichert und beim Öffnen geladen | getrennt für iPad und Monitor; Gruppen und Spurfilter waren schon gespeichert |
 | v8.14 | 10.11.26 | **Gruppen (Reaper)**: in der Config bis zu 12 Gruppen zum An-/Abhaken – A–D zum selbst Zuordnen (+A…+D, dann Spuren antippen) und Reaper-Ordner ohne dearVR/Hall; an = nur deren Spuren | gespeichert im Projekt; `Reaper_3D.lua` v8.14 + iPad/Monitor neu |
 | v8.13 | 10.11.26 | **32 Spuren auf einmal**: iPad Taste „32“ – Spuren 17–32 als Kacheln in 2 Reihen à 8 unten (statt Panorama), Punkte 1–32 in der Draufsicht; Monitor neue Ansicht „4×8“ – Ansicht oben, 32 Spuren in 4 Reihen à 8 unten | iPad: Bank vor/zurück springt im 32er-Modus 32 Spuren weit; Objekte 17–32 per SysEx (auch Ziehen) |

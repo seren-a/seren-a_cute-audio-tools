@@ -18,7 +18,7 @@ R('-- Reaper_MultiEQ.lua · seren.a 3D v6.1\n',
   '-- v8.0: E16 page 1 (DAW Link) in Reaper = Sends / Ziele / Spur / Menü (hold 16 = next sub-page),\n'
   '--   Twister bank 4 layer 6 "Sends" (encoder 8 turn = next group, hold = next layer), settings in\n'
   '--   Reaper_E16_Einstellungen.lua or on the E16 menu page. reaper_to_e16.lua and e16-reverb-remote must not run.\n')
-R('local VERSION = "v6.1"', 'local VERSION = "v8.11"')
+R('local VERSION = "v6.1"', 'local VERSION = "v8.11.1"')
 R('local LAYER_COL   = { 127, 45, 100, 13, 92 }   -- encoder 8: MultiEQ, Omni, Directional, Hall, Hall-EQ',
   'local LAYER_COL   = { 127, 45, 100, 13, 92, 1 }   -- encoder 8: MultiEQ, Omni, Directional, Hall, Hall-EQ, Sends (blue)')
 R('local LAYER_NAME = { "MultiEQ", "Omni", "Directional", "Hall", "Hall-EQ" }',

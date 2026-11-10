@@ -11,7 +11,7 @@ end
 --@@THEME@@
 local DEF = { eqScope = "sel", capSend = "1", capTrack = "0", capGroup = "0", capRecv = "0", masterNav = "1", layout = "split", dedicated = "1", push = "prepost", preFx = "0", targets = "assigned", prefix = "RVB",
   cSend = "cyan", cPre = "weiss", cMute = "rot", cMeter = "pink", cFader = "hellblau", cMaster = "orange",
-  cTrack = "weiss", triple = "1", dbl = "0", twister = "1", spur = "1" }
+  cTrack = "weiss", triple = "1", dbl = "0", twister = "1", spur = "1", console = "0" }
 local COLS = { { "cyan", "Cyan", 0x00CAFE }, { "gruen", "Grün", 0x50FE03 }, { "orange", "Pfirsich/Orange", 0xFE9F01 },
   { "rot", "Rot", 0xCF021C }, { "weiss", "Weiß", 0xD9D9D9 }, { "gelb", "Gelb", 0xFFFF00 }, { "pink", "Pink", 0xFF4FA0 },
   { "hellblau", "Hellblau", 0x6495ED }, { "violett", "Violett", 0x9370DB }, { "tuerkis", "Türkis", 0x02FFFF } }
@@ -214,6 +214,9 @@ local function frame()
 
     section(ctx, "MultiEQ")
     radio("MultiEQ A/B kommen von:", "eqScope", { { "sel", "nur der gewählten Spur (beide, wenn sie zwei hat)" }, { "all", "allen Spuren (alt: bis zu zwei, auch von verschiedenen Spuren)" } })
+
+    section(ctx, "Reaper-Konsole")
+    check("Meldungen in der Reaper-Konsole (Start, Ebenenwechsel, gefundene Plugins). Warnungen kommen immer.", "console")
 
     section(ctx, "Pegel und Master")
     check("Sends höchstens 0 dB", "capSend")

@@ -1,4 +1,4 @@
--- seren.a 3D v8.10 · Einstellungen für Reaper_E16_Twister.lua (Sends / Ziele auf E16 Seite 1 und Twister Ebene 6).
+-- seren.a 3D v8.1 · Einstellungen für Reaper_E16_Twister.lua (Sends / Ziele auf E16 Seite 1 und Twister Ebene 6).
 -- Braucht ReaImGui (ReaPack > ReaTeam Extensions). Schreibt die ExtStates "seren_E16"; das laufende Skript übernimmt sofort.
 -- Dieselben Optionen gibt es am E16 auf der Unterseite Menü (Seite 1, Encoder 16 halten).
 local r = reaper
@@ -70,9 +70,9 @@ local function swatch(ctx, id, hex)             -- small colour field
   reaper.ImGui_ColorButton(ctx, id, rgba(hex), reaper.ImGui_ColorEditFlags_NoTooltip(), 14, 14)
   reaper.ImGui_SameLine(ctx)
 end
-local DEF = { eqScope = "sel", capSend = "1", capFader = "1", masterNav = "1", layout = "split", dedicated = "1", push = "prepost", preFx = "0", targets = "assigned", prefix = "RVB",
+local DEF = { eqScope = "sel", capSend = "1", capTrack = "0", capGroup = "0", capRecv = "0", masterNav = "1", layout = "split", dedicated = "1", push = "prepost", preFx = "0", targets = "assigned", prefix = "RVB",
   cSend = "cyan", cPre = "weiss", cMute = "rot", cMeter = "pink", cFader = "hellblau", cMaster = "orange",
-  cTrack = "weiss", triple = "1", dbl = "0", twister = "1", spur = "1" }
+  cTrack = "weiss", triple = "1", dbl = "0", twister = "1", spur = "1", console = "0" }
 local COLS = { { "cyan", "Cyan", 0x00CAFE }, { "gruen", "Grün", 0x50FE03 }, { "orange", "Pfirsich/Orange", 0xFE9F01 },
   { "rot", "Rot", 0xCF021C }, { "weiss", "Weiß", 0xD9D9D9 }, { "gelb", "Gelb", 0xFFFF00 }, { "pink", "Pink", 0xFF4FA0 },
   { "hellblau", "Hellblau", 0x6495ED }, { "violett", "Violett", 0x9370DB }, { "tuerkis", "Türkis", 0x02FFFF } }
@@ -274,11 +274,17 @@ local function frame()
     check("Pre-FX mit durchschalten (Post → Pre → PreFX)", "preFx")
 
     section(ctx, "MultiEQ")
-    radio("MultiEQ A/B kommen von:", "eqScope", { { "sel", "der gewählten Spur (sonst Master)" }, { "all", "allen Spuren (alt: bis zu zwei, auch von verschiedenen Spuren)" } })
+    radio("MultiEQ A/B kommen von:", "eqScope", { { "sel", "nur der gewählten Spur (beide, wenn sie zwei hat)" }, { "all", "allen Spuren (alt: bis zu zwei, auch von verschiedenen Spuren)" } })
+
+    section(ctx, "Reaper-Konsole")
+    check("Meldungen in der Reaper-Konsole (Start, Ebenenwechsel, gefundene Plugins). Warnungen kommen immer.", "console")
 
     section(ctx, "Pegel und Master")
     check("Sends höchstens 0 dB", "capSend")
-    check("Fader (Spur, Ziele, Master) höchstens 0 dB", "capFader")
+    local CAP = { { "0", "0 dB" }, { "6", "+6 dB" }, { "12", "+12 dB" }, { "off", "aus" } }
+    radio("Fader-Grenze, normale Spuren (+ Master):", "capTrack", CAP)
+    radio("Fader-Grenze, Gruppen-/Ordnerspuren:", "capGroup", CAP)
+    radio("Fader-Grenze, Spuren mit Receives:", "capRecv", CAP)
     check("Master-Encoder wie im MultiEQ: drehen = Spur vor/zurück, drücken + drehen = Master-Pegel", "masterNav")
 
     section(ctx, "Spur-Encoder (E16 15)")
