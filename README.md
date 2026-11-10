@@ -11,7 +11,7 @@ README – hier gibt es nur die Übersicht.
 | Tool | Was es tut |
 | --- | --- |
 | [midi-osc-matrix-monitor](tools/midi-osc-matrix-monitor/) | Echtzeit-Monitor für MIDI- und OSC-Datenströme: fallender Glyphenregen in vier Modi (Raster, Geräte-Spalten, Mindmap, Fraktal), mit OSC-Bridge (Node.js) und Bau-Skript für eine eigenständige macOS-App. |
-| [osc-remotes](tools/osc-remotes/) | OSC-Fernbedienungen für Anwendungen und Geräte (REAPER, TotalMix FX, DM7, OBS, Max/RNBO) – Konzept steht, erstes Remote in Arbeit. |
+| [osc-remotes](tools/osc-remotes/) | OSC-Fernbedienungen für Anwendungen und Geräte (REAPER, TotalMix FX, DM7, OBS, Max/RNBO) – Konzept steht, erstes Remote in Arbeit. Dazu: [seren.a 3D](tools/osc-remotes/seren-a-3d/) (TouchOSC, Reaper/Nuendo-Skripte, E16, Twister, OXI). |
 | [synth-surfaces](tools/synth-surfaces/) | Control-Surfaces für Synthesizer per MIDI/OSC, mit Learn-Modus, Mutate & Morph – Konzept steht. |
 | [daw_key_commander](tools/daw_key_commander/) | Tasten-Commander: DAW-Befehle auf Pads/OSC legen, mit Macros und Feedback – Konzept steht. |
 

@@ -1,0 +1,3742 @@
+diff --git a/src/main/java/de/mossgrabers/bitwig/framework/daw/ModelImpl.java b/src/main/java/de/mossgrabers/bitwig/framework/daw/ModelImpl.java
+index 5322368e..404753bb 100644
+--- a/src/main/java/de/mossgrabers/bitwig/framework/daw/ModelImpl.java
++++ b/src/main/java/de/mossgrabers/bitwig/framework/daw/ModelImpl.java
+@@ -5,6 +5,7 @@
+ package de.mossgrabers.bitwig.framework.daw;
+ 
+ import java.util.HashMap;
++import java.util.IdentityHashMap;
+ import java.util.Map;
+ import java.util.Optional;
+ import java.util.UUID;
+@@ -19,6 +20,7 @@ import com.bitwig.extension.controller.api.CursorTrack;
+ import com.bitwig.extension.controller.api.Device;
+ import com.bitwig.extension.controller.api.DeviceBank;
+ import com.bitwig.extension.controller.api.DeviceMatcher;
++import com.bitwig.extension.controller.api.InsertionPoint;
+ import com.bitwig.extension.controller.api.LastClickedParameter;
+ import com.bitwig.extension.controller.api.MasterTrack;
+ import com.bitwig.extension.controller.api.PinnableCursorDevice;
+@@ -36,6 +38,7 @@ import de.mossgrabers.bitwig.framework.daw.data.FocusedParameterImpl;
+ import de.mossgrabers.bitwig.framework.daw.data.KompleteDevice;
+ import de.mossgrabers.bitwig.framework.daw.data.MasterTrackImpl;
+ import de.mossgrabers.bitwig.framework.daw.data.SpecificDeviceImpl;
++import de.mossgrabers.bitwig.framework.daw.data.bank.DeviceBankImpl;
+ import de.mossgrabers.bitwig.framework.daw.data.bank.EffectTrackBankImpl;
+ import de.mossgrabers.bitwig.framework.daw.data.bank.MarkerBankImpl;
+ import de.mossgrabers.bitwig.framework.daw.data.bank.SlotBankImpl;
+@@ -44,13 +47,16 @@ import de.mossgrabers.framework.daw.AbstractModel;
+ import de.mossgrabers.framework.daw.DataSetup;
+ import de.mossgrabers.framework.daw.ModelSetup;
+ import de.mossgrabers.framework.daw.clip.INoteClip;
++import de.mossgrabers.framework.daw.constants.DeviceChainOperation;
+ import de.mossgrabers.framework.daw.constants.DeviceID;
+ import de.mossgrabers.framework.daw.data.ICursorTrack;
+ import de.mossgrabers.framework.daw.data.ISlot;
+ import de.mossgrabers.framework.daw.data.ISpecificDevice;
+ import de.mossgrabers.framework.daw.data.ITrack;
++import de.mossgrabers.framework.daw.data.bank.IDeviceBank;
+ import de.mossgrabers.framework.daw.data.bank.ISceneBank;
+ import de.mossgrabers.framework.daw.data.bank.ISlotBank;
++import de.mossgrabers.framework.daw.data.bank.ITrackBank;
+ import de.mossgrabers.framework.parameter.IFocusedParameter;
+ import de.mossgrabers.framework.scale.Scales;
+ import de.mossgrabers.framework.utils.FrameworkException;
+@@ -66,12 +72,33 @@ public class ModelImpl extends AbstractModel
+     /** The UUID of the Drum Device. */
+     public static final UUID               INSTRUMENT_DRUM_MACHINE = UUID.fromString ("8ea97e45-0255-40fd-bc7e-94419741e9d1");
+ 
++    /** The number of tracks of an additional track bank which get a device bank. */
++    private static final int               NUM_ADDITIONAL_DEVICE_TRACKS = 32;
++
++
++    /**
++     * The Bitwig track and device bank of a track as well as the device bank wrapper.
++     *
++     * @param track The Bitwig track
++     * @param bwDeviceBank The Bitwig device bank
++     * @param deviceBank The device bank
++     */
++    private record TrackDevices (Track track, DeviceBank bwDeviceBank, IDeviceBank deviceBank)
++    {
++        // Intentionally empty
++    }
++
++
+     private final ControllerHost           controllerHost;
+     private final CursorTrack              bwCursorTrack;
+     private final Track                    rootTrackGroup;
+     private final BooleanValue             masterTrackEqualsValue;
+     private final Map<Integer, ISceneBank> sceneBanks              = HashMap.newHashMap (1);
+     private final Map<Integer, ISlotBank>  slotBanks               = HashMap.newHashMap (1);
++    private final Map<Integer, ITrackBank> additionalTrackBanks    = HashMap.newHashMap (1);
++    /** The Bitwig objects and device banks of the tracks which have device banks. */
++    private final Map<ITrack, TrackDevices> trackDevices            = new IdentityHashMap<> ();
++    private IDeviceBank []                 trackDeviceBanks        = new IDeviceBank [0];
+     private final SceneBank                sceneBank;
+     private FocusedParameterImpl           focusedParameter        = null;
+ 
+@@ -139,6 +166,19 @@ public class ModelImpl extends AbstractModel
+ 
+         this.trackBank = new TrackBankImpl (this.host, (ApplicationImpl) this.application, this.valueChanger, tb, (CursorTrackImpl) this.cursorTrack, this.rootTrackGroup, numTracks, numScenes, numSends);
+ 
++        // Optional device banks for each track of the main track bank
++        final int numDevicesPerTrack = this.modelSetup.getNumDevicesPerTrack ();
++        if (numDevicesPerTrack > 0)
++        {
++            this.trackDeviceBanks = new IDeviceBank [numTracks];
++            for (int i = 0; i < numTracks; i++)
++            {
++                final DeviceBank bwDeviceBank = tb.getItemAt (i).createDeviceBank (numDevicesPerTrack);
++                this.trackDeviceBanks[i] = new DeviceBankImpl (this.host, this.valueChanger, null, bwDeviceBank, numDevicesPerTrack);
++                this.trackDevices.put (this.trackBank.getItem (i), new TrackDevices (tb.getItemAt (i), bwDeviceBank, this.trackDeviceBanks[i]));
++            }
++        }
++
+         final int numFxTracks = this.modelSetup.getNumFxTracks ();
+         final TrackBank effectTrackBank = controllerHost.createEffectTrackBank (numFxTracks, numSends, numScenes);
+         this.effectTrackBank = new EffectTrackBankImpl (this.host, this.valueChanger, effectTrackBank, (CursorTrackImpl) this.cursorTrack, this.rootTrackGroup, (ApplicationImpl) this.application, numFxTracks, numScenes, numSends, numParamPages, numParams, this.trackBank);
+@@ -279,6 +319,196 @@ public class ModelImpl extends AbstractModel
+     }
+ 
+ 
++    /** {@inheritDoc} */
++    @Override
++    public ITrackBank getAdditionalTrackBank (final int numTracks)
++    {
++        return this.additionalTrackBanks.computeIfAbsent (Integer.valueOf (numTracks), key -> {
++
++            // Only 1 scene and no sends to keep the overhead low
++            final TrackBank tb;
++            if (this.modelSetup.hasFlatTrackList ())
++            {
++                if (this.modelSetup.hasFullFlatTrackList ())
++                    tb = this.controllerHost.createTrackBank (numTracks, 0, 1, true);
++                else
++                    tb = this.controllerHost.createMainTrackBank (numTracks, 0, 1);
++                tb.followCursorTrack (this.bwCursorTrack);
++            }
++            else
++                tb = this.bwCursorTrack.createSiblingsTrackBank (numTracks, 0, 1, false, false);
++
++            final TrackBankImpl additionalBank = new TrackBankImpl (this.host, (ApplicationImpl) this.application, this.valueChanger, tb, (CursorTrackImpl) this.cursorTrack, this.rootTrackGroup, numTracks, 1, 0);
++
++            // Optional device banks for the first tracks of the bank (e.g. for the plugin view of
++            // 32 tracks)
++            final int numDevicesPerTrack = this.modelSetup.getNumDevicesPerTrack ();
++            if (numDevicesPerTrack > 0)
++            {
++                final int numDeviceTracks = Math.min (numTracks, NUM_ADDITIONAL_DEVICE_TRACKS);
++                for (int i = 0; i < numDeviceTracks; i++)
++                {
++                    final DeviceBank bwDeviceBank = tb.getItemAt (i).createDeviceBank (numDevicesPerTrack);
++                    final IDeviceBank deviceBank = new DeviceBankImpl (this.host, this.valueChanger, null, bwDeviceBank, numDevicesPerTrack);
++                    this.trackDevices.put (additionalBank.getItem (i), new TrackDevices (tb.getItemAt (i), bwDeviceBank, deviceBank));
++                }
++            }
++
++            return additionalBank;
++        });
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public IDeviceBank getTrackDeviceBank (final int trackIndex)
++    {
++        return trackIndex >= 0 && trackIndex < this.trackDeviceBanks.length ? this.trackDeviceBanks[trackIndex] : null;
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public IDeviceBank getTrackDeviceBank (final ITrack track)
++    {
++        final TrackDevices devices = this.trackDevices.get (track);
++        return devices == null ? null : devices.deviceBank ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean editDeviceChain (final DeviceChainOperation operation, final int sourceTrackIndex, final int sourcePosition, final int destinationTrackIndex, final int destinationPosition)
++    {
++        final int pageSize = this.trackBank.getPageSize ();
++        if (sourceTrackIndex < 0 || sourceTrackIndex >= pageSize || destinationTrackIndex < 0 || destinationTrackIndex >= pageSize)
++            return false;
++        return this.editDeviceChain (operation, this.trackBank.getItem (sourceTrackIndex), sourcePosition, this.trackBank.getItem (destinationTrackIndex), destinationPosition);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean editDeviceChain (final DeviceChainOperation operation, final ITrack sourceTrack, final int sourcePosition, final ITrack destinationTrack, final int destinationPosition)
++    {
++        final TrackDevices sourceDevices = this.trackDevices.get (sourceTrack);
++        final TrackDevices destinationDevices = this.trackDevices.get (destinationTrack);
++        if (sourceDevices == null || destinationDevices == null)
++            return false;
++
++        // Note: The devices of a bank are slots which might point to a different device after an
++        // operation was executed. Therefore, the operations which need 2 steps are designed to
++        // work no matter if the device references are resolved before or after the first step
++        final Device source = this.getTrackDevice (sourceDevices, sourcePosition);
++        if (source == null)
++            return false;
++        final Device destination = destinationPosition < 0 ? null : this.getTrackDevice (destinationDevices, destinationPosition);
++        // The destination is not on the current page (should not happen)
++        if (destinationPosition >= 0 && destination == null)
++            return false;
++        final Track destinationBwTrack = destinationDevices.track ();
++
++        switch (operation)
++        {
++            case COPY:
++                (destination == null ? destinationBwTrack.endOfDeviceChainInsertionPoint () : destination.beforeDeviceInsertionPoint ()).copyDevices (source);
++                return true;
++
++            case MOVE:
++                (destination == null ? destinationBwTrack.endOfDeviceChainInsertionPoint () : destination.beforeDeviceInsertionPoint ()).moveDevices (source);
++                return true;
++
++            case REPLACE:
++                if (destination == null)
++                {
++                    destinationBwTrack.endOfDeviceChainInsertionPoint ().copyDevices (source);
++                    return true;
++                }
++                // Insert the copy after the destination, which keeps the position of the
++                // destination, then delete it
++                destination.afterDeviceInsertionPoint ().copyDevices (source);
++                destination.deleteObject ();
++                return true;
++
++            case SWAP:
++                if (destination == null)
++                    return false;
++                return this.swapDevices (sourceDevices, sourcePosition, destinationDevices, destinationPosition);
++
++            default:
++                return false;
++        }
++    }
++
++
++    private boolean swapDevices (final TrackDevices sourceDevices, final int sourcePosition, final TrackDevices destinationDevices, final int destinationPosition)
++    {
++        if (sourceDevices == destinationDevices)
++        {
++            if (sourcePosition == destinationPosition)
++                return true;
++            final int lowPosition = Math.min (sourcePosition, destinationPosition);
++            final int highPosition = Math.max (sourcePosition, destinationPosition);
++            final Device low = this.getTrackDevice (sourceDevices, lowPosition);
++            final Device high = this.getTrackDevice (sourceDevices, highPosition);
++            final InsertionPoint lowInsertionPoint = this.getInsertionPointAfter (sourceDevices, lowPosition - 1);
++            if (low == null || high == null || lowInsertionPoint == null)
++                return false;
++            // 1. Move the low device directly before the high device, which keeps the position of
++            // the high device and all devices before the low device
++            high.beforeDeviceInsertionPoint ().moveDevices (low);
++            // 2. Move the high device to the former position of the low device
++            lowInsertionPoint.moveDevices (high);
++            return true;
++        }
++
++        final Device source = this.getTrackDevice (sourceDevices, sourcePosition);
++        final Device destination = this.getTrackDevice (destinationDevices, destinationPosition);
++        final InsertionPoint destinationInsertionPoint = this.getInsertionPointAfter (destinationDevices, destinationPosition - 1);
++        if (source == null || destination == null || destinationInsertionPoint == null)
++            return false;
++        // 1. Move the destination device after the source device, keeps the position of the source
++        source.afterDeviceInsertionPoint ().moveDevices (destination);
++        // 2. Move the source device to the former position of the destination device
++        destinationInsertionPoint.moveDevices (source);
++        return true;
++    }
++
++
++    /**
++     * Get the insertion point after the device at the given position or the start of the chain.
++     *
++     * @param devices The devices of the track
++     * @param position The position of the device, -1 for the start of the chain
++     * @return The insertion point or null if the device is not on the current page of the device
++     *         bank of the track
++     */
++    private InsertionPoint getInsertionPointAfter (final TrackDevices devices, final int position)
++    {
++        if (position < 0)
++            return devices.track ().startOfDeviceChainInsertionPoint ();
++        final Device device = this.getTrackDevice (devices, position);
++        return device == null ? null : device.afterDeviceInsertionPoint ();
++    }
++
++
++    /**
++     * Get the device at the given position in the device chain of a track.
++     *
++     * @param devices The devices of the track
++     * @param position The position of the device in the chain
++     * @return The device or null if it is not on the current page of the device bank of the track
++     */
++    private Device getTrackDevice (final TrackDevices devices, final int position)
++    {
++        final DeviceBank deviceBank = devices.bwDeviceBank ();
++        final int index = position - deviceBank.scrollPosition ().get ();
++        if (position < 0 || index < 0 || index >= this.modelSetup.getNumDevicesPerTrack () || position >= deviceBank.itemCount ().get ())
++            return null;
++        return deviceBank.getItemAt (index);
++    }
++
++
+     /** {@inheritDoc} */
+     @Override
+     public ISlotBank getSlotBank (final int numSlots)
+diff --git a/src/main/java/de/mossgrabers/bitwig/framework/daw/data/DeviceImpl.java b/src/main/java/de/mossgrabers/bitwig/framework/daw/data/DeviceImpl.java
+index 3bea3c6c..fd6a7f35 100644
+--- a/src/main/java/de/mossgrabers/bitwig/framework/daw/data/DeviceImpl.java
++++ b/src/main/java/de/mossgrabers/bitwig/framework/daw/data/DeviceImpl.java
+@@ -37,6 +37,7 @@ public class DeviceImpl extends AbstractItemImpl implements IDevice
+         this.device.isEnabled ().markInterested ();
+         this.device.position ().markInterested ();
+         this.device.name ().markInterested ();
++        this.device.isWindowOpen ().markInterested ();
+     }
+ 
+ 
+@@ -48,6 +49,7 @@ public class DeviceImpl extends AbstractItemImpl implements IDevice
+         Util.setIsSubscribed (this.device.isEnabled (), enable);
+         Util.setIsSubscribed (this.device.position (), enable);
+         Util.setIsSubscribed (this.device.name (), enable);
++        Util.setIsSubscribed (this.device.isWindowOpen (), enable);
+     }
+ 
+ 
+@@ -115,6 +117,22 @@ public class DeviceImpl extends AbstractItemImpl implements IDevice
+     }
+ 
+ 
++    /** {@inheritDoc} */
++    @Override
++    public boolean isWindowOpen ()
++    {
++        return this.device.isWindowOpen ().get ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void toggleWindowOpen ()
++    {
++        this.device.isWindowOpen ().toggle ();
++    }
++
++
+     /** {@inheritDoc} */
+     @Override
+     public void remove ()
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneConfiguration.java b/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneConfiguration.java
+index a0e81629..0896056b 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneConfiguration.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneConfiguration.java
+@@ -4,9 +4,15 @@
+ 
+ package de.mossgrabers.controller.oxi.one;
+ 
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
+ import java.util.List;
++import java.util.Map;
++import java.util.concurrent.CopyOnWriteArrayList;
+ 
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
+ import de.mossgrabers.framework.configuration.AbstractConfiguration;
++import de.mossgrabers.framework.configuration.IBooleanSetting;
+ import de.mossgrabers.framework.configuration.IEnumSetting;
+ import de.mossgrabers.framework.configuration.ISettingsUI;
+ import de.mossgrabers.framework.controller.valuechanger.IValueChanger;
+@@ -25,6 +31,121 @@ public class OxiOneConfiguration extends AbstractConfiguration
+ {
+     /** The pad brightness. */
+     public static final Integer       PAD_BRIGHTNESS           = Integer.valueOf (NEXT_SETTING_ID);
++    /** The mixer layout (colors, visible rows) has changed. */
++    public static final Integer       MIXER_LAYOUT             = Integer.valueOf (NEXT_SETTING_ID + 1);
++
++    private static final String       CATEGORY_MIXER           = "Mixer Views";
++    private static final String       CATEGORY_MIXER_BUTTON    = "Mixer Views - MIXER button";
++    private static final String       CATEGORY_MIXER_ORDER     = "Mixer Views - MIXER button order";
++    private static final String []    SLOT_LABELS              =
++    {
++        "1st view",
++        "2nd view",
++        "3rd view",
++        "4th view",
++        "5th view",
++        "6th view"
++    };
++    private static final String       CATEGORY_COLORS          = "Mixer Views - Colors";
++
++    /** The names of the selectable colors for the mute and solo pads. */
++    private static final List<String> MIXER_COLOR_OPTIONS      = List.of ("Yellow", "Blue", "Red", "Green", "Orange", "Pink", "Purple", "Cyan", "Sky Blue", "White");
++    /** The active colors matching the color options. */
++    private static final int []       MIXER_COLORS_ACTIVE      =
++    {
++        OxiOneColorManager.OXI_ONE_COLOR_YELLOW,
++        OxiOneColorManager.OXI_ONE_COLOR_BLUE,
++        OxiOneColorManager.OXI_ONE_COLOR_RED,
++        OxiOneColorManager.OXI_ONE_COLOR_GREEN,
++        OxiOneColorManager.OXI_ONE_COLOR_ORANGE,
++        OxiOneColorManager.OXI_ONE_COLOR_PINK,
++        OxiOneColorManager.OXI_ONE_COLOR_PURPLE,
++        OxiOneColorManager.OXI_ONE_COLOR_CYAN,
++        OxiOneColorManager.OXI_ONE_COLOR_DARK_OCEAN,
++        OxiOneColorManager.OXI_ONE_COLOR_WHITE
++    };
++    /** The inactive (dimmed) colors matching the color options. */
++    private static final int []       MIXER_COLORS_INACTIVE    =
++    {
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_YELLOW,
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_BLUE,
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_RED,
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_GREEN,
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_ORANGE,
++        OxiOneColorManager.OXI_ONE_COLOR_DARK_PINK,
++        OxiOneColorManager.OXI_ONE_COLOR_DARK_PURPLE,
++        OxiOneColorManager.OXI_ONE_COLOR_DARK_CYAN,
++        OxiOneColorManager.OXI_ONE_COLOR_DARKER_BLUE,
++        OxiOneColorManager.OXI_ONE_COLOR_GRAY
++    };
++
++    /** The names of all selectable colors for clips and plugins (bright and dim variants). */
++    private static final List<String> STATE_COLOR_OPTIONS      = new ArrayList<> ();
++    /** The color indices matching the state color options. */
++    private static final List<Integer> STATE_COLORS            = new ArrayList<> ();
++    private static final String       OPTION_DAW_COLOR         = "Clip color (DAW)";
++    private static final String       OPTION_TRACK_COLOR       = "Track color";
++    private static final List<String> CLIP_COLOR_OPTIONS       = new ArrayList<> ();
++    private static final List<String> PLUGIN_COLOR_OPTIONS     = new ArrayList<> ();
++
++    static
++    {
++        for (int i = 0; i < MIXER_COLOR_OPTIONS.size (); i++)
++        {
++            STATE_COLOR_OPTIONS.add (MIXER_COLOR_OPTIONS.get (i));
++            STATE_COLORS.add (Integer.valueOf (MIXER_COLORS_ACTIVE[i]));
++            STATE_COLOR_OPTIONS.add (MIXER_COLOR_OPTIONS.get (i) + " (dim)");
++            STATE_COLORS.add (Integer.valueOf (MIXER_COLORS_INACTIVE[i]));
++        }
++        STATE_COLOR_OPTIONS.add ("Gray");
++        STATE_COLORS.add (Integer.valueOf (OxiOneColorManager.OXI_ONE_COLOR_GRAY));
++        STATE_COLOR_OPTIONS.add ("Off");
++        STATE_COLORS.add (Integer.valueOf (OxiOneColorManager.OXI_ONE_COLOR_BLACK));
++
++        CLIP_COLOR_OPTIONS.add (OPTION_DAW_COLOR);
++        CLIP_COLOR_OPTIONS.addAll (STATE_COLOR_OPTIONS);
++        PLUGIN_COLOR_OPTIONS.add (OPTION_TRACK_COLOR);
++        PLUGIN_COLOR_OPTIONS.addAll (STATE_COLOR_OPTIONS);
++    }
++
++    private static final List<String> TRACK_BUTTON_OPTIONS     = List.of ("Mute & Solo", "Mute only", "Solo only");
++    private static final List<String> MIX64_BUTTON_OPTIONS     = List.of ("Mute", "Solo");
++    private static final List<String> PLUGIN_WINDOW_OPTIONS    = List.of ("On first press", "On second press", "Never");
++    private static final List<String> SHIFT_GESTURE_OPTIONS    = List.of ("Move/Swap (action on Shift release)", "Action immediately (no Move/Swap)");
++    private static final List<String> PLUGIN_SHIFT_OPTIONS     = List.of ("Bypass (on/off)", "Offline (on/off, Reaper)", "Remove device");
++
++    /** Which state rows are shown below the select row in the mixer views. */
++    public enum TrackButtons
++    {
++        /** Show mute and solo. */
++        MUTE_AND_SOLO,
++        /** Show only mute. */
++        MUTE_ONLY,
++        /** Show only solo. */
++        SOLO_ONLY
++    }
++
++    /** What happens when a plugin pad is pressed together with Shift in the plugin mixer. */
++    public enum PluginShiftAction
++    {
++        /** Toggle the bypass (enabled) state. */
++        BYPASS,
++        /** Toggle the offline state (Reaper), falls back to bypass if not supported. */
++        OFFLINE,
++        /** Remove the device. */
++        REMOVE
++    }
++
++    /** What happens when a plugin pad is pressed in the plugin mixer. */
++    public enum PluginWindowBehaviour
++    {
++        /** Select the device and open its window. */
++        FIRST_PRESS,
++        /** Select the device, open its window when pressed again. */
++        SECOND_PRESS,
++        /** Only select the device. */
++        NEVER
++    }
+ 
+     private static final List<String> BRIGHTNESS_OPTIONS       = List.of ("10%", "25%", "50%", "65%", "75%", "90%", "100%");
+     private static final double []    BRIGHTNESS_VALUES        = new double []
+@@ -41,6 +162,10 @@ public class OxiOneConfiguration extends AbstractConfiguration
+     private static final Views []     PREFERRED_NOTE_VIEWS_MK1 =
+     {
+         Views.MIX,
++        Views.PLUGIN_MIXER,
++        Views.MIX32,
++        Views.PLUGIN32,
++        Views.MIX64,
+         Views.DRUM_XOX,
+         Views.PLAY,
+         Views.DRUM64,
+@@ -54,6 +179,10 @@ public class OxiOneConfiguration extends AbstractConfiguration
+     {
+         Views.MIX,
+         Views.SESSION,
++        Views.PLUGIN_MIXER,
++        Views.MIX32,
++        Views.PLUGIN32,
++        Views.MIX64,
+         Views.DRUM_XOX,
+         Views.PLAY,
+         Views.DRUM64,
+@@ -63,7 +192,30 @@ public class OxiOneConfiguration extends AbstractConfiguration
+         Views.RAINDROPS
+     };
+ 
++    /** The views which can be selected with the MIXER button in the default order. */
++    private final Map<Views, String>  mixerViewLabels          = new LinkedHashMap<> ();
++    /** The views which are currently activated for selection with the MIXER button. */
++    private final List<Views>         activeMixerViews         = new CopyOnWriteArrayList<> ();
++    /** The views selected for each position of the order (a view might be selected twice). */
++    private final List<Views>         mixerViewSlots           = new CopyOnWriteArrayList<> ();
+     private double                    padBrightness            = 0.5;
++    private int                       muteColorIndex           = 0;
++    private int                       soloColorIndex           = 1;
++    private boolean                   showRecArm               = true;
++    private TrackButtons              trackButtons             = TrackButtons.MUTE_AND_SOLO;
++    private boolean                   mix64ShowsSolo           = false;
++    private PluginWindowBehaviour     pluginWindowBehaviour    = PluginWindowBehaviour.SECOND_PRESS;
++    private PluginShiftAction         pluginShiftAction        = PluginShiftAction.BYPASS;
++    private boolean                   shiftMoveSwap            = true;
++    /** -1 = use the DAW clip color. */
++    private int                       clipColor                = -1;
++    private int                       clipPlayingColor         = OxiOneColorManager.OXI_ONE_COLOR_GREEN;
++    private int                       clipRecordingColor       = OxiOneColorManager.OXI_ONE_COLOR_RED;
++    /** -1 = use the track color. */
++    private int                       pluginColor              = -1;
++    private int                       pluginBypassColor        = OxiOneColorManager.OXI_ONE_COLOR_GRAY;
++    private int                       pluginOfflineColor       = OxiOneColorManager.OXI_ONE_COLOR_DARKER_RED;
++    private int                       pluginWindowColor        = OxiOneColorManager.OXI_ONE_COLOR_WHITE;
+     private final boolean             isMk2;
+ 
+ 
+@@ -81,6 +233,17 @@ public class OxiOneConfiguration extends AbstractConfiguration
+ 
+         this.isMk2 = isMk2;
+ 
++        // The Mk1 has no session view
++        this.mixerViewLabels.put (Views.MIX, "Track Mixer");
++        if (isMk2)
++            this.mixerViewLabels.put (Views.SESSION, "Session");
++        this.mixerViewLabels.put (Views.PLUGIN_MIXER, "Plugin Mixer");
++        this.mixerViewLabels.put (Views.MIX32, "Mix 32");
++        this.mixerViewLabels.put (Views.PLUGIN32, "Plugin 32");
++        this.mixerViewLabels.put (Views.MIX64, "Mix 64");
++        this.activeMixerViews.addAll (this.mixerViewLabels.keySet ());
++        this.mixerViewSlots.addAll (this.mixerViewLabels.keySet ());
++
+         Views.setViewName (Views.DRUM64, "Drum 128");
+ 
+         // Force note on velocity to 127 since the pads only send 1
+@@ -151,6 +314,160 @@ public class OxiOneConfiguration extends AbstractConfiguration
+         this.activateNewClipLengthSetting (globalSettings);
+         this.activateKnobSpeedSetting (globalSettings);
+         this.activateColorTrackStates (globalSettings);
++
++        // ----------------------------------------------------------------
++        // Mixer views
++
++        final IEnumSetting muteColorSetting = globalSettings.getEnumSetting ("Mute color", CATEGORY_MIXER, MIXER_COLOR_OPTIONS, MIXER_COLOR_OPTIONS.get (0));
++        muteColorSetting.addValueObserver (value -> {
++            this.muteColorIndex = lookupIndex (MIXER_COLOR_OPTIONS, value);
++            this.notifyObservers (MIXER_LAYOUT);
++        });
++
++        final IEnumSetting soloColorSetting = globalSettings.getEnumSetting ("Solo color", CATEGORY_MIXER, MIXER_COLOR_OPTIONS, MIXER_COLOR_OPTIONS.get (1));
++        soloColorSetting.addValueObserver (value -> {
++            this.soloColorIndex = lookupIndex (MIXER_COLOR_OPTIONS, value);
++            this.notifyObservers (MIXER_LAYOUT);
++        });
++
++        final IEnumSetting showRecArmSetting = globalSettings.getEnumSetting ("Show record arm row", CATEGORY_MIXER, ON_OFF_OPTIONS, ON_OFF_OPTIONS[1]);
++        showRecArmSetting.addValueObserver (value -> {
++            this.showRecArm = ON_OFF_OPTIONS[1].equals (value);
++            this.notifyObservers (MIXER_LAYOUT);
++        });
++
++        final IEnumSetting trackButtonsSetting = globalSettings.getEnumSetting ("Track state rows", CATEGORY_MIXER, TRACK_BUTTON_OPTIONS, TRACK_BUTTON_OPTIONS.get (0));
++        trackButtonsSetting.addValueObserver (value -> {
++            this.trackButtons = TrackButtons.values ()[lookupIndex (TRACK_BUTTON_OPTIONS, value)];
++            this.notifyObservers (MIXER_LAYOUT);
++        });
++
++        final IEnumSetting mix64ButtonSetting = globalSettings.getEnumSetting ("Mix 64: state row", CATEGORY_MIXER, MIX64_BUTTON_OPTIONS, MIX64_BUTTON_OPTIONS.get (0));
++        mix64ButtonSetting.addValueObserver (value -> {
++            this.mix64ShowsSolo = lookupIndex (MIX64_BUTTON_OPTIONS, value) == 1;
++            this.notifyObservers (MIXER_LAYOUT);
++        });
++
++        final IEnumSetting pluginWindowSetting = globalSettings.getEnumSetting ("Plugin Mixer: open plugin window", CATEGORY_MIXER, PLUGIN_WINDOW_OPTIONS, PLUGIN_WINDOW_OPTIONS.get (1));
++        pluginWindowSetting.addValueObserver (value -> this.pluginWindowBehaviour = PluginWindowBehaviour.values ()[lookupIndex (PLUGIN_WINDOW_OPTIONS, value)]);
++
++        final IEnumSetting pluginShiftSetting = globalSettings.getEnumSetting ("Plugin Mixer: Shift + pad", CATEGORY_MIXER, PLUGIN_SHIFT_OPTIONS, PLUGIN_SHIFT_OPTIONS.get (0));
++        pluginShiftSetting.addValueObserver (value -> this.pluginShiftAction = PluginShiftAction.values ()[lookupIndex (PLUGIN_SHIFT_OPTIONS, value)]);
++
++        final IEnumSetting shiftGestureSetting = globalSettings.getEnumSetting ("Plugin Mixer: Shift gesture", CATEGORY_MIXER, SHIFT_GESTURE_OPTIONS, SHIFT_GESTURE_OPTIONS.get (0));
++        shiftGestureSetting.addValueObserver (value -> this.shiftMoveSwap = lookupIndex (SHIFT_GESTURE_OPTIONS, value) == 0);
++
++        // ----------------------------------------------------------------
++        // Views which are selected with the MIXER button
++
++        for (final Map.Entry<Views, String> entry: this.mixerViewLabels.entrySet ())
++        {
++            final Views view = entry.getKey ();
++            final IBooleanSetting viewSetting = globalSettings.getBooleanSetting (entry.getValue (), CATEGORY_MIXER_BUTTON, true);
++            viewSetting.addValueObserver (isActive -> this.setMixerViewActive (view, isActive.booleanValue ()));
++        }
++
++        // ----------------------------------------------------------------
++        // Order of the views which are selected with the MIXER button
++
++        final List<String> viewOptions = new ArrayList<> (this.mixerViewLabels.values ());
++        final List<Views> defaultOrder = new ArrayList<> (this.mixerViewLabels.keySet ());
++        for (int i = 0; i < defaultOrder.size (); i++)
++        {
++            final int slot = i;
++            final IEnumSetting slotSetting = globalSettings.getEnumSetting (SLOT_LABELS[i], CATEGORY_MIXER_ORDER, viewOptions, viewOptions.get (i));
++            slotSetting.addValueObserver (value -> {
++                final int index = viewOptions.indexOf (value);
++                if (index >= 0)
++                    this.mixerViewSlots.set (slot, defaultOrder.get (index));
++            });
++        }
++
++        // ----------------------------------------------------------------
++        // Colors of clips and plugins
++
++        final IEnumSetting clipColorSetting = globalSettings.getEnumSetting ("Clip color", CATEGORY_COLORS, CLIP_COLOR_OPTIONS, OPTION_DAW_COLOR);
++        clipColorSetting.addValueObserver (value -> this.clipColor = OPTION_DAW_COLOR.equals (value) ? -1 : lookupStateColor (value));
++
++        final IEnumSetting clipPlayingColorSetting = globalSettings.getEnumSetting ("Playing clip color", CATEGORY_COLORS, STATE_COLOR_OPTIONS, "Green");
++        clipPlayingColorSetting.addValueObserver (value -> this.clipPlayingColor = lookupStateColor (value));
++
++        final IEnumSetting clipRecordingColorSetting = globalSettings.getEnumSetting ("Recording clip color", CATEGORY_COLORS, STATE_COLOR_OPTIONS, "Red");
++        clipRecordingColorSetting.addValueObserver (value -> this.clipRecordingColor = lookupStateColor (value));
++
++        final IEnumSetting pluginColorSetting = globalSettings.getEnumSetting ("Plugin color", CATEGORY_COLORS, PLUGIN_COLOR_OPTIONS, OPTION_TRACK_COLOR);
++        pluginColorSetting.addValueObserver (value -> this.pluginColor = OPTION_TRACK_COLOR.equals (value) ? -1 : lookupStateColor (value));
++
++        final IEnumSetting pluginBypassColorSetting = globalSettings.getEnumSetting ("Bypassed plugin color", CATEGORY_COLORS, STATE_COLOR_OPTIONS, "Gray");
++        pluginBypassColorSetting.addValueObserver (value -> this.pluginBypassColor = lookupStateColor (value));
++
++        final IEnumSetting pluginOfflineColorSetting = globalSettings.getEnumSetting ("Offline plugin color", CATEGORY_COLORS, STATE_COLOR_OPTIONS, "Red (dim)");
++        pluginOfflineColorSetting.addValueObserver (value -> this.pluginOfflineColor = lookupStateColor (value));
++
++        final IEnumSetting pluginWindowColorSetting = globalSettings.getEnumSetting ("Plugin with open window color", CATEGORY_COLORS, STATE_COLOR_OPTIONS, "White");
++        pluginWindowColorSetting.addValueObserver (value -> this.pluginWindowColor = lookupStateColor (value));
++    }
++
++
++    private void setMixerViewActive (final Views view, final boolean isActive)
++    {
++        if (!isActive)
++        {
++            this.activeMixerViews.remove (view);
++            return;
++        }
++        if (!this.activeMixerViews.contains (view))
++            this.activeMixerViews.add (view);
++    }
++
++
++    private static int lookupStateColor (final String value)
++    {
++        final int index = STATE_COLOR_OPTIONS.indexOf (value);
++        return STATE_COLORS.get (Math.max (0, index)).intValue ();
++    }
++
++
++    /**
++     * Get the views which are selected one after the other by the MIXER button. Contains the track
++     * mixer if all views have been deactivated, so that the button always works.
++     *
++     * @return The activated views in the configured order
++     */
++    public List<Views> getMixerViews ()
++    {
++        final List<Views> views = new ArrayList<> ();
++        for (final Views view: this.getAllMixerViews ())
++        {
++            if (this.activeMixerViews.contains (view))
++                views.add (view);
++        }
++        return views.isEmpty () ? List.of (Views.MIX) : views;
++    }
++
++
++    /**
++     * Get all views which can be selected by the MIXER button (independent of which are
++     * activated) in the configured order. The order is defined by the views selected for each
++     * position. If a view is selected for several positions only the first one counts, views which
++     * are not selected at all are appended in the default order.
++     *
++     * @return The views in the configured order
++     */
++    public List<Views> getAllMixerViews ()
++    {
++        final List<Views> views = new ArrayList<> ();
++        for (final Views view: this.mixerViewSlots)
++        {
++            if (!views.contains (view))
++                views.add (view);
++        }
++        for (final Views view: this.mixerViewLabels.keySet ())
++        {
++            if (!views.contains (view))
++                views.add (view);
++        }
++        return views;
+     }
+ 
+ 
+@@ -163,4 +480,172 @@ public class OxiOneConfiguration extends AbstractConfiguration
+     {
+         return this.padBrightness;
+     }
++
++
++    /**
++     * Get the color for the mute pads.
++     *
++     * @param isActive True to get the color for an active (muted) state
++     * @return The color index
++     */
++    public int getMuteColor (final boolean isActive)
++    {
++        return isActive ? MIXER_COLORS_ACTIVE[this.muteColorIndex] : MIXER_COLORS_INACTIVE[this.muteColorIndex];
++    }
++
++
++    /**
++     * Get the color for the solo pads.
++     *
++     * @param isActive True to get the color for an active (soloed) state
++     * @return The color index
++     */
++    public int getSoloColor (final boolean isActive)
++    {
++        return isActive ? MIXER_COLORS_ACTIVE[this.soloColorIndex] : MIXER_COLORS_INACTIVE[this.soloColorIndex];
++    }
++
++
++    /**
++     * Should the record arm row be displayed in the mixer views?
++     *
++     * @return True if shown
++     */
++    public boolean isShowRecArm ()
++    {
++        return this.showRecArm;
++    }
++
++
++    /**
++     * Which mute/solo rows should be shown in the mixer views?
++     *
++     * @return The setting
++     */
++    public TrackButtons getTrackButtons ()
++    {
++        return this.trackButtons;
++    }
++
++
++    /**
++     * Should the Mix 64 view show solo instead of mute?
++     *
++     * @return True for solo, false for mute
++     */
++    public boolean isMix64ShowsSolo ()
++    {
++        return this.mix64ShowsSolo;
++    }
++
++
++    /**
++     * When should the plugin window be opened in the plugin mixer?
++     *
++     * @return The behaviour
++     */
++    public PluginWindowBehaviour getPluginWindowBehaviour ()
++    {
++        return this.pluginWindowBehaviour;
++    }
++
++
++    /**
++     * What should happen when a plugin pad is pressed together with Shift?
++     *
++     * @return The action
++     */
++    public PluginShiftAction getPluginShiftAction ()
++    {
++        return this.pluginShiftAction;
++    }
++
++
++    /**
++     * Is Shift + plugin used for move/swap (Shift action on release) or is the Shift action
++     * executed immediately (classic behaviour)?
++     *
++     * @return True for move/swap
++     */
++    public boolean isShiftMoveSwap ()
++    {
++        return this.shiftMoveSwap;
++    }
++
++
++    /**
++     * Get the color for clips with content.
++     *
++     * @return The color index or -1 if the clip color of the DAW should be used
++     */
++    public int getClipColor ()
++    {
++        return this.clipColor;
++    }
++
++
++    /**
++     * Get the color for playing clips.
++     *
++     * @return The color index
++     */
++    public int getClipPlayingColor ()
++    {
++        return this.clipPlayingColor;
++    }
++
++
++    /**
++     * Get the color for recording clips.
++     *
++     * @return The color index
++     */
++    public int getClipRecordingColor ()
++    {
++        return this.clipRecordingColor;
++    }
++
++
++    /**
++     * Get the color for active plugins.
++     *
++     * @return The color index or -1 if the track color should be used
++     */
++    public int getPluginColor ()
++    {
++        return this.pluginColor;
++    }
++
++
++    /**
++     * Get the color for bypassed plugins.
++     *
++     * @return The color index
++     */
++    public int getPluginBypassColor ()
++    {
++        return this.pluginBypassColor;
++    }
++
++
++    /**
++     * Get the color for offline plugins.
++     *
++     * @return The color index
++     */
++    public int getPluginOfflineColor ()
++    {
++        return this.pluginOfflineColor;
++    }
++
++
++    /**
++     * Get the color for plugins with an open window.
++     *
++     * @return The color index
++     */
++    public int getPluginWindowColor ()
++    {
++        return this.pluginWindowColor;
++    }
+ }
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneControllerSetup.java b/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneControllerSetup.java
+index 0199a667..cfd9dfab 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneControllerSetup.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/OxiOneControllerSetup.java
+@@ -7,6 +7,7 @@ package de.mossgrabers.controller.oxi.one;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneBackCommand;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneCursorCommand;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneFillModeGrooveCommand;
++import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneMixerViewCommand;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOnePerfCommand;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneToggleNoteEditCommand;
+ import de.mossgrabers.controller.oxi.one.command.trigger.OxiOneTrackCommand;
+@@ -29,8 +30,12 @@ import de.mossgrabers.controller.oxi.one.mode.OxiOneTransportMode;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneDrum8View;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneDrumView128;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneDrumXoXView;
++import de.mossgrabers.controller.oxi.one.view.OxiOneMix32View;
++import de.mossgrabers.controller.oxi.one.view.OxiOneMix64View;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneMixAndSessionView;
+ import de.mossgrabers.controller.oxi.one.view.OxiOnePlayView;
++import de.mossgrabers.controller.oxi.one.view.OxiOnePlugin32View;
++import de.mossgrabers.controller.oxi.one.view.OxiOnePluginMixerView;
+ import de.mossgrabers.controller.oxi.one.view.OxiOnePolySequencerView;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneRaindropsView;
+ import de.mossgrabers.controller.oxi.one.view.OxiOneSequencerView;
+@@ -125,6 +130,7 @@ public class OxiOneControllerSetup extends AbstractControllerSetup<OxiOneControl
+         final ModelSetup ms = new ModelSetup ();
+         ms.enableDevice (DeviceID.FIRST_INSTRUMENT);
+         ms.setNumTracks (16);
++        ms.setNumDevicesPerTrack (OxiOnePluginMixerView.MAX_DEVICE_ROWS);
+         ms.setNumScenes (this.isMk2 ? 8 : 4);
+         ms.setNumSends (6);
+         ms.setHasFullFlatTrackList (true);
+@@ -210,6 +216,10 @@ public class OxiOneControllerSetup extends AbstractControllerSetup<OxiOneControl
+         final ViewManager viewManager = surface.getViewManager ();
+ 
+         viewManager.register (Views.MIX, new OxiOneMixAndSessionView (surface, this.model));
++        viewManager.register (Views.PLUGIN_MIXER, new OxiOnePluginMixerView (surface, this.model));
++        viewManager.register (Views.MIX32, new OxiOneMix32View (surface, this.model));
++        viewManager.register (Views.PLUGIN32, new OxiOnePlugin32View (surface, this.model));
++        viewManager.register (Views.MIX64, new OxiOneMix64View (surface, this.model));
+         viewManager.register (Views.PLAY, new OxiOnePlayView (surface, this.model));
+         viewManager.register (Views.DRUM_XOX, new OxiOneDrumXoXView (surface, this.model));
+         viewManager.register (Views.DRUM64, new OxiOneDrumView128 (surface, this.model));
+@@ -264,15 +274,10 @@ public class OxiOneControllerSetup extends AbstractControllerSetup<OxiOneControl
+         this.addButton (ButtonID.DUPLICATE, "Duplicate", new DuplicateCommand<> (this.model, surface), 1, this.isMk2 ? OxiOneControlSurface.MK2_BUTTON_COPY : OxiOneControlSurface.MK1_BUTTON_COPY);
+         this.addButton (ButtonID.DELETE, "Delete", new DeleteCommand<> (this.model, surface), 1, this.isMk2 ? OxiOneControlSurface.MK2_BUTTON_PASTE : OxiOneControlSurface.MK1_BUTTON_PASTE);
+ 
+-        final Views [] arrangerViews = this.isMk2 ? new Views []
+-        {
+-            Views.MIX,
+-            Views.SESSION
+-        } : new Views []
+-        {
+-            Views.MIX
+-        };
+-        this.addButton (ButtonID.SESSION, "MIXER", new ViewMultiSelectCommand<> (this.model, surface, arrangerViews), 1, this.isMk2 ? OxiOneControlSurface.MK2_BUTTON_ARRANGER : OxiOneControlSurface.MK1_BUTTON_ARRANGER, () -> viewManager.isActive (arrangerViews) ? 1 : 0);
++        // The views which are selected by the MIXER button are configurable, the LED is lit for all
++        // of them
++        final Views [] arrangerViews = this.configuration.getAllMixerViews ().toArray (new Views [0]);
++        this.addButton (ButtonID.SESSION, "MIXER", new OxiOneMixerViewCommand (this.model, surface), 1, this.isMk2 ? OxiOneControlSurface.MK2_BUTTON_ARRANGER : OxiOneControlSurface.MK1_BUTTON_ARRANGER, () -> viewManager.isActive (arrangerViews) ? 1 : 0);
+ 
+         this.addButton (ButtonID.KEYBOARD, "KEYBOARD", new ViewMultiSelectCommand<> (this.model, surface, true, Views.PLAY, Views.DRUM64)
+         {
+@@ -699,6 +704,17 @@ public class OxiOneControllerSetup extends AbstractControllerSetup<OxiOneControl
+     }
+ 
+ 
++    /** {@inheritDoc} */
++    @Override
++    protected void recallLastView ()
++    {
++        // Stay in the additional mixer views when a track is selected
++        if (this.getSurface ().getViewManager ().isActive (Views.PLUGIN_MIXER, Views.MIX32, Views.PLUGIN32, Views.MIX64))
++            return;
++        super.recallLastView ();
++    }
++
++
+     /**
+      * Called when a new view is selected.
+      */
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneCursorCommand.java b/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneCursorCommand.java
+index fd555e0c..ccdeb590 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneCursorCommand.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneCursorCommand.java
+@@ -6,9 +6,11 @@ package de.mossgrabers.controller.oxi.one.command.trigger;
+ 
+ import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
+ import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.IOxiCursorView;
+ import de.mossgrabers.framework.command.trigger.Direction;
+ import de.mossgrabers.framework.command.trigger.mode.CursorCommand;
+ import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.featuregroup.IView;
+ 
+ 
+ /**
+@@ -40,5 +42,71 @@ public class OxiOneCursorCommand extends CursorCommand<OxiOneControlSurface, Oxi
+         final boolean isShiftPressed = this.isShifted ();
+         this.scrollStates.setCanScrollUp (this.canSelectSceneItemOrPage (isShiftPressed, false));
+         this.scrollStates.setCanScrollDown (this.canSelectSceneItemOrPage (isShiftPressed, true));
++
++        // Let the active view overwrite some directions
++        final IOxiCursorView cursorView = this.getCursorView ();
++        if (cursorView == null)
++            return;
++        if (cursorView.handlesCursor (Direction.LEFT))
++            this.scrollStates.setCanScrollLeft (cursorView.canCursor (Direction.LEFT, isShiftPressed));
++        if (cursorView.handlesCursor (Direction.RIGHT))
++            this.scrollStates.setCanScrollRight (cursorView.canCursor (Direction.RIGHT, isShiftPressed));
++        if (cursorView.handlesCursor (Direction.UP))
++            this.scrollStates.setCanScrollUp (cursorView.canCursor (Direction.UP, isShiftPressed));
++        if (cursorView.handlesCursor (Direction.DOWN))
++            this.scrollStates.setCanScrollDown (cursorView.canCursor (Direction.DOWN, isShiftPressed));
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void scrollLeft ()
++    {
++        if (!this.delegateToView (Direction.LEFT))
++            super.scrollLeft ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void scrollRight ()
++    {
++        if (!this.delegateToView (Direction.RIGHT))
++            super.scrollRight ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void scrollUp ()
++    {
++        if (!this.delegateToView (Direction.UP))
++            super.scrollUp ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void scrollDown ()
++    {
++        if (!this.delegateToView (Direction.DOWN))
++            super.scrollDown ();
++    }
++
++
++    private boolean delegateToView (final Direction scrollDirection)
++    {
++        final IOxiCursorView cursorView = this.getCursorView ();
++        if (cursorView == null || !cursorView.handlesCursor (scrollDirection))
++            return false;
++        cursorView.onCursor (scrollDirection, this.isShifted ());
++        return true;
++    }
++
++
++    private IOxiCursorView getCursorView ()
++    {
++        final IView activeView = this.surface.getViewManager ().getActive ();
++        return activeView instanceof final IOxiCursorView cursorView ? cursorView : null;
+     }
+ }
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneMixerViewCommand.java b/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneMixerViewCommand.java
+new file mode 100644
+index 00000000..bb6a1597
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/command/trigger/OxiOneMixerViewCommand.java
+@@ -0,0 +1,81 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.command.trigger;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.framework.command.trigger.view.ViewMultiSelectCommand;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.featuregroup.ViewManager;
++import de.mossgrabers.framework.utils.ButtonEvent;
++import de.mossgrabers.framework.view.Views;
++
++
++/**
++ * Selects the next mixer view with the MIXER button. Only the views which are activated in the
++ * configuration are used, the configuration is evaluated on each button press.
++ *
++ * @author Jürgen Moßgraber
++ */
++public class OxiOneMixerViewCommand extends ViewMultiSelectCommand<OxiOneControlSurface, OxiOneConfiguration>
++{
++    /**
++     * Constructor.
++     *
++     * @param model The model
++     * @param surface The surface
++     */
++    public OxiOneMixerViewCommand (final IModel model, final OxiOneControlSurface surface)
++    {
++        super (model, surface);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void executeNormal (final ButtonEvent event)
++    {
++        if (event != ButtonEvent.DOWN)
++            return;
++
++        final ViewManager viewManager = this.surface.getViewManager ();
++        final Views nextView = this.getNextView (viewManager.getActiveID ());
++        if (viewManager.isActive (nextView) || viewManager.get (nextView) == null)
++            return;
++
++        viewManager.setActive (nextView);
++        this.surface.getDisplay ().notify (viewManager.get (nextView).getName ());
++    }
++
++
++    /**
++     * Get the next activated view. If the active view is not one of the mixer views, or the active
++     * mixer view is deactivated in the configuration, the next activated view in the order of all
++     * mixer views is selected.
++     *
++     * @param activeView The currently active view
++     * @return The view to select
++     */
++    private Views getNextView (final Views activeView)
++    {
++        final OxiOneConfiguration configuration = this.surface.getConfiguration ();
++        final List<Views> activatedViews = configuration.getMixerViews ();
++        final List<Views> allViews = configuration.getAllMixerViews ();
++
++        final int activeIndex = allViews.indexOf (activeView);
++        if (activeIndex < 0)
++            return activatedViews.get (0);
++
++        for (int i = 1; i <= allViews.size (); i++)
++        {
++            final Views candidate = allViews.get ((activeIndex + i) % allViews.size ());
++            if (activatedViews.contains (candidate))
++                return candidate;
++        }
++        return activatedViews.get (0);
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/controller/OxiOneColorManager.java b/src/main/java/de/mossgrabers/controller/oxi/one/controller/OxiOneColorManager.java
+index 0ab4addb..57bfa947 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/controller/OxiOneColorManager.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/controller/OxiOneColorManager.java
+@@ -69,6 +69,20 @@ public class OxiOneColorManager extends ColorManager
+     public static final int  OXI_ONE_COLOR_BROWN         = 17;
+     /** ID for the color gray. */
+     public static final int  OXI_ONE_COLOR_GRAY          = 18;
++    /** ID for the color darker green. */
++    public static final int  OXI_ONE_COLOR_DARKER_GREEN  = 19;
++    /** ID for the color pink. */
++    public static final int  OXI_ONE_COLOR_PINK          = 20;
++    /** ID for the color dark pink. */
++    public static final int  OXI_ONE_COLOR_DARK_PINK     = 21;
++    /** ID for the color purple. */
++    public static final int  OXI_ONE_COLOR_PURPLE        = 22;
++    /** ID for the color dark purple. */
++    public static final int  OXI_ONE_COLOR_DARK_PURPLE   = 23;
++    /** ID for the color cyan. */
++    public static final int  OXI_ONE_COLOR_CYAN          = 24;
++    /** ID for the color dark cyan. */
++    public static final int  OXI_ONE_COLOR_DARK_CYAN     = 25;
+ 
+ 
+     /**
+@@ -143,6 +157,13 @@ public class OxiOneColorManager extends ColorManager
+         this.registerColor (OXI_ONE_COLOR_DARKER_YELLOW, ColorEx.DARKER_YELLOW);
+         this.registerColor (OXI_ONE_COLOR_BROWN, ColorEx.BROWN);
+         this.registerColor (OXI_ONE_COLOR_GRAY, ColorEx.DARKER_GRAY);
++        this.registerColor (OXI_ONE_COLOR_DARKER_GREEN, ColorEx.DARKER_GREEN);
++        this.registerColor (OXI_ONE_COLOR_PINK, ColorEx.PINK);
++        this.registerColor (OXI_ONE_COLOR_DARK_PINK, ColorEx.DARK_PINK);
++        this.registerColor (OXI_ONE_COLOR_PURPLE, new ColorEx (0.5, 0.0, 1.0));
++        this.registerColor (OXI_ONE_COLOR_DARK_PURPLE, new ColorEx (0.2, 0.0, 0.4));
++        this.registerColor (OXI_ONE_COLOR_CYAN, ColorEx.CYAN);
++        this.registerColor (OXI_ONE_COLOR_DARK_CYAN, new ColorEx (0.0, 0.25, 0.25));
+ 
+         this.registerColor (SCALE_COLOR_OCTAVE, ColorEx.BLUE);
+         this.registerColor (SCALE_COLOR_NOTE, ColorEx.WHITE);
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/AbstractOxiOneWideMixerView.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/AbstractOxiOneWideMixerView.java
+new file mode 100644
+index 00000000..7719687e
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/AbstractOxiOneWideMixerView.java
+@@ -0,0 +1,298 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
++import de.mossgrabers.framework.command.trigger.Direction;
++import de.mossgrabers.framework.controller.ButtonID;
++import de.mossgrabers.framework.controller.grid.IPadGrid;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.daw.data.ITrack;
++import de.mossgrabers.framework.daw.data.bank.ITrackBank;
++import de.mossgrabers.framework.featuregroup.AbstractView;
++
++
++/**
++ * Base class for mixer views which display more than 16 tracks without clips. The tracks are
++ * arranged in blocks of 16 tracks (one track per column). Each block has a fixed number of rows,
++ * the first row of a block selects the track, the others are track states (mute, solo, record
++ * arm). Left/Right scroll by the number of visible tracks, with Shift by 16 tracks. Rows of a block
++ * which are not used by the track state rows can be filled by subclasses (extra rows).
++ *
++ * @author Jürgen Moßgraber
++ */
++public abstract class AbstractOxiOneWideMixerView extends AbstractView<OxiOneControlSurface, OxiOneConfiguration> implements IOxiCursorView
++{
++    /** The size of the track bank used by all wide mixer views. */
++    public static final int  TRACK_BANK_SIZE = 64;
++
++    private static final int COLUMNS         = 16;
++
++    private final int        numBlocks;
++    private final int        rowsPerBlock;
++    private final int        numTracks;
++    private final OxiOneTrackRows.PressedRows pressedRows = new OxiOneTrackRows.PressedRows ();
++    private int              consumedNote    = -1;
++
++
++    /**
++     * Constructor.
++     *
++     * @param name The name of the view
++     * @param surface The surface
++     * @param model The model
++     * @param numBlocks The number of blocks of 16 tracks
++     */
++    protected AbstractOxiOneWideMixerView (final String name, final OxiOneControlSurface surface, final IModel model, final int numBlocks)
++    {
++        super (name, surface, model);
++
++        this.numBlocks = numBlocks;
++        this.rowsPerBlock = 8 / numBlocks;
++        this.numTracks = numBlocks * COLUMNS;
++
++        // Only monitor the large bank while the view is active
++        OxiOneObservers.setEnabled (this.model.getAdditionalTrackBank (TRACK_BANK_SIZE), false);
++    }
++
++
++    /**
++     * Get the rows of a block from top to bottom. Must not contain more rows than rows per block.
++     *
++     * @param configuration The configuration
++     * @return The rows
++     */
++    protected abstract List<RowType> getBlockRows (OxiOneConfiguration configuration);
++
++
++    /**
++     * Draw a pad in the rows of a block below the track state rows. The default implementation
++     * turns the pad off.
++     *
++     * @param x The x position on the grid (0 is left)
++     * @param y The y position on the grid (0 is top)
++     * @param trackIndex The index of the track in the view (0 to number of visible tracks - 1)
++     * @param track The track
++     * @param extraRow The index of the row below the track state rows (0 is the first)
++     */
++    protected void drawExtraPad (final int x, final int y, final int trackIndex, final ITrack track, final int extraRow)
++    {
++        this.surface.getPadGrid ().lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++    }
++
++
++    /**
++     * A pad in the rows of a block below the track state rows was pressed. The default
++     * implementation does nothing.
++     *
++     * @param trackIndex The index of the track in the view (0 to number of visible tracks - 1)
++     * @param track The track
++     * @param extraRow The index of the row below the track state rows (0 is the first)
++     */
++    protected void onExtraPadPressed (final int trackIndex, final ITrack track, final int extraRow)
++    {
++        // Intentionally empty
++    }
++
++
++    /**
++     * A pad in one of the track state rows was pressed. The default implementation does nothing.
++     */
++    protected void onTrackRowPressed ()
++    {
++        // Intentionally empty
++    }
++
++
++    /**
++     * Get the number of rows in a block.
++     *
++     * @return The number of rows
++     */
++    protected int getRowsPerBlock ()
++    {
++        return this.rowsPerBlock;
++    }
++
++
++    /**
++     * Get the number of tracks which are visible in the view.
++     *
++     * @return The number of tracks
++     */
++    protected int getNumTracks ()
++    {
++        return this.numTracks;
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onActivate ()
++    {
++        super.onActivate ();
++
++        final ITrackBank bank = this.model.getAdditionalTrackBank (TRACK_BANK_SIZE);
++        if (bank == null)
++            return;
++        OxiOneObservers.setEnabled (bank, true);
++
++        // Show the page which contains the current page of the main track bank (in Bitwig the bank
++        // also follows the cursor track)
++        final int mainPosition = Math.max (0, this.model.getTrackBank ().getScrollPosition ());
++        bank.scrollTo (mainPosition / this.numTracks * this.numTracks);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onDeactivate ()
++    {
++        OxiOneObservers.setEnabled (this.model.getAdditionalTrackBank (TRACK_BANK_SIZE), false);
++
++        super.onDeactivate ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void drawGrid ()
++    {
++        final IPadGrid padGrid = this.surface.getPadGrid ();
++        final List<RowType> blockRows = this.getBlockRows (this.surface.getConfiguration ());
++        final ITrackBank bank = this.getBank ();
++
++        for (int block = 0; block < this.numBlocks; block++)
++        {
++            for (int x = 0; x < COLUMNS; x++)
++            {
++                final int trackIndex = block * COLUMNS + x;
++                final ITrack track = this.getTrack (bank, trackIndex);
++                for (int r = 0; r < this.rowsPerBlock; r++)
++                {
++                    final int y = block * this.rowsPerBlock + r;
++                    if (track == null)
++                        padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++                    else if (r < blockRows.size ())
++                        OxiOneTrackRows.drawTrackPad (this.surface, this.colorManager, x, y, track, blockRows.get (r));
++                    else
++                        this.drawExtraPad (x, y, trackIndex, track, r - blockRows.size ());
++                }
++            }
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onGridNote (final int note, final int velocity)
++    {
++        // Note rows are counted from the bottom (0) to the top (7)
++        final int y = 7 - note / 16;
++        final int x = note % 16;
++        final int block = y / this.rowsPerBlock;
++        final int r = y % this.rowsPerBlock;
++        final List<RowType> blockRows = this.getBlockRows (this.surface.getConfiguration ());
++        final int trackIndex = block * COLUMNS + x;
++        final ITrack track = this.getTrack (this.getBank (), trackIndex);
++        final boolean isTrackPad = track != null && r < blockRows.size ();
++
++        if (velocity > 0)
++        {
++            if (isTrackPad)
++            {
++                this.onTrackRowPressed ();
++                this.pressedRows.press (note, blockRows.get (r));
++                if (OxiOneTrackRows.handleTrackPadPress (this.surface, track, blockRows.get (r)))
++                    this.consumedNote = note;
++            }
++            else if (track != null)
++                this.onExtraPadPressed (trackIndex, track, r - blockRows.size ());
++            return;
++        }
++
++        if (this.consumedNote == note)
++        {
++            this.consumedNote = -1;
++            this.pressedRows.release (note, null);
++            return;
++        }
++
++        if (isTrackPad)
++            OxiOneTrackRows.handleTrackPad (this.surface, track, this.pressedRows.release (note, blockRows.get (r)));
++
++        // Revert to last view of the selected track
++        if (this.surface.isPressed (ButtonID.SESSION))
++        {
++            this.surface.setTriggerConsumed (ButtonID.SESSION);
++            this.surface.recallPreferredView (this.model.getCursorTrack ());
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean handlesCursor (final Direction direction)
++    {
++        return direction == Direction.LEFT || direction == Direction.RIGHT;
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onCursor (final Direction direction, final boolean isShifted)
++    {
++        final ITrackBank bank = this.getBank ();
++        final int step = isShifted ? COLUMNS : this.numTracks;
++        final int position = Math.max (0, bank.getScrollPosition ());
++        if (direction == Direction.LEFT)
++            bank.scrollTo (Math.max (0, position - step));
++        else if (position + step < bank.getItemCount ())
++            bank.scrollTo (position + step);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean canCursor (final Direction direction, final boolean isShifted)
++    {
++        final ITrackBank bank = this.getBank ();
++        final int position = Math.max (0, bank.getScrollPosition ());
++        if (direction == Direction.LEFT)
++            return position > 0;
++        return position + (isShifted ? COLUMNS : this.numTracks) < bank.getItemCount ();
++    }
++
++
++    /**
++     * Get the track bank to use. Falls back to the current track bank (16 tracks) if the DAW does
++     * not support additional track banks.
++     *
++     * @return The bank
++     */
++    protected ITrackBank getBank ()
++    {
++        final ITrackBank bank = this.model.getAdditionalTrackBank (TRACK_BANK_SIZE);
++        return bank == null ? this.model.getCurrentTrackBank () : bank;
++    }
++
++
++    /**
++     * Get a track of the bank.
++     *
++     * @param bank The bank
++     * @param index The index of the track in the page of the bank
++     * @return The track or null if the index is outside of the page
++     */
++    protected ITrack getTrack (final ITrackBank bank, final int index)
++    {
++        return index < bank.getPageSize () ? bank.getItem (index) : null;
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/IOxiCursorView.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/IOxiCursorView.java
+new file mode 100644
+index 00000000..fb1da2cb
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/IOxiCursorView.java
+@@ -0,0 +1,43 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import de.mossgrabers.framework.command.trigger.Direction;
++
++
++/**
++ * Interface for views which want to handle (some of) the cursor buttons themselves.
++ *
++ * @author Jürgen Moßgraber
++ */
++public interface IOxiCursorView
++{
++    /**
++     * Does the view handle the given cursor direction itself?
++     *
++     * @param direction The direction
++     * @return True if the view handles it
++     */
++    boolean handlesCursor (Direction direction);
++
++
++    /**
++     * Execute the cursor action. Only called if handlesCursor returned true.
++     *
++     * @param direction The direction
++     * @param isShifted True if Shift is pressed
++     */
++    void onCursor (Direction direction, boolean isShifted);
++
++
++    /**
++     * Can the view scroll in the given direction? Only called if handlesCursor returned true.
++     *
++     * @param direction The direction
++     * @param isShifted True if Shift is pressed
++     * @return True if possible
++     */
++    boolean canCursor (Direction direction, boolean isShifted);
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneClipColors.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneClipColors.java
+new file mode 100644
+index 00000000..be99eef4
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneClipColors.java
+@@ -0,0 +1,90 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
++import de.mossgrabers.framework.controller.grid.LightInfo;
++
++
++/**
++ * The clip colors of the session views, which can be configured.
++ *
++ * @author Jürgen Moßgraber
++ */
++public final class OxiOneClipColors
++{
++    /** Index of the color for a recording clip. */
++    public static final int  IS_RECORDING        = 0;
++    /** Index of the color for a clip which is queued for recording. */
++    public static final int  IS_RECORDING_QUEUED = 1;
++    /** Index of the color for a playing clip. */
++    public static final int  IS_PLAYING          = 2;
++    /** Index of the color for a clip which is queued for playback. */
++    public static final int  IS_PLAYING_QUEUED   = 3;
++    /** Index of the color for a clip which is queued for stopping. */
++    public static final int  IS_STOP_QUEUED      = 4;
++    /** Index of the color for a clip with content. */
++    public static final int  HAS_CONTENT         = 5;
++    /** Index of the color for an empty slot. */
++    public static final int  NO_CONTENT          = 6;
++    /** Index of the color for an empty slot of a record armed track. */
++    public static final int  REC_ARMED           = 7;
++    /** Index of the color for a muted clip. */
++    public static final int  IS_MUTED            = 8;
++
++    private static final int DEFAULT_CONTENT     = OxiOneColorManager.OXI_ONE_COLOR_ORANGE;
++
++
++    /**
++     * Private due to helper class.
++     */
++    private OxiOneClipColors ()
++    {
++        // Intentionally empty
++    }
++
++
++    /**
++     * Should the clip colors of the DAW be used?
++     *
++     * @param configuration The configuration
++     * @return True if the DAW clip colors should be used
++     */
++    public static boolean useClipColor (final OxiOneConfiguration configuration)
++    {
++        return configuration.getClipColor () < 0;
++    }
++
++
++    /**
++     * Create the colors for the session view.
++     *
++     * @param configuration The configuration
++     * @return The colors, see the index constants
++     */
++    public static LightInfo [] createColors (final OxiOneConfiguration configuration)
++    {
++        final int black = OxiOneColorManager.OXI_ONE_COLOR_BLACK;
++        final int white = OxiOneColorManager.OXI_ONE_COLOR_WHITE;
++        final int recording = configuration.getClipRecordingColor ();
++        final int playing = configuration.getClipPlayingColor ();
++        final int clipColor = configuration.getClipColor ();
++        final int content = clipColor < 0 ? DEFAULT_CONTENT : clipColor;
++
++        return new LightInfo []
++        {
++            new LightInfo (recording, -1, false),
++            new LightInfo (recording, black, true),
++            new LightInfo (playing, -1, false),
++            new LightInfo (playing, playing, true),
++            new LightInfo (playing, playing, true),
++            new LightInfo (content, white, false),
++            new LightInfo (black, -1, false),
++            new LightInfo (OxiOneColorManager.OXI_ONE_COLOR_DARKER_RED, -1, false),
++            new LightInfo (OxiOneColorManager.OXI_ONE_COLOR_GRAY, -1, false)
++        };
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix32View.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix32View.java
+new file mode 100644
+index 00000000..0f3f83bd
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix32View.java
+@@ -0,0 +1,43 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.view.Views;
++
++
++/**
++ * Mixer for 32 tracks without clips: 2 blocks of 16 tracks with 4 rows each (select, mute, solo,
++ * record arm - as configured for the track mixer, including the Shift behavior if only mute or
++ * only solo is shown).
++ *
++ * @author Jürgen Moßgraber
++ */
++public class OxiOneMix32View extends AbstractOxiOneWideMixerView
++{
++    /**
++     * Constructor.
++     *
++     * @param surface The surface
++     * @param model The model
++     */
++    public OxiOneMix32View (final OxiOneControlSurface surface, final IModel model)
++    {
++        super (Views.NAME_MIX32, surface, model, 2);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected List<RowType> getBlockRows (final OxiOneConfiguration configuration)
++    {
++        return OxiOneTrackRows.getMixerRows (configuration, this.surface.isShiftPressed ());
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix64View.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix64View.java
+new file mode 100644
+index 00000000..fba91b5d
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMix64View.java
+@@ -0,0 +1,47 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.view.Views;
++
++
++/**
++ * Mixer for 64 tracks without clips: 4 blocks of 16 tracks with 2 rows each. The first row selects
++ * the track, the second row is either mute or solo (see configuration). Holding Shift displays the
++ * other one.
++ *
++ * @author Jürgen Moßgraber
++ */
++public class OxiOneMix64View extends AbstractOxiOneWideMixerView
++{
++    private static final List<RowType> ROWS_MUTE = List.of (RowType.SELECT, RowType.MUTE);
++    private static final List<RowType> ROWS_SOLO = List.of (RowType.SELECT, RowType.SOLO);
++
++
++    /**
++     * Constructor.
++     *
++     * @param surface The surface
++     * @param model The model
++     */
++    public OxiOneMix64View (final OxiOneControlSurface surface, final IModel model)
++    {
++        super (Views.NAME_MIX64, surface, model, 4);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected List<RowType> getBlockRows (final OxiOneConfiguration configuration)
++    {
++        return OxiOneTrackRows.getMix64StateRow (configuration, this.surface.isShiftPressed ()) == RowType.SOLO ? ROWS_SOLO : ROWS_MUTE;
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMixAndSessionView.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMixAndSessionView.java
+index b7a0fa7f..f91771e4 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMixAndSessionView.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneMixAndSessionView.java
+@@ -4,13 +4,14 @@
+ 
+ package de.mossgrabers.controller.oxi.one.view;
+ 
++import java.util.List;
++
+ import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
+ import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
+ import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
+ import de.mossgrabers.framework.controller.ButtonID;
+-import de.mossgrabers.framework.controller.grid.IPadGrid;
+ import de.mossgrabers.framework.controller.grid.LightInfo;
+-import de.mossgrabers.framework.daw.DAWColor;
+ import de.mossgrabers.framework.daw.IModel;
+ import de.mossgrabers.framework.daw.data.ISlot;
+ import de.mossgrabers.framework.daw.data.ITrack;
+@@ -20,12 +21,17 @@ import de.mossgrabers.framework.view.AbstractSessionView;
+ 
+ /**
+  * A view for mixing with track select, mute, solo, record arm, stop clip, volume and panning as
+- * well as 4 rows of clips.
++ * well as 4 rows of clips. Mute, solo and record arm rows can be hidden in the configuration, which
++ * gives up to 2 more rows of clips.
+  *
+  * @author Jürgen Moßgraber
+  */
+ public class OxiOneMixAndSessionView extends AbstractSessionView<OxiOneControlSurface, OxiOneConfiguration>
+ {
++    private final OxiOneTrackRows.PressedRows pressedRows  = new OxiOneTrackRows.PressedRows ();
++    private int                               consumedNote = -1;
++
++
+     /**
+      * Constructor.
+      *
+@@ -60,102 +66,55 @@ public class OxiOneMixAndSessionView extends AbstractSessionView<OxiOneControlSu
+     @Override
+     public void drawGrid ()
+     {
+-        final IPadGrid padGrid = this.surface.getPadGrid ();
+-        final boolean colorTrackStates = this.surface.getConfiguration ().isColorTrackStates ();
++        this.updateClipColors ();
++        final List<RowType> trackRows = this.updateLayout ();
++
+         final ITrackBank tb = this.model.getCurrentTrackBank ();
+         for (int i = 0; i < tb.getPageSize (); i++)
+         {
+             final ITrack track = tb.getItem (i);
+-            if (track.doesExist ())
+-            {
+-                // Select
+-                final int colorIndex = this.colorManager.getColorIndex (DAWColor.getColorID (track.getColor ()));
+-                if (track.isSelected ())
+-                    padGrid.lightEx (i, 0, colorIndex, OxiOneColorManager.OXI_ONE_COLOR_WHITE, false);
+-                else
+-                    padGrid.lightEx (i, 0, colorIndex);
+-
+-                // Mute
+-                padGrid.lightEx (i, 1, getTrackStateColor (track.isMute (), colorTrackStates, OxiOneColorManager.OXI_ONE_COLOR_YELLOW, OxiOneColorManager.OXI_ONE_COLOR_DARKER_YELLOW));
+-                // Solo
+-                padGrid.lightEx (i, 2, getTrackStateColor (track.isSolo (), colorTrackStates, OxiOneColorManager.OXI_ONE_COLOR_BLUE, OxiOneColorManager.OXI_ONE_COLOR_DARKER_BLUE));
+-                // Record Arm
+-                padGrid.lightEx (i, 3, getTrackStateColor (track.isRecArm (), colorTrackStates, OxiOneColorManager.OXI_ONE_COLOR_RED, OxiOneColorManager.OXI_ONE_COLOR_DARKER_RED));
+-            }
+-            else
+-            {
+-                padGrid.lightEx (i, 3, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
+-                padGrid.lightEx (i, 2, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
+-                padGrid.lightEx (i, 1, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
+-                padGrid.lightEx (i, 0, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
+-            }
++            for (int y = 0; y < trackRows.size (); y++)
++                OxiOneTrackRows.drawTrackPad (this.surface, this.colorManager, i, y, track, trackRows.get (y));
++
++            // Rows which are not used, if there are less scenes than free rows (Mk1)
++            for (int y = trackRows.size (); y < this.getYOffset (); y++)
++                this.surface.getPadGrid ().lightEx (i, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
+         }
+ 
+         super.drawGrid ();
+     }
+ 
+ 
+-    private static int getTrackStateColor (final boolean state, final boolean colorTrackStates, final int activeColor, final int inActiveColor)
+-    {
+-        if (state)
+-            return activeColor;
+-        return colorTrackStates ? inActiveColor : OxiOneColorManager.OXI_ONE_COLOR_BLACK;
+-    }
+-
+-
+     /** {@inheritDoc} */
+     @Override
+     public void onGridNote (final int note, final int velocity)
+     {
++        final List<RowType> trackRows = this.updateLayout ();
++
++        // Note rows are counted from the bottom (0) to the top (7)
+         final int row = note / 16;
+-        if (row < 4)
++        final int y = 7 - row;
++        if (y >= this.getYOffset ())
+         {
+             super.onGridNote (note, velocity);
+         }
+-        else
++        else if (y < trackRows.size ())
+         {
+             final int index = note % 16;
+             final ITrack track = this.model.getCurrentTrackBank ().getItem (index);
+-
+-            if (velocity == 0)
++            if (velocity > 0)
+             {
+-                switch (row)
+-                {
+-                    case 7:
+-                        final OxiOneConfiguration configuration = this.surface.getConfiguration ();
+-                        if (configuration.isDeleteModeActive ())
+-                        {
+-                            configuration.toggleDeleteModeActive ();
+-                            track.remove ();
+-                        }
+-                        else if (configuration.isDuplicateModeActive ())
+-                        {
+-                            configuration.toggleDuplicateModeActive ();
+-                            track.duplicate ();
+-                        }
+-                        else if (this.surface.isShiftPressed ())
+-                            track.stop (false);
+-                        else
+-                            track.selectOrExpandGroup ();
+-                        break;
+-
+-                    case 6:
+-                        track.toggleMute ();
+-                        break;
+-
+-                    case 5:
+-                        track.toggleSolo ();
+-                        break;
+-
+-                    case 4:
+-                        track.toggleRecArm ();
+-                        break;
+-
+-                    default:
+-                        // Handled above
+-                        break;
+-                }
++                this.pressedRows.press (note, trackRows.get (y));
++                if (OxiOneTrackRows.handleTrackPadPress (this.surface, track, trackRows.get (y)))
++                    this.consumedNote = note;
+             }
++            else if (this.consumedNote == note)
++            {
++                this.consumedNote = -1;
++                this.pressedRows.release (note, null);
++            }
++            else
++                OxiOneTrackRows.handleTrackPad (this.surface, track, this.pressedRows.release (note, trackRows.get (y)));
+         }
+ 
+         // Revert to last view of the selected track
+@@ -167,6 +126,36 @@ public class OxiOneMixAndSessionView extends AbstractSessionView<OxiOneControlSu
+     }
+ 
+ 
++    /**
++     * Apply the configured clip colors.
++     */
++    private void updateClipColors ()
++    {
++        final OxiOneConfiguration config = this.surface.getConfiguration ();
++        final LightInfo [] c = OxiOneClipColors.createColors (config);
++        this.useClipColor = OxiOneClipColors.useClipColor (config);
++        this.setColors (c[OxiOneClipColors.IS_RECORDING], c[OxiOneClipColors.IS_RECORDING_QUEUED], c[OxiOneClipColors.IS_PLAYING], c[OxiOneClipColors.IS_PLAYING_QUEUED], c[OxiOneClipColors.IS_STOP_QUEUED], c[OxiOneClipColors.HAS_CONTENT], c[OxiOneClipColors.NO_CONTENT], c[OxiOneClipColors.REC_ARMED], c[OxiOneClipColors.IS_MUTED]);
++        this.birdColorHasContent = c[OxiOneClipColors.HAS_CONTENT];
++    }
++
++
++    /**
++     * Update the number of clip rows depending on the number of track state rows which are
++     * configured to be visible.
++     *
++     * @return The visible track state rows
++     */
++    private List<RowType> updateLayout ()
++    {
++        final List<RowType> trackRows = OxiOneTrackRows.getMixerRows (this.surface.getConfiguration (), this.surface.isShiftPressed ());
++        // The clips are always aligned at the bottom, limited by the number of scenes (Mk1 has
++        // only 4)
++        final int numScenes = this.model.getCurrentTrackBank ().getSceneBank ().getPageSize ();
++        this.rows = Math.min (8 - trackRows.size (), numScenes);
++        return trackRows;
++    }
++
++
+     /** {@inheritDoc} */
+     @Override
+     protected boolean handleButtonCombinations (final ITrack track, final ISlot slot)
+@@ -189,6 +178,6 @@ public class OxiOneMixAndSessionView extends AbstractSessionView<OxiOneControlSu
+     @Override
+     protected int getYOffset ()
+     {
+-        return 4;
++        return 8 - this.rows;
+     }
+ }
+\ No newline at end of file
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneObservers.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneObservers.java
+new file mode 100644
+index 00000000..1de4187e
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneObservers.java
+@@ -0,0 +1,59 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.Collections;
++import java.util.Map;
++import java.util.WeakHashMap;
++
++import de.mossgrabers.framework.observer.IObserverManagement;
++
++
++/**
++ * Helper to enable/disable the observers of banks only while a view is active. Several views can
++ * share the same bank (e.g. all the views for more than 16 tracks) and the DAW might count the
++ * subscriptions (Bitwig reports an error if there are more unsubscribes than subscribes). Therefore,
++ * the state of each bank is remembered and a bank is only switched if the state really changes.
++ *
++ * @author Jürgen Moßgraber
++ */
++public final class OxiOneObservers
++{
++    /** The banks which are currently unsubscribed, all other banks are subscribed by default. */
++    private static final Map<IObserverManagement, Boolean> STATES = Collections.synchronizedMap (new WeakHashMap<> ());
++
++
++    /**
++     * Private constructor for utility class.
++     */
++    private OxiOneObservers ()
++    {
++        // Intentionally empty
++    }
++
++
++    /**
++     * Enable or disable the observers of an object, but only if this is a change.
++     *
++     * @param target The object (e.g. a bank), may be null
++     * @param enable True to enable, false to disable the observers
++     */
++    public static void setEnabled (final IObserverManagement target, final boolean enable)
++    {
++        if (target == null)
++            return;
++        synchronized (STATES)
++        {
++            final boolean isEnabled = !STATES.containsKey (target);
++            if (isEnabled == enable)
++                return;
++            if (enable)
++                STATES.remove (target);
++            else
++                STATES.put (target, Boolean.TRUE);
++        }
++        target.enableObservers (enable);
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePlugin32View.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePlugin32View.java
+new file mode 100644
+index 00000000..8ade5cfe
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePlugin32View.java
+@@ -0,0 +1,552 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration.PluginWindowBehaviour;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
++import de.mossgrabers.framework.command.trigger.Direction;
++import de.mossgrabers.framework.controller.ButtonID;
++import de.mossgrabers.framework.controller.display.IDisplay;
++import de.mossgrabers.framework.controller.grid.IPadGrid;
++import de.mossgrabers.framework.daw.DAWColor;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.daw.constants.DeviceChainOperation;
++import de.mossgrabers.framework.daw.data.ICursorDevice;
++import de.mossgrabers.framework.daw.data.IDevice;
++import de.mossgrabers.framework.daw.data.ITrack;
++import de.mossgrabers.framework.daw.data.bank.IDeviceBank;
++import de.mossgrabers.framework.daw.data.bank.ITrackBank;
++import de.mossgrabers.framework.view.Views;
++
++
++/**
++ * Mixer for 32 tracks: 2 blocks of 16 tracks with 4 rows each. The first rows of a block are the
++ * track state rows as configured for the track mixer (select, mute, solo, record arm). The rows
++ * which are not used by the state rows show the devices (insert plugins) of each track, like in the
++ * plugin mixer. At least one row of each block is reserved for the devices, if all 4 state rows are
++ * configured the record arm and then the solo row are not displayed.
++ * <p>
++ * Pressing a device pad selects the device (and optionally opens its plugin window). Up/Down scroll
++ * the devices of all visible tracks. The gestures for copying, moving, swapping and deleting
++ * devices work like in the plugin mixer (also across the 32 visible tracks).
++ *
++ * @author Jürgen Moßgraber
++ */
++public class OxiOnePlugin32View extends AbstractOxiOneWideMixerView
++{
++    /** The source device of a copy or move/swap gesture. */
++    private static final class Source
++    {
++        private final int     trackIndex;
++        private final int     trackPosition;
++        private int           position;
++        private final String  name;
++        private final boolean isMove;
++
++
++        Source (final int trackIndex, final ITrack track, final IDevice device, final boolean isMove)
++        {
++            this.trackIndex = trackIndex;
++            this.trackPosition = track.getPosition ();
++            this.position = device.getPosition ();
++            this.name = device.getName ();
++            this.isMove = isMove;
++        }
++    }
++
++    private Source source = null;
++
++
++    /**
++     * Constructor.
++     *
++     * @param surface The surface
++     * @param model The model
++     */
++    public OxiOnePlugin32View (final OxiOneControlSurface surface, final IModel model)
++    {
++        super (Views.NAME_PLUGIN32, surface, model, 2);
++
++        // Only monitor the devices of all tracks while the view is active
++        this.enableDeviceObservers (false);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onActivate ()
++    {
++        super.onActivate ();
++        this.enableDeviceObservers (true);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onDeactivate ()
++    {
++        this.cancelGesture ();
++        this.enableDeviceObservers (false);
++        super.onDeactivate ();
++    }
++
++
++    private void enableDeviceObservers (final boolean enable)
++    {
++        // The devices of the visible tracks
++        final ITrackBank bank = this.getBank ();
++        boolean hasDeviceBanks = false;
++        for (int i = 0; i < this.getNumTracks (); i++)
++        {
++            final ITrack track = this.getTrack (bank, i);
++            final IDeviceBank deviceBank = track == null ? null : this.model.getTrackDeviceBank (track);
++            if (deviceBank == null)
++                continue;
++            OxiOneObservers.setEnabled (deviceBank, enable);
++            hasDeviceBanks = true;
++        }
++        if (hasDeviceBanks)
++            return;
++
++        // Fallback to the device banks of the main track bank
++        final int pageSize = this.model.getTrackBank ().getPageSize ();
++        for (int i = 0; i < pageSize; i++)
++        {
++            OxiOneObservers.setEnabled (this.model.getTrackDeviceBank (i), enable);
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected List<RowType> getBlockRows (final OxiOneConfiguration configuration)
++    {
++        final List<RowType> rows = OxiOneTrackRows.getMixerRows (configuration, this.surface.isShiftPressed ());
++        // Keep at least one row for the devices
++        final int maxRows = this.getRowsPerBlock () - 1;
++        return rows.size () > maxRows ? rows.subList (0, maxRows) : rows;
++    }
++
++
++    /**
++     * Get the number of rows per block which display devices.
++     *
++     * @return The number of rows
++     */
++    private int getNumDeviceRows ()
++    {
++        return this.getRowsPerBlock () - this.getBlockRows (this.surface.getConfiguration ()).size ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void drawGrid ()
++    {
++        this.checkGestureEnd ();
++        super.drawGrid ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void drawExtraPad (final int x, final int y, final int trackIndex, final ITrack track, final int extraRow)
++    {
++        final IPadGrid padGrid = this.surface.getPadGrid ();
++        final IDeviceBank deviceBank = track.doesExist () ? this.model.getTrackDeviceBank (track) : null;
++        if (deviceBank == null || extraRow >= deviceBank.getPageSize ())
++        {
++            padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++            return;
++        }
++
++        final IDevice device = deviceBank.getItem (extraRow);
++        if (!device.doesExist ())
++        {
++            padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++            return;
++        }
++
++        final OxiOneConfiguration configuration = this.surface.getConfiguration ();
++        final int color;
++        if (device.isOffline ())
++            color = configuration.getPluginOfflineColor ();
++        else if (!device.isEnabled ())
++            color = configuration.getPluginBypassColor ();
++        else if (device.isWindowOpen ())
++            color = configuration.getPluginWindowColor ();
++        else
++        {
++            final int pluginColor = configuration.getPluginColor ();
++            color = pluginColor < 0 ? this.colorManager.getColorIndex (DAWColor.getColorID (track.getColor ())) : pluginColor;
++        }
++
++        // The source of a copy/move operation blinks fast, the selected device slowly
++        final int blinkColor = color == OxiOneColorManager.OXI_ONE_COLOR_WHITE ? OxiOneColorManager.OXI_ONE_COLOR_BLACK : OxiOneColorManager.OXI_ONE_COLOR_WHITE;
++        if (this.source != null && this.source.trackIndex == trackIndex && this.source.position == device.getPosition ())
++            padGrid.lightEx (x, y, color, blinkColor, true);
++        else if (isCursorDevice (track, device, this.model.getCursorDevice ()))
++            padGrid.lightEx (x, y, color, blinkColor, false);
++        else
++            padGrid.lightEx (x, y, color);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void onTrackRowPressed ()
++    {
++        // Using any other pad ends a gesture
++        this.cancelGesture ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    protected void onExtraPadPressed (final int trackIndex, final ITrack track, final int extraRow)
++    {
++        final IDeviceBank deviceBank = track.doesExist () ? this.model.getTrackDeviceBank (track) : null;
++        if (deviceBank == null || extraRow >= deviceBank.getPageSize ())
++            return;
++
++        final IDevice device = deviceBank.getItem (extraRow);
++        if (!this.handleEditGestures (trackIndex, track, device))
++            this.handleDevicePad (track, device);
++    }
++
++
++    /**
++     * Handle the gestures for copying, moving and deleting devices:
++     * <ul>
++     * <li>Hold COPY, press a device (source), press another slot: Inserts a copy before the device
++     * on that slot or at the end of the chain if the slot is empty. Additionally hold Shift to
++     * replace the device on that slot.
++     * <li>Hold Shift, press a device (source), press another slot: Swaps the 2 devices or moves the
++     * source device to the end of the chain if the slot is empty. If Shift is released without
++     * selecting a 2nd slot, the configured Shift action (bypass, offline, remove) is executed.
++     * <li>Hold PASTE, press a device: Removes it.
++     * </ul>
++     *
++     * @param trackIndex The index of the track in the view
++     * @param track The track
++     * @param device The device on the pressed slot, might not exist
++     * @return True if the pad press was consumed by a gesture
++     */
++    private boolean handleEditGestures (final int trackIndex, final ITrack track, final IDevice device)
++    {
++        final IDisplay display = this.surface.getDisplay ();
++        final boolean isShift = this.surface.isShiftPressed ();
++
++        // Copy / Replace
++        if (this.surface.isPressed (ButtonID.DUPLICATE))
++        {
++            this.surface.setTriggerConsumed (ButtonID.DUPLICATE);
++            if (this.source == null || this.source.isMove)
++            {
++                this.source = null;
++                if (device.doesExist ())
++                {
++                    this.source = new Source (trackIndex, track, device, false);
++                    display.notify ("Copy to? (+Shift: replace)");
++                }
++                return true;
++            }
++
++            final Source copySource = this.source;
++            final ITrack copySourceTrack = this.findSourceTrack (copySource);
++            if (copySourceTrack == null || this.findSourceDevice (copySource) == null)
++            {
++                this.source = null;
++                display.notify ("Cancelled");
++                return true;
++            }
++
++            final boolean isReplace = isShift && device.doesExist ();
++            final int destinationPosition = getDestinationPosition (device);
++            // Replacing the source with itself does nothing
++            if (isReplace && copySource.trackIndex == trackIndex && copySource.position == destinationPosition)
++                return true;
++            final DeviceChainOperation operation = isReplace ? DeviceChainOperation.REPLACE : DeviceChainOperation.COPY;
++            if (this.model.editDeviceChain (operation, copySourceTrack, copySource.position, track, destinationPosition))
++            {
++                display.notify ((isReplace ? "Replaced with " : "Copied ") + copySource.name);
++                // A copy inserted before the source on the same track moves the source down
++                if (!isReplace && copySource.trackIndex == trackIndex && destinationPosition >= 0 && destinationPosition <= copySource.position)
++                    copySource.position++;
++            }
++            else
++                display.notify ("Not possible");
++            return true;
++        }
++
++        // Delete
++        if (this.surface.isPressed (ButtonID.DELETE))
++        {
++            this.surface.setTriggerConsumed (ButtonID.DELETE);
++            this.source = null;
++            if (device.doesExist ())
++            {
++                display.notify ("Removed: " + device.getName ());
++                device.remove ();
++            }
++            return true;
++        }
++
++        // Classic: Execute the Shift action immediately
++        if (isShift && !this.surface.getConfiguration ().isShiftMoveSwap ())
++        {
++            this.source = null;
++            if (device.doesExist ())
++                this.executeShiftAction (device);
++            return true;
++        }
++
++        // Move / Swap (and the configured Shift action on Shift release)
++        if (isShift)
++        {
++            if (this.source == null || !this.source.isMove)
++            {
++                this.source = null;
++                if (device.doesExist ())
++                {
++                    this.source = new Source (trackIndex, track, device, true);
++                    display.notify ("Move/Swap?");
++                }
++                return true;
++            }
++
++            final Source moveSource = this.source;
++            this.source = null;
++            final ITrack moveSourceTrack = this.findSourceTrack (moveSource);
++            if (moveSourceTrack == null || this.findSourceDevice (moveSource) == null)
++            {
++                display.notify ("Cancelled");
++                return true;
++            }
++            final int destinationPosition = getDestinationPosition (device);
++            if (moveSource.trackIndex == trackIndex && moveSource.position == destinationPosition)
++                return true;
++            final boolean isSwap = device.doesExist ();
++            final DeviceChainOperation operation = isSwap ? DeviceChainOperation.SWAP : DeviceChainOperation.MOVE;
++            if (this.model.editDeviceChain (operation, moveSourceTrack, moveSource.position, track, destinationPosition))
++                display.notify ((isSwap ? "Swapped " : "Moved ") + moveSource.name);
++            else
++                display.notify ("Not possible");
++            return true;
++        }
++
++        return false;
++    }
++
++
++    /**
++     * Ends a gesture if the related button was released. If Shift was released and only one device
++     * was selected, the configured Shift action is executed on it.
++     */
++    private void checkGestureEnd ()
++    {
++        if (this.source == null)
++            return;
++
++        if (!this.source.isMove)
++        {
++            if (!this.surface.isPressed (ButtonID.DUPLICATE))
++                this.source = null;
++            return;
++        }
++
++        if (this.surface.isShiftPressed ())
++            return;
++
++        final IDevice device = this.findSourceDevice (this.source);
++        this.source = null;
++        if (device != null)
++            this.executeShiftAction (device);
++    }
++
++
++    /**
++     * Cancel a running gesture, e.g. if something else was done while Shift was held.
++     */
++    private void cancelGesture ()
++    {
++        this.source = null;
++    }
++
++
++    /**
++     * Get the track of a gesture source. Checks that it is still the same track (the tracks might
++     * have changed since the bank was scrolled).
++     *
++     * @param src The source
++     * @return The track or null if it is no longer available
++     */
++    private ITrack findSourceTrack (final Source src)
++    {
++        if (src.trackIndex >= this.getNumTracks ())
++            return null;
++        final ITrack track = this.getTrack (this.getBank (), src.trackIndex);
++        if (track == null || !track.doesExist () || track.getPosition () != src.trackPosition)
++            return null;
++        return track;
++    }
++
++
++    /**
++     * Get the device of a gesture source. Checks that it is still the same track and device (it
++     * might have changed since the banks were scrolled or the chain was edited).
++     *
++     * @param src The source
++     * @return The device or null if it is no longer available
++     */
++    private IDevice findSourceDevice (final Source src)
++    {
++        final ITrack track = this.findSourceTrack (src);
++        if (track == null)
++            return null;
++        final IDeviceBank deviceBank = this.model.getTrackDeviceBank (track);
++        if (deviceBank == null)
++            return null;
++        for (int i = 0; i < deviceBank.getPageSize (); i++)
++        {
++            final IDevice device = deviceBank.getItem (i);
++            if (device.doesExist () && device.getPosition () == src.position)
++                return src.name.equals (device.getName ()) ? device : null;
++        }
++        return null;
++    }
++
++
++    /**
++     * Execute the configured Shift action: bypass, offline or remove. The states are updated
++     * asynchronously, therefore the state before toggling is used for the notification.
++     *
++     * @param device The device
++     */
++    private void executeShiftAction (final IDevice device)
++    {
++        final IDisplay display = this.surface.getDisplay ();
++        switch (this.surface.getConfiguration ().getPluginShiftAction ())
++        {
++            case REMOVE:
++                display.notify ("Removed: " + device.getName ());
++                device.remove ();
++                break;
++
++            case OFFLINE:
++                final boolean wasOffline = device.isOffline ();
++                device.toggleOffline ();
++                display.notify ((wasOffline ? "Online: " : "Offline: ") + device.getName ());
++                break;
++
++            default:
++                final boolean wasEnabled = device.isEnabled ();
++                device.toggleEnabledState ();
++                display.notify ((wasEnabled ? "Bypass: " : "Active: ") + device.getName ());
++                break;
++        }
++    }
++
++
++    private static int getDestinationPosition (final IDevice device)
++    {
++        return device.doesExist () ? device.getPosition () : -1;
++    }
++
++
++    private void handleDevicePad (final ITrack track, final IDevice device)
++    {
++        if (!device.doesExist ())
++            return;
++
++        final boolean wasSelected = isCursorDevice (track, device, this.model.getCursorDevice ());
++        if (!track.isSelected ())
++            track.select ();
++        device.select ();
++        this.surface.getDisplay ().notify (device.getName ());
++
++        final PluginWindowBehaviour behaviour = this.surface.getConfiguration ().getPluginWindowBehaviour ();
++        if (behaviour == PluginWindowBehaviour.FIRST_PRESS || behaviour == PluginWindowBehaviour.SECOND_PRESS && wasSelected || device.isWindowOpen ())
++            device.toggleWindowOpen ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean handlesCursor (final Direction direction)
++    {
++        // Scrolling the devices is only possible with device banks per track
++        if (direction == Direction.UP || direction == Direction.DOWN)
++            return this.model.getTrackDeviceBank (0) != null;
++        return super.handlesCursor (direction);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onCursor (final Direction direction, final boolean isShifted)
++    {
++        if (direction != Direction.UP && direction != Direction.DOWN)
++        {
++            this.cancelGesture ();
++            super.onCursor (direction, isShifted);
++            return;
++        }
++
++        this.cancelGesture ();
++        final int visibleRows = this.getNumDeviceRows ();
++        final ITrackBank bank = this.getBank ();
++        for (int i = 0; i < this.getNumTracks (); i++)
++        {
++            final ITrack track = this.getTrack (bank, i);
++            final IDeviceBank deviceBank = track != null && track.doesExist () ? this.model.getTrackDeviceBank (track) : null;
++            if (deviceBank == null)
++                continue;
++            final int position = Math.max (0, deviceBank.getScrollPosition ());
++            if (direction == Direction.UP)
++            {
++                if (position > 0)
++                    deviceBank.scrollTo (isShifted ? 0 : position - 1);
++            }
++            else if (position + visibleRows < deviceBank.getItemCount ())
++                deviceBank.scrollTo (position + 1);
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean canCursor (final Direction direction, final boolean isShifted)
++    {
++        if (direction != Direction.UP && direction != Direction.DOWN)
++            return super.canCursor (direction, isShifted);
++
++        final int visibleRows = this.getNumDeviceRows ();
++        final ITrackBank bank = this.getBank ();
++        for (int i = 0; i < this.getNumTracks (); i++)
++        {
++            final ITrack track = this.getTrack (bank, i);
++            final IDeviceBank deviceBank = track != null && track.doesExist () ? this.model.getTrackDeviceBank (track) : null;
++            if (deviceBank == null)
++                continue;
++            final int position = Math.max (0, deviceBank.getScrollPosition ());
++            if (direction == Direction.UP ? position > 0 : position + visibleRows < deviceBank.getItemCount ())
++                return true;
++        }
++        return false;
++    }
++
++
++    private static boolean isCursorDevice (final ITrack track, final IDevice device, final ICursorDevice cursorDevice)
++    {
++        // A nested device (in a container or layer) is never on the top level of the track
++        return track.isSelected () && cursorDevice.doesExist () && !cursorDevice.isNested () && cursorDevice.getPosition () == device.getPosition ();
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePluginMixerView.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePluginMixerView.java
+new file mode 100644
+index 00000000..0bf69e0d
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOnePluginMixerView.java
+@@ -0,0 +1,578 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration.PluginWindowBehaviour;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.controller.oxi.one.view.OxiOneTrackRows.RowType;
++import de.mossgrabers.framework.command.trigger.Direction;
++import de.mossgrabers.framework.controller.ButtonID;
++import de.mossgrabers.framework.controller.display.IDisplay;
++import de.mossgrabers.framework.controller.grid.IPadGrid;
++import de.mossgrabers.framework.daw.DAWColor;
++import de.mossgrabers.framework.daw.IModel;
++import de.mossgrabers.framework.daw.constants.DeviceChainOperation;
++import de.mossgrabers.framework.daw.data.ICursorDevice;
++import de.mossgrabers.framework.daw.data.IDevice;
++import de.mossgrabers.framework.daw.data.ITrack;
++import de.mossgrabers.framework.daw.data.bank.IDeviceBank;
++import de.mossgrabers.framework.daw.data.bank.ITrackBank;
++import de.mossgrabers.framework.featuregroup.AbstractView;
++import de.mossgrabers.framework.view.Views;
++
++
++/**
++ * A mixer view which shows the devices (insert plugins) of each track below the track state rows
++ * instead of clips. Pressing a device pad selects the device (and optionally opens its plugin
++ * window), Shift + pad toggles the bypass of the device (or removes it, see configuration). Up/Down
++ * scroll the devices of all tracks.
++ *
++ * @author Jürgen Moßgraber
++ */
++public class OxiOnePluginMixerView extends AbstractView<OxiOneControlSurface, OxiOneConfiguration> implements IOxiCursorView
++{
++    /** The maximum number of device rows (if only select and one state row are visible). */
++    public static final int MAX_DEVICE_ROWS = 6;
++
++    /** The source device of a copy or move/swap gesture. */
++    private static final class Source
++    {
++        private final int     trackIndex;
++        private final int     trackPosition;
++        private int           position;
++        private final String  name;
++        private final boolean isMove;
++
++
++        Source (final int trackIndex, final ITrack track, final IDevice device, final boolean isMove)
++        {
++            this.trackIndex = trackIndex;
++            this.trackPosition = track.getPosition ();
++            this.position = device.getPosition ();
++            this.name = device.getName ();
++            this.isMove = isMove;
++        }
++    }
++
++    private final OxiOneTrackRows.PressedRows pressedRows  = new OxiOneTrackRows.PressedRows ();
++    private int                               numTrackRows = 4;
++    private Source                            source       = null;
++    private int                               consumedNote = -1;
++
++
++    /**
++     * Constructor.
++     *
++     * @param surface The surface
++     * @param model The model
++     */
++    public OxiOnePluginMixerView (final OxiOneControlSurface surface, final IModel model)
++    {
++        super (Views.NAME_PLUGIN_MIXER, surface, model);
++
++        // Only monitor the devices of all tracks while the view is active
++        this.enableDeviceObservers (false);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onActivate ()
++    {
++        super.onActivate ();
++        this.enableDeviceObservers (true);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onDeactivate ()
++    {
++        this.cancelGesture ();
++        this.enableDeviceObservers (false);
++        super.onDeactivate ();
++    }
++
++
++    private void enableDeviceObservers (final boolean enable)
++    {
++        final int pageSize = this.model.getTrackBank ().getPageSize ();
++        for (int i = 0; i < pageSize; i++)
++        {
++            OxiOneObservers.setEnabled (this.model.getTrackDeviceBank (i), enable);
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void drawGrid ()
++    {
++        this.checkGestureEnd ();
++
++        final List<RowType> trackRows = this.updateLayout ();
++        final IPadGrid padGrid = this.surface.getPadGrid ();
++        final ICursorDevice cursorDevice = this.model.getCursorDevice ();
++
++        final ITrackBank tb = this.model.getCurrentTrackBank ();
++        final boolean isMainBank = tb == this.model.getTrackBank ();
++        final int pageSize = tb.getPageSize ();
++        for (int x = 0; x < 16; x++)
++        {
++            if (x >= pageSize)
++            {
++                for (int y = 0; y < 8; y++)
++                    padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++                continue;
++            }
++
++            final ITrack track = tb.getItem (x);
++            for (int y = 0; y < trackRows.size (); y++)
++                OxiOneTrackRows.drawTrackPad (this.surface, this.colorManager, x, y, track, trackRows.get (y));
++
++            final IDeviceBank deviceBank = this.getDeviceBank (x, track, isMainBank);
++            for (int y = this.numTrackRows; y < 8; y++)
++            {
++                final int deviceIndex = y - this.numTrackRows;
++                if (deviceBank == null || !track.doesExist () || deviceIndex >= deviceBank.getPageSize ())
++                {
++                    padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++                    continue;
++                }
++                this.drawDevicePad (padGrid, x, y, track, deviceBank.getItem (deviceIndex), cursorDevice);
++            }
++        }
++    }
++
++
++    private void drawDevicePad (final IPadGrid padGrid, final int x, final int y, final ITrack track, final IDevice device, final ICursorDevice cursorDevice)
++    {
++        if (!device.doesExist ())
++        {
++            padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++            return;
++        }
++
++        final OxiOneConfiguration configuration = this.surface.getConfiguration ();
++        final int color;
++        if (device.isOffline ())
++            color = configuration.getPluginOfflineColor ();
++        else if (!device.isEnabled ())
++            color = configuration.getPluginBypassColor ();
++        else if (device.isWindowOpen ())
++            color = configuration.getPluginWindowColor ();
++        else
++        {
++            final int pluginColor = configuration.getPluginColor ();
++            color = pluginColor < 0 ? this.colorManager.getColorIndex (DAWColor.getColorID (track.getColor ())) : pluginColor;
++        }
++
++        // The source of a copy/move operation blinks fast, the selected device slowly
++        final int blinkColor = color == OxiOneColorManager.OXI_ONE_COLOR_WHITE ? OxiOneColorManager.OXI_ONE_COLOR_BLACK : OxiOneColorManager.OXI_ONE_COLOR_WHITE;
++        if (this.source != null && this.source.trackIndex == x && this.source.position == device.getPosition ())
++            padGrid.lightEx (x, y, color, blinkColor, true);
++        else if (isCursorDevice (track, device, cursorDevice))
++            padGrid.lightEx (x, y, color, blinkColor, false);
++        else
++            padGrid.lightEx (x, y, color);
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onGridNote (final int note, final int velocity)
++    {
++        final List<RowType> trackRows = this.updateLayout ();
++
++        // Note rows are counted from the bottom (0) to the top (7)
++        final int y = 7 - note / 16;
++        final int x = note % 16;
++        final ITrackBank tb = this.model.getCurrentTrackBank ();
++        if (x >= tb.getPageSize ())
++            return;
++        final ITrack track = tb.getItem (x);
++
++        if (y < trackRows.size ())
++        {
++            if (velocity > 0)
++            {
++                // Using any other pad ends a gesture
++                this.cancelGesture ();
++                this.pressedRows.press (note, trackRows.get (y));
++                if (OxiOneTrackRows.handleTrackPadPress (this.surface, track, trackRows.get (y)))
++                    this.consumedNote = note;
++            }
++            else if (this.consumedNote == note)
++            {
++                this.consumedNote = -1;
++                this.pressedRows.release (note, null);
++            }
++            else
++                OxiOneTrackRows.handleTrackPad (this.surface, track, this.pressedRows.release (note, trackRows.get (y)));
++        }
++        else if (velocity > 0)
++        {
++            final boolean isMainBank = tb == this.model.getTrackBank ();
++            final IDeviceBank deviceBank = this.getDeviceBank (x, track, isMainBank);
++            final int deviceIndex = y - this.numTrackRows;
++            if (deviceBank != null && track.doesExist () && deviceIndex < deviceBank.getPageSize ())
++            {
++                final IDevice device = deviceBank.getItem (deviceIndex);
++                if (!isMainBank || !this.handleEditGestures (x, track, device))
++                    this.handleDevicePad (track, device);
++            }
++        }
++
++        // Revert to last view of the selected track
++        if (velocity == 0 && this.surface.isPressed (ButtonID.SESSION))
++        {
++            this.surface.setTriggerConsumed (ButtonID.SESSION);
++            this.surface.recallPreferredView (this.model.getCursorTrack ());
++        }
++    }
++
++
++    /**
++     * Handle the gestures for copying, moving and deleting devices (on the main track bank):
++     * <ul>
++     * <li>Hold COPY, press a device (source), press another slot: Inserts a copy before the device
++     * on that slot or at the end of the chain if the slot is empty. Additionally hold Shift to
++     * replace the device on that slot.
++     * <li>Hold Shift, press a device (source), press another slot: Swaps the 2 devices or moves the
++     * source device to the end of the chain if the slot is empty. If Shift is released without
++     * selecting a 2nd slot, the configured Shift action (bypass, offline, remove) is executed.
++     * <li>Hold PASTE, press a device: Removes it.
++     * </ul>
++     *
++     * @param trackIndex The index of the track in the page
++     * @param track The track
++     * @param device The device on the pressed slot, might not exist
++     * @return True if the pad press was consumed by a gesture
++     */
++    private boolean handleEditGestures (final int trackIndex, final ITrack track, final IDevice device)
++    {
++        final IDisplay display = this.surface.getDisplay ();
++        final boolean isShift = this.surface.isShiftPressed ();
++
++        // Copy / Replace
++        if (this.surface.isPressed (ButtonID.DUPLICATE))
++        {
++            this.surface.setTriggerConsumed (ButtonID.DUPLICATE);
++            if (this.source == null || this.source.isMove)
++            {
++                this.source = null;
++                if (device.doesExist ())
++                {
++                    this.source = new Source (trackIndex, track, device, false);
++                    display.notify ("Copy to? (+Shift: replace)");
++                }
++                return true;
++            }
++
++            final Source copySource = this.source;
++            if (this.findSourceDevice (copySource) == null)
++            {
++                this.source = null;
++                display.notify ("Cancelled");
++                return true;
++            }
++
++            final boolean isReplace = isShift && device.doesExist ();
++            final int destinationPosition = getDestinationPosition (device);
++            // Replacing the source with itself does nothing
++            if (isReplace && copySource.trackIndex == trackIndex && copySource.position == destinationPosition)
++                return true;
++            final DeviceChainOperation operation = isReplace ? DeviceChainOperation.REPLACE : DeviceChainOperation.COPY;
++            if (this.model.editDeviceChain (operation, copySource.trackIndex, copySource.position, trackIndex, destinationPosition))
++            {
++                display.notify ((isReplace ? "Replaced with " : "Copied ") + copySource.name);
++                // A copy inserted before the source on the same track moves the source down
++                if (!isReplace && copySource.trackIndex == trackIndex && destinationPosition >= 0 && destinationPosition <= copySource.position)
++                    copySource.position++;
++            }
++            else
++                display.notify ("Not possible");
++            return true;
++        }
++
++        // Delete
++        if (this.surface.isPressed (ButtonID.DELETE))
++        {
++            this.surface.setTriggerConsumed (ButtonID.DELETE);
++            this.source = null;
++            if (device.doesExist ())
++            {
++                display.notify ("Removed: " + device.getName ());
++                device.remove ();
++            }
++            return true;
++        }
++
++        // Classic: Execute the Shift action immediately
++        if (isShift && !this.surface.getConfiguration ().isShiftMoveSwap ())
++        {
++            this.source = null;
++            if (device.doesExist ())
++                this.executeShiftAction (device);
++            return true;
++        }
++
++        // Move / Swap (and the configured Shift action on Shift release)
++        if (isShift)
++        {
++            if (this.source == null || !this.source.isMove)
++            {
++                this.source = null;
++                if (device.doesExist ())
++                {
++                    this.source = new Source (trackIndex, track, device, true);
++                    display.notify ("Move/Swap?");
++                }
++                return true;
++            }
++
++            final Source moveSource = this.source;
++            this.source = null;
++            if (this.findSourceDevice (moveSource) == null)
++            {
++                display.notify ("Cancelled");
++                return true;
++            }
++            final int destinationPosition = getDestinationPosition (device);
++            if (moveSource.trackIndex == trackIndex && moveSource.position == destinationPosition)
++                return true;
++            final boolean isSwap = device.doesExist ();
++            final DeviceChainOperation operation = isSwap ? DeviceChainOperation.SWAP : DeviceChainOperation.MOVE;
++            if (this.model.editDeviceChain (operation, moveSource.trackIndex, moveSource.position, trackIndex, destinationPosition))
++                display.notify ((isSwap ? "Swapped " : "Moved ") + moveSource.name);
++            else
++                display.notify ("Not possible");
++            return true;
++        }
++
++        return false;
++    }
++
++
++    /**
++     * Ends a gesture if the related button was released. If Shift was released and only one device
++     * was selected, the configured Shift action is executed on it.
++     */
++    private void checkGestureEnd ()
++    {
++        if (this.source == null)
++            return;
++
++        if (!this.source.isMove)
++        {
++            if (!this.surface.isPressed (ButtonID.DUPLICATE))
++                this.source = null;
++            return;
++        }
++
++        if (this.surface.isShiftPressed ())
++            return;
++
++        final IDevice device = this.findSourceDevice (this.source);
++        this.source = null;
++        if (device != null)
++            this.executeShiftAction (device);
++    }
++
++
++    /**
++     * Cancel a running gesture, e.g. if something else was done while Shift was held.
++     */
++    private void cancelGesture ()
++    {
++        this.source = null;
++    }
++
++
++    /**
++     * Get the device of a gesture source. Checks that it is still the same track and device (it
++     * might have changed since the banks were scrolled or the chain was edited).
++     *
++     * @param src The source
++     * @return The device or null if it is no longer available
++     */
++    private IDevice findSourceDevice (final Source src)
++    {
++        final ITrackBank tb = this.model.getCurrentTrackBank ();
++        if (tb != this.model.getTrackBank () || src.trackIndex >= tb.getPageSize ())
++            return null;
++        final ITrack track = tb.getItem (src.trackIndex);
++        if (!track.doesExist () || track.getPosition () != src.trackPosition)
++            return null;
++        final IDeviceBank deviceBank = this.model.getTrackDeviceBank (src.trackIndex);
++        if (deviceBank == null)
++            return null;
++        for (int i = 0; i < deviceBank.getPageSize (); i++)
++        {
++            final IDevice device = deviceBank.getItem (i);
++            if (device.doesExist () && device.getPosition () == src.position)
++                return src.name.equals (device.getName ()) ? device : null;
++        }
++        return null;
++    }
++
++
++    /**
++     * Execute the configured Shift action: bypass, offline or remove. The states are updated
++     * asynchronously, therefore the state before toggling is used for the notification.
++     *
++     * @param device The device
++     */
++    private void executeShiftAction (final IDevice device)
++    {
++        final IDisplay display = this.surface.getDisplay ();
++        switch (this.surface.getConfiguration ().getPluginShiftAction ())
++        {
++            case REMOVE:
++                display.notify ("Removed: " + device.getName ());
++                device.remove ();
++                break;
++
++            case OFFLINE:
++                final boolean wasOffline = device.isOffline ();
++                device.toggleOffline ();
++                display.notify ((wasOffline ? "Online: " : "Offline: ") + device.getName ());
++                break;
++
++            default:
++                final boolean wasEnabled = device.isEnabled ();
++                device.toggleEnabledState ();
++                display.notify ((wasEnabled ? "Bypass: " : "Active: ") + device.getName ());
++                break;
++        }
++    }
++
++
++    private static int getDestinationPosition (final IDevice device)
++    {
++        return device.doesExist () ? device.getPosition () : -1;
++    }
++
++
++    private void handleDevicePad (final ITrack track, final IDevice device)
++    {
++        if (!device.doesExist ())
++            return;
++
++        final OxiOneConfiguration configuration = this.surface.getConfiguration ();
++
++        // Fallback if no gestures are possible (effect tracks or devices of the cursor track)
++        if (this.surface.isShiftPressed ())
++        {
++            this.executeShiftAction (device);
++            return;
++        }
++
++        final boolean wasSelected = isCursorDevice (track, device, this.model.getCursorDevice ());
++        if (!track.isSelected ())
++            track.select ();
++        device.select ();
++        this.surface.getDisplay ().notify (device.getName ());
++
++        final PluginWindowBehaviour behaviour = configuration.getPluginWindowBehaviour ();
++        if (behaviour == PluginWindowBehaviour.FIRST_PRESS || behaviour == PluginWindowBehaviour.SECOND_PRESS && wasSelected || device.isWindowOpen ())
++            device.toggleWindowOpen ();
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean handlesCursor (final Direction direction)
++    {
++        // Only possible with device banks per track of the main track bank
++        if (direction != Direction.UP && direction != Direction.DOWN)
++            return false;
++        return this.model.getCurrentTrackBank () == this.model.getTrackBank () && this.model.getTrackDeviceBank (0) != null;
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public void onCursor (final Direction direction, final boolean isShifted)
++    {
++        this.cancelGesture ();
++        final int visibleRows = 8 - this.updateLayout ().size ();
++        final int pageSize = this.model.getTrackBank ().getPageSize ();
++        for (int i = 0; i < pageSize; i++)
++        {
++            final IDeviceBank deviceBank = this.model.getTrackDeviceBank (i);
++            if (deviceBank == null)
++                continue;
++            final int position = Math.max (0, deviceBank.getScrollPosition ());
++            if (direction == Direction.UP)
++            {
++                if (position > 0)
++                    deviceBank.scrollTo (isShifted ? 0 : position - 1);
++            }
++            else if (position + visibleRows < deviceBank.getItemCount ())
++                deviceBank.scrollTo (position + 1);
++        }
++    }
++
++
++    /** {@inheritDoc} */
++    @Override
++    public boolean canCursor (final Direction direction, final boolean isShifted)
++    {
++        final int visibleRows = 8 - this.updateLayout ().size ();
++        final int pageSize = this.model.getTrackBank ().getPageSize ();
++        for (int i = 0; i < pageSize; i++)
++        {
++            final IDeviceBank deviceBank = this.model.getTrackDeviceBank (i);
++            if (deviceBank == null)
++                continue;
++            final int position = Math.max (0, deviceBank.getScrollPosition ());
++            if (direction == Direction.UP ? position > 0 : position + visibleRows < deviceBank.getItemCount ())
++                return true;
++        }
++        return false;
++    }
++
++
++    /**
++     * Get the device bank to display for a track. If the DAW does not support device banks per
++     * track (or the effect track bank is active) only the devices of the selected track are shown
++     * (from the cursor device bank).
++     *
++     * @param index The index of the track in the page
++     * @param track The track
++     * @param isMainBank True if the main track bank is active
++     * @return The device bank or null
++     */
++    private IDeviceBank getDeviceBank (final int index, final ITrack track, final boolean isMainBank)
++    {
++        if (isMainBank)
++        {
++            final IDeviceBank deviceBank = this.model.getTrackDeviceBank (index);
++            if (deviceBank != null)
++                return deviceBank;
++        }
++        return track.isSelected () ? this.model.getCursorDevice ().getDeviceBank () : null;
++    }
++
++
++    private static boolean isCursorDevice (final ITrack track, final IDevice device, final ICursorDevice cursorDevice)
++    {
++        // A nested device (in a container or layer) is never on the top level of the track
++        return track.isSelected () && cursorDevice.doesExist () && !cursorDevice.isNested () && cursorDevice.getPosition () == device.getPosition ();
++    }
++
++
++    private List<RowType> updateLayout ()
++    {
++        final List<RowType> trackRows = OxiOneTrackRows.getMixerRows (this.surface.getConfiguration (), this.surface.isShiftPressed ());
++        this.numTrackRows = trackRows.size ();
++        return trackRows;
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneSessionView.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneSessionView.java
+index 38607650..fe360139 100644
+--- a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneSessionView.java
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneSessionView.java
+@@ -72,6 +72,28 @@ public class OxiOneSessionView extends AbstractSessionView<OxiOneControlSurface,
+     }
+ 
+ 
++    /** {@inheritDoc} */
++    @Override
++    public void drawGrid ()
++    {
++        this.updateClipColors ();
++        super.drawGrid ();
++    }
++
++
++    /**
++     * Apply the configured clip colors.
++     */
++    private void updateClipColors ()
++    {
++        final OxiOneConfiguration config = this.surface.getConfiguration ();
++        final LightInfo [] c = OxiOneClipColors.createColors (config);
++        this.useClipColor = OxiOneClipColors.useClipColor (config);
++        this.setColors (c[OxiOneClipColors.IS_RECORDING], c[OxiOneClipColors.IS_RECORDING_QUEUED], c[OxiOneClipColors.IS_PLAYING], c[OxiOneClipColors.IS_PLAYING_QUEUED], c[OxiOneClipColors.IS_STOP_QUEUED], c[OxiOneClipColors.HAS_CONTENT], c[OxiOneClipColors.NO_CONTENT], c[OxiOneClipColors.REC_ARMED], c[OxiOneClipColors.IS_MUTED]);
++        this.birdColorHasContent = c[OxiOneClipColors.HAS_CONTENT];
++    }
++
++
+     /** {@inheritDoc} */
+     @Override
+     public String getButtonColorID (final ButtonID buttonID)
+diff --git a/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneTrackRows.java b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneTrackRows.java
+new file mode 100644
+index 00000000..db7c849e
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/controller/oxi/one/view/OxiOneTrackRows.java
+@@ -0,0 +1,270 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.controller.oxi.one.view;
++
++import java.util.ArrayList;
++import java.util.List;
++
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration;
++import de.mossgrabers.controller.oxi.one.OxiOneConfiguration.TrackButtons;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneColorManager;
++import de.mossgrabers.controller.oxi.one.controller.OxiOneControlSurface;
++import de.mossgrabers.framework.controller.ButtonID;
++import de.mossgrabers.framework.controller.color.ColorManager;
++import de.mossgrabers.framework.controller.grid.IPadGrid;
++import de.mossgrabers.framework.daw.DAWColor;
++import de.mossgrabers.framework.daw.data.ITrack;
++
++
++/**
++ * Helper for drawing and handling the track state rows (select, mute, solo, record arm) which are
++ * shared by the different mixer views of the OXI One.
++ *
++ * @author Jürgen Moßgraber
++ */
++public final class OxiOneTrackRows
++{
++    /** The different types of track state rows. */
++    public enum RowType
++    {
++        /** Select the track. */
++        SELECT,
++        /** Toggle mute. */
++        MUTE,
++        /** Toggle solo. */
++        SOLO,
++        /** Toggle record arm. */
++        REC_ARM
++    }
++
++
++    /**
++     * Private due to helper class.
++     */
++    private OxiOneTrackRows ()
++    {
++        // Intentionally empty
++    }
++
++
++    /**
++     * Remembers the type of the row which a pad had when it was pressed. The row types can change
++     * while a pad is held (Shift shows the other state row), the release of the pad must still
++     * trigger the action of the row which was visible when the pad was pressed.
++     */
++    public static final class PressedRows
++    {
++        private final RowType [] rowTypes = new RowType [128];
++
++
++        /**
++         * Remember the row type of a pressed pad.
++         *
++         * @param note The note of the pad
++         * @param rowType The row type
++         */
++        public void press (final int note, final RowType rowType)
++        {
++            if (note >= 0 && note < this.rowTypes.length)
++                this.rowTypes[note] = rowType;
++        }
++
++
++        /**
++         * Get (and forget) the row type which was remembered when the pad was pressed.
++         *
++         * @param note The note of the pad
++         * @param fallback The row type to return if nothing was remembered
++         * @return The row type
++         */
++        public RowType release (final int note, final RowType fallback)
++        {
++            if (note < 0 || note >= this.rowTypes.length)
++                return fallback;
++            final RowType rowType = this.rowTypes[note];
++            this.rowTypes[note] = null;
++            return rowType == null ? fallback : rowType;
++        }
++    }
++
++
++    /**
++     * Get the rows to display in the track mixer and plugin mixer view, depending on the
++     * configuration. If only mute or only solo is configured, holding Shift displays the other
++     * one.
++     *
++     * @param configuration The configuration
++     * @param isShifted True if Shift is pressed
++     * @return The rows from top to bottom, the first is always the select row
++     */
++    public static List<RowType> getMixerRows (final OxiOneConfiguration configuration, final boolean isShifted)
++    {
++        final List<RowType> rows = new ArrayList<> (4);
++        rows.add (RowType.SELECT);
++        final TrackButtons trackButtons = configuration.getTrackButtons ();
++        if (trackButtons == TrackButtons.MUTE_AND_SOLO)
++        {
++            rows.add (RowType.MUTE);
++            rows.add (RowType.SOLO);
++        }
++        else if (trackButtons == TrackButtons.MUTE_ONLY)
++            rows.add (isShifted ? RowType.SOLO : RowType.MUTE);
++        else
++            rows.add (isShifted ? RowType.MUTE : RowType.SOLO);
++        if (configuration.isShowRecArm ())
++            rows.add (RowType.REC_ARM);
++        return rows;
++    }
++
++
++    /**
++     * Get the state row (mute or solo) of the Mix 64 view, which only has one state row. Holding Shift
++     * displays the other one.
++     *
++     * @param configuration The configuration
++     * @param isShifted True if Shift is pressed
++     * @return The row type
++     */
++    public static RowType getMix64StateRow (final OxiOneConfiguration configuration, final boolean isShifted)
++    {
++        return configuration.isMix64ShowsSolo () != isShifted ? RowType.SOLO : RowType.MUTE;
++    }
++
++
++    /**
++     * Draw one pad of a track state row.
++     *
++     * @param surface The surface
++     * @param colorManager The color manager
++     * @param x The x position on the grid (0 is left)
++     * @param y The y position on the grid (0 is top)
++     * @param track The track
++     * @param rowType The type of the row
++     */
++    public static void drawTrackPad (final OxiOneControlSurface surface, final ColorManager colorManager, final int x, final int y, final ITrack track, final RowType rowType)
++    {
++        final IPadGrid padGrid = surface.getPadGrid ();
++        if (!track.doesExist ())
++        {
++            padGrid.lightEx (x, y, OxiOneColorManager.OXI_ONE_COLOR_BLACK);
++            return;
++        }
++
++        final OxiOneConfiguration configuration = surface.getConfiguration ();
++        final boolean colorTrackStates = configuration.isColorTrackStates ();
++        switch (rowType)
++        {
++            case SELECT:
++                final int colorIndex = colorManager.getColorIndex (DAWColor.getColorID (track.getColor ()));
++                if (track.isSelected ())
++                    padGrid.lightEx (x, y, colorIndex, OxiOneColorManager.OXI_ONE_COLOR_WHITE, false);
++                else
++                    padGrid.lightEx (x, y, colorIndex);
++                break;
++
++            case MUTE:
++                padGrid.lightEx (x, y, getStateColor (track.isMute (), colorTrackStates, configuration.getMuteColor (true), configuration.getMuteColor (false)));
++                break;
++
++            case SOLO:
++                padGrid.lightEx (x, y, getStateColor (track.isSolo (), colorTrackStates, configuration.getSoloColor (true), configuration.getSoloColor (false)));
++                break;
++
++            case REC_ARM:
++                padGrid.lightEx (x, y, getStateColor (track.isRecArm (), colorTrackStates, OxiOneColorManager.OXI_ONE_COLOR_RED, OxiOneColorManager.OXI_ONE_COLOR_DARKER_RED));
++                break;
++        }
++    }
++
++
++    /**
++     * Handle the press of a pad in a track state row. Holding PASTE removes the track, holding COPY
++     * duplicates it. This is executed on the press, so that it does not matter in which order the
++     * buttons are released.
++     *
++     * @param surface The surface
++     * @param track The track
++     * @param rowType The type of the row
++     * @return True if the press was consumed, the release of the pad must then be ignored
++     */
++    public static boolean handleTrackPadPress (final OxiOneControlSurface surface, final ITrack track, final RowType rowType)
++    {
++        if (rowType != RowType.SELECT || !track.doesExist ())
++            return false;
++
++        if (surface.isPressed (ButtonID.DELETE))
++        {
++            surface.setTriggerConsumed (ButtonID.DELETE);
++            surface.getDisplay ().notify ("Removed: " + track.getName ());
++            track.remove ();
++            return true;
++        }
++
++        if (surface.isPressed (ButtonID.DUPLICATE))
++        {
++            surface.setTriggerConsumed (ButtonID.DUPLICATE);
++            surface.getDisplay ().notify ("Duplicated: " + track.getName ());
++            track.duplicate ();
++            return true;
++        }
++
++        return false;
++    }
++
++
++    /**
++     * Handle the release of a pad in a track state row.
++     *
++     * @param surface The surface
++     * @param track The track
++     * @param rowType The type of the row
++     */
++    public static void handleTrackPad (final OxiOneControlSurface surface, final ITrack track, final RowType rowType)
++    {
++        if (!track.doesExist ())
++            return;
++
++        switch (rowType)
++        {
++            case SELECT:
++                final OxiOneConfiguration configuration = surface.getConfiguration ();
++                if (configuration.isDeleteModeActive ())
++                {
++                    configuration.toggleDeleteModeActive ();
++                    track.remove ();
++                }
++                else if (configuration.isDuplicateModeActive ())
++                {
++                    configuration.toggleDuplicateModeActive ();
++                    track.duplicate ();
++                }
++                else if (surface.isShiftPressed ())
++                    track.stop (false);
++                else
++                    track.selectOrExpandGroup ();
++                break;
++
++            case MUTE:
++                track.toggleMute ();
++                break;
++
++            case SOLO:
++                track.toggleSolo ();
++                break;
++
++            case REC_ARM:
++                track.toggleRecArm ();
++                break;
++        }
++    }
++
++
++    private static int getStateColor (final boolean state, final boolean colorTrackStates, final int activeColor, final int inActiveColor)
++    {
++        if (state)
++            return activeColor;
++        return colorTrackStates ? inActiveColor : OxiOneColorManager.OXI_ONE_COLOR_BLACK;
++    }
++}
+diff --git a/src/main/java/de/mossgrabers/framework/daw/IModel.java b/src/main/java/de/mossgrabers/framework/daw/IModel.java
+index 43238e82..db5416c8 100755
+--- a/src/main/java/de/mossgrabers/framework/daw/IModel.java
++++ b/src/main/java/de/mossgrabers/framework/daw/IModel.java
+@@ -9,6 +9,7 @@ import java.util.Optional;
+ import de.mossgrabers.framework.controller.color.ColorManager;
+ import de.mossgrabers.framework.controller.valuechanger.IValueChanger;
+ import de.mossgrabers.framework.daw.clip.INoteClip;
++import de.mossgrabers.framework.daw.constants.DeviceChainOperation;
+ import de.mossgrabers.framework.daw.constants.DeviceID;
+ import de.mossgrabers.framework.daw.data.ICursorDevice;
+ import de.mossgrabers.framework.daw.data.ICursorLayer;
+@@ -18,6 +19,7 @@ import de.mossgrabers.framework.daw.data.IMasterTrack;
+ import de.mossgrabers.framework.daw.data.ISlot;
+ import de.mossgrabers.framework.daw.data.ISpecificDevice;
+ import de.mossgrabers.framework.daw.data.ITrack;
++import de.mossgrabers.framework.daw.data.bank.IDeviceBank;
+ import de.mossgrabers.framework.daw.data.bank.IMarkerBank;
+ import de.mossgrabers.framework.daw.data.bank.ISceneBank;
+ import de.mossgrabers.framework.daw.data.bank.ISlotBank;
+@@ -299,6 +301,87 @@ public interface IModel
+     ISceneBank getSceneBank (final int numScenes);
+ 
+ 
++    /**
++     * Get an additional track bank with a different page size than the main track bank, e.g. for
++     * displaying a large mixer. The bank contains the same tracks as the main track bank (flat or
++     * hierarchical) but scrolls independently. Needs to be called once during initialization.
++     * Banks of the same size are shared.
++     *
++     * @param numTracks The number of tracks in a page of the bank
++     * @return The track bank or null if not supported by the DAW implementation
++     */
++    default ITrackBank getAdditionalTrackBank (final int numTracks)
++    {
++        return null;
++    }
++
++
++    /**
++     * Get the device bank of a track of the main track bank. Requires that the number of devices
++     * per track is set in the model setup.
++     *
++     * @param trackIndex The index of the track in the current page of the main track bank
++     * @return The device bank or null if not available (not enabled or not supported by the DAW
++     *         implementation)
++     */
++    default IDeviceBank getTrackDeviceBank (final int trackIndex)
++    {
++        return null;
++    }
++
++
++    /**
++     * Get the device bank of any track (not only of the tracks in the current page of the main
++     * track bank), e.g. of a track of an additional track bank. Requires that the number of
++     * devices per track is set in the model setup.
++     *
++     * @param track The track
++     * @return The device bank or null if not available (not enabled or not supported by the DAW
++     *         implementation)
++     */
++    default IDeviceBank getTrackDeviceBank (final ITrack track)
++    {
++        return null;
++    }
++
++
++    /**
++     * Copy, move or swap devices between the device chains of tracks of the main track bank.
++     *
++     * @param operation The operation to execute
++     * @param sourceTrackIndex The index of the track with the source device in the current page of
++     *            the main track bank
++     * @param sourcePosition The position of the source device in the device chain of the track
++     * @param destinationTrackIndex The index of the destination track in the current page of the
++     *            main track bank
++     * @param destinationPosition The position of the destination device in the device chain, -1 for
++     *            the end of the chain
++     * @return True if the operation was executed, false if it is not supported or not possible
++     */
++    default boolean editDeviceChain (final DeviceChainOperation operation, final int sourceTrackIndex, final int sourcePosition, final int destinationTrackIndex, final int destinationPosition)
++    {
++        return false;
++    }
++
++
++    /**
++     * Copy, move or swap devices between the device chains of any 2 tracks (not only of the tracks
++     * in the current page of the main track bank).
++     *
++     * @param operation The operation to execute
++     * @param sourceTrack The track with the source device
++     * @param sourcePosition The position of the source device in the device chain of the track
++     * @param destinationTrack The destination track
++     * @param destinationPosition The position of the destination device in the device chain, -1
++     *            for the end of the chain
++     * @return True if the operation was executed, false if it is not supported or not possible
++     */
++    default boolean editDeviceChain (final DeviceChainOperation operation, final ITrack sourceTrack, final int sourcePosition, final ITrack destinationTrack, final int destinationPosition)
++    {
++        return false;
++    }
++
++
+     /**
+      * Get a new bank for monitoring slots on the cursor track. Needs to be called once during
+      * initialization.
+diff --git a/src/main/java/de/mossgrabers/framework/daw/ModelSetup.java b/src/main/java/de/mossgrabers/framework/daw/ModelSetup.java
+index eaf1015a..692d7bc1 100644
+--- a/src/main/java/de/mossgrabers/framework/daw/ModelSetup.java
++++ b/src/main/java/de/mossgrabers/framework/daw/ModelSetup.java
+@@ -31,6 +31,7 @@ public class ModelSetup
+ 
+     private int                  numDevicesInBank           = 8;
+     private int                  numDeviceLayers            = 8;
++    private int                  numDevicesPerTrack         = 0;
+ 
+     private int                  numParamPages              = 8;
+     private int                  numParams                  = 8;
+@@ -302,6 +303,30 @@ public class ModelSetup
+     }
+ 
+ 
++    /**
++     * Get the number of devices to monitor on each track of the main track bank. 0 (the default)
++     * disables the per-track device banks.
++     *
++     * @return The number of devices per track
++     */
++    public int getNumDevicesPerTrack ()
++    {
++        return this.numDevicesPerTrack;
++    }
++
++
++    /**
++     * Set the number of devices to monitor on each track of the main track bank. Set to 0 to
++     * disable.
++     *
++     * @param numDevicesPerTrack The number of devices per track
++     */
++    public void setNumDevicesPerTrack (final int numDevicesPerTrack)
++    {
++        this.numDevicesPerTrack = numDevicesPerTrack;
++    }
++
++
+     /**
+      * Get the number of drum pad layers to monitor.
+      *
+diff --git a/src/main/java/de/mossgrabers/framework/daw/constants/DeviceChainOperation.java b/src/main/java/de/mossgrabers/framework/daw/constants/DeviceChainOperation.java
+new file mode 100644
+index 00000000..ed85f189
+--- /dev/null
++++ b/src/main/java/de/mossgrabers/framework/daw/constants/DeviceChainOperation.java
+@@ -0,0 +1,25 @@
++// Written by Jürgen Moßgraber - mossgrabers.de
++// (c) 2017-2026
++// Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
++
++package de.mossgrabers.framework.daw.constants;
++
++/**
++ * Operations to edit the device chains (insert slots) of tracks.
++ *
++ * @author Jürgen Moßgraber
++ */
++public enum DeviceChainOperation
++{
++    /**
++     * Insert a copy of the source device before the destination device (or at the end of the
++     * destination chain).
++     */
++    COPY,
++    /** Replace the destination device with a copy of the source device. */
++    REPLACE,
++    /** Move the source device before the destination device (or to the end of the chain). */
++    MOVE,
++    /** Swap the positions of the source and the destination device. */
++    SWAP
++}
+diff --git a/src/main/java/de/mossgrabers/framework/daw/data/IDevice.java b/src/main/java/de/mossgrabers/framework/daw/data/IDevice.java
+index 5fcb4773..e14bbfe2 100644
+--- a/src/main/java/de/mossgrabers/framework/daw/data/IDevice.java
++++ b/src/main/java/de/mossgrabers/framework/daw/data/IDevice.java
+@@ -35,4 +35,45 @@ public interface IDevice extends IItem
+      * Duplicate the device.
+      */
+     void duplicate ();
++
++
++    /**
++     * Is the device offline (Reaper)? Default implementation returns false.
++     *
++     * @return True if offline
++     */
++    default boolean isOffline ()
++    {
++        return false;
++    }
++
++
++    /**
++     * Toggle the offline state of the device (Reaper). Default implementation toggles the enabled
++     * (bypass) state since offline is not supported.
++     */
++    default void toggleOffline ()
++    {
++        this.toggleEnabledState ();
++    }
++
++
++    /**
++     * Is the plugin window of the device open? Default implementation returns false.
++     *
++     * @return True if open
++     */
++    default boolean isWindowOpen ()
++    {
++        return false;
++    }
++
++
++    /**
++     * Open/close the plugin window of the device. Default implementation does nothing.
++     */
++    default void toggleWindowOpen ()
++    {
++        // Not supported by default
++    }
+ }
+\ No newline at end of file
+diff --git a/src/main/java/de/mossgrabers/framework/view/Views.java b/src/main/java/de/mossgrabers/framework/view/Views.java
+index 80bd1027..9372906b 100755
+--- a/src/main/java/de/mossgrabers/framework/view/Views.java
++++ b/src/main/java/de/mossgrabers/framework/view/Views.java
+@@ -83,6 +83,14 @@ public enum Views
+     NOTE_EDIT_VIEW,
+     /** View for mixing. */
+     MIX,
++    /** View for mixing with the devices of each track instead of clips. */
++    PLUGIN_MIXER,
++    /** View for mixing 32 tracks. */
++    MIX32,
++    /** View for mixing 32 tracks, the free rows show the devices of each track. */
++    PLUGIN32,
++    /** View for mixing 64 tracks. */
++    MIX64,
+ 
+     /** View for changing the tempo. */
+     TEMPO,
+@@ -133,6 +141,14 @@ public enum Views
+     public static final String              NAME_BROWSER        = "Browser";
+     /** The name of the mix view. */
+     public static final String              NAME_MIX            = "Mix";
++    /** The name of the plugin mixer view. */
++    public static final String              NAME_PLUGIN_MIXER   = "Plugin Mixer";
++    /** The name of the mix 32 view. */
++    public static final String              NAME_MIX32          = "Mix 32";
++    /** The name of the plugin 32 view. */
++    public static final String              NAME_PLUGIN32       = "Plugin 32";
++    /** The name of the mix 64 view. */
++    public static final String              NAME_MIX64          = "Mix 64";
+     /** The name of the session view. */
+     public static final String              NAME_SESSION        = "Session";
+     /** The name of the clip length view. */
+@@ -175,6 +191,10 @@ public enum Views
+ 
+         VIEW_NAMES.put (NAME_MIX, MIX);
+         VIEW_NAMES.put (NAME_SESSION, SESSION);
++        VIEW_NAMES.put (NAME_PLUGIN_MIXER, PLUGIN_MIXER);
++        VIEW_NAMES.put (NAME_MIX32, MIX32);
++        VIEW_NAMES.put (NAME_PLUGIN32, PLUGIN32);
++        VIEW_NAMES.put (NAME_MIX64, MIX64);
+         VIEW_NAMES.put (NAME_CLIP_LENGTH, CLIP_LENGTH);
+ 
+         NOTE_VIEWS.add (DRUM);

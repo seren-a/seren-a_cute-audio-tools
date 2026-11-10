@@ -6,6 +6,12 @@ OSC-Fernbedienungen: kleine Web-Remotes, die Anwendungen und Geräte im
 lokalen Netz per OSC steuern – Handy/Tablet/Laptop als Surface, die App
 bleibt, wo sie ist.
 
+## Fertig: seren.a 3D
+
+[`seren-a-3d/`](seren-a-3d/) – TouchOSC-Oberflächen (iPad, Monitor, Handy) und DAW-Skripte
+für 3D-Audio (IEM-Plugins, dearVR) in Reaper und Nuendo, dazu E16, Midi Fighter Twister und
+OXI One MkII (Puzzle, DrivenByMoss-Erweiterung). Einstieg: [seren-a-3d/README.md](seren-a-3d/README.md).
+
 ## Geplante Remotes
 
 | Remote | Ziel | Idee |

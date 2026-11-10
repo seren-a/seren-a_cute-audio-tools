@@ -1,0 +1,592 @@
+<div class="wrap">
+<header class="top">
+  <div class="titlerow">
+    <div class="knob" id="logoKnob" aria-hidden="true"></div>
+    <h1><b>3D</b>Handbuch <span class="kaomoji" aria-hidden="true">(｡•ᴗ•｡)♡</span></h1>
+  </div>
+  <p class="sub">seren.a 3D <b>v6.1</b> · 04.11.26 · TouchOSC-Oberflächen und DAW-Skripte für IEM StereoEncoder, MultiEncoder, SceneRotator, VST MultiPanner und dearVR PRO. Häkchen bleiben auf diesem Gerät gespeichert, Werte in den Pillen lassen sich antippen und kopieren.</p>
+  <div class="skins" role="group" aria-label="Look">
+    <span>Look</span>
+    <button data-s="auto">Auto</button>
+    <button data-s="hell">Hell</button>
+    <button data-s="iem">IEM</button>
+    <button data-s="neon">Neon</button>
+    <button data-s="kawaii">Kawaii</button>
+    <button data-s="kawaii-nacht">Kawaii Nacht</button>
+  </div>
+  <div class="skins tools" role="group" aria-label="Ansicht">
+    <span>Ansicht</span>
+    <button data-w="narrow" title="Schmale Spalte, wie ein Plugin-Fenster">Schmal</button>
+    <button data-w="wide" title="Breite Ansicht für Monitor und iPad quer">Breit</button>
+    <button id="printBtn" class="primary" title="Druckansicht: hell, A4, ohne Bedienelemente. Im Druckdialog „Als PDF sichern“ wählen.">Drucken / PDF</button>
+  </div>
+  <hr class="rule">
+</header>
+
+<nav class="toc" aria-label="Kapitel">
+  <a href="#v61" style="--c:var(--cyan)"><span class="dot"></span>Neu in v6.1 · Looks, eine E16-Szene</a>
+  <a href="#multieq" style="--c:var(--yellow)"><span class="dot"></span>Plugins am Twister &amp; E16</a>
+  <a href="#neu" style="--c:var(--pink)"><span class="dot"></span>Neu in v5.0</a>
+  <a href="#nuendo" style="--c:var(--red)"><span class="dot"></span>Nuendo · Insert-Plan</a>
+  <a href="#reaper" style="--c:var(--green)"><span class="dot"></span>Reaper</a>
+  <a href="#touchosc" style="--c:var(--cyan)"><span class="dot"></span>TouchOSC</a>
+  <a href="#oberflaechen" style="--c:var(--hi)"><span class="dot"></span>Oberflächen &amp; Modi</a>
+  <a href="#room" style="--c:var(--yellow)"><span class="dot"></span>room · dearVR</a>
+  <a href="#plugins" style="--c:var(--orange)"><span class="dot"></span>Plugins pro Spur</a>
+  <a href="#optionen" style="--c:var(--cyan)"><span class="dot"></span>Optionen</a>
+  <a href="#twister" style="--c:var(--green)"><span class="dot"></span>Twister &amp; E16 einrichten</a>
+  <a href="#fehler" style="--c:var(--red)"><span class="dot"></span>Fehlersuche</a>
+  <a href="#multipanner" style="--c:var(--orange)"><span class="dot"></span>MultiPanner-Check</a>
+  <a href="#versionen" style="--c:var(--hi)"><span class="dot"></span>Ordner &amp; Versionen</a>
+</nav>
+<div class="search"><input id="q" type="search" placeholder="Suchen, z. B. Insert 5, Zoom, Bypass, Port" aria-label="Handbuch durchsuchen"></div>
+
+<!-- Neu v6.1 -->
+<section class="guide" id="v61" style="--c:var(--cyan)">
+  <div class="ghead"><div class="knob" style="--a:-40deg" aria-hidden="true"></div><h2>Neu in v6.1 · Twister View mit 5 Looks, eine E16-Szene, Hall-Presets, IEM-Farben</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>04.11.26 · Twister View: 5 Looks, große Schrift, Bank tippen · E16: DAW-Link, MultiEQ, Kompressor und Reverb in <b>einer</b> Szene · Nuendo: EQ springt am gerasterten E16 nicht mehr</span></div>
+
+  <h3>Twister View</h3>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_LOOKS__" alt="Twister View quer in fünf Looks: Klar, Spalte, Neon, IEM Neon mit Drehknopf und Wertepille, Kawaii Nacht in Nachtrosa, je mit Namen, Plugin und Wert in IEM-Farben" width="1500" height="464"><figcaption>Klar · Spalte · Neon · IEM Neon · Kawaii Nacht (Taste „Look“ oben rechts)</figcaption></figure>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">Look</span><b>Taste oben rechts</b><span>Tippen wechselt: <b>Klar</b> (Balken unten), <b>Spalte</b> (Säule links), <b>Neon</b> (leuchtender Rand, Wert in der Reglerfarbe), <b>IEM Neon</b> (Drehknopf + Wertepille), <b>Kawaii Nacht</b> (Nachtrosa, Wert in der Reglerfarbe). Gilt bis zum nächsten Öffnen der Oberfläche.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">Schrift</span><b>viel größer</b><span>Namen etwa doppelt so groß, Werte noch größer. Plugin bzw. Spur stehen in einer eigenen, kleineren Zeile darunter, lange Namen brechen um. Lange Werte („−18.0 dB“, Presetnamen) werden kleiner statt abgeschnitten. Umlaute und ° kommen jetzt an.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">Bänke</span><b>tippen = Twister wechselt</b><span>Die Bank-Tasten haben Namen: <b>Kanal/EQ</b>, <b>Insert 1+2</b>, <b>frei</b>, <span class="nb">Bank 4</span> zeigt „Sends/QC“ oder die Plugin-Ebene. Antippen schaltet auch den Twister um (über das DAW-Skript).</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">Farben</span><b>wie IEM</b><span>Auf <span class="nb">Bank 4</span> (Plugins) haben Balken, Ringe und E16-Ringe die IEM-Farben (siehe unten). Die anderen Bänke behalten die Farben aus deiner .mfs.</span></div>
+  </div>
+
+  <h3>IEM-Farben auf allen Anzeigen</h3>
+  <div class="enclegend"><span class="sw" style="--c:#00CAFE">Azimut · Attack · Release · Nachhall · Höhen</span><span class="sw" style="--c:#50FE03">Elevation · Makeup · Raumgröße</span><span class="sw" style="--c:#FE9F01">Threshold · Knee · Width · Dry/Wet</span><span class="sw" style="--c:#CF021C">Ratio · Tiefen</span><span class="sw" style="--c:#D9D9D9">Schalter · Presets</span></div>
+  <div class="enclegend"><span>MultiEQ-Bänder 1–6:</span><span class="sw" style="--c:#5E9EA0">1</span><span class="sw" style="--c:#9370DB">2</span><span class="sw" style="--c:#6495ED">3</span><span class="sw" style="--c:#ADFF2F">4</span><span class="sw" style="--c:#FFFF00">5</span><span class="sw" style="--c:#FF4500">6</span><span class="sw" style="--c:#6495ED">Convolver</span><span class="sw" style="--c:#02FFFF">vom Master</span></div>
+  <div class="levels">
+    <div class="lvl" style="--c:#FE9F01"><span class="n">Threshold</span><b>Ring „von oben“</b><span>Bei allen Thresholds läuft der Ring andersherum: <b>0 dB = leer</b>, je tiefer die Schwelle, desto voller – so wie die Schwelle im IEM-Plugin von oben herunterkommt. Twister und E16 können einen Ring nicht oben beginnen lassen, darum diese Lösung. Die Twister View zeigt den echten Wert.</span></div>
+    <div class="lvl" style="--c:var(--muted)"><span class="n">E16</span><b>nächste Farbe der Palette</b><span>Die E16-Palette hat <b>kein Orange</b>: Threshold/Knee/Dry-Wet sind dort pfirsich (36). Cyan 83, Grün 92, Rot 57, Weiß 34, Master 85. Solo blinkt gelb (44), gemutet ohne Solo pfirsich (36), Mute blinkt rot (57), Band aus grauviolett (24), gesperrt weiß (34).</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">Twister</span><b>Farbrad</b><span>Der Twister kennt nur sein Farbrad, darum die nächstliegende Stelle: Cyan 20, Grün 51, Orange 68, Rot 83, Weiß = Utility-Farbe.</span></div>
+  </div>
+
+  <h3>E16: alles in einer Szene</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--green)"><span class="n">Seite 1</span><b>DAW Link</b><span>wie bisher (Nuendo: Sends+QC / EQ / Inserts, 16 halten = nächste Unterseite · Reaper: <code>reaper_to_e16.lua</code>). Ringfarben jetzt von der DAW.</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">Seite 2</span><b>MultiEQ</b><span>= Ebene 1 am Twister.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">Seite 3</span><b>Kompressor</b><span>Omni; <span class="nb">Encoder 8</span> halten = Directional ↔ Omni.</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">Seite 4</span><b>Reverb</b><span>= Ebene 4 (Hall): FDN oben, Convolver unten, Presets auf 7 und 14.</span></div>
+  </div>
+  <p>Seiten wechselst du am E16 wie gewohnt. Die Szene sagt der DAW bei jedem Wechsel, welche Seite zu sehen ist; die DAW zeichnet nur diese. Die alten Szenen <b>DAW-Link</b> und <b>MultiEQ</b> brauchst du nicht mehr.</p>
+
+  <h3>Was sich an den Ebenen ändert</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--green)"><span class="n">Ebene 2 · Omni</span><b>Makeup auf 8</b><span><span class="nb">Encoder 8</span> drehen = Makeup von Omni A (tippen = Bypass, halten = Ebene). LookAhead: <span class="nb">Encoder 7</span> tippen (A) bzw. 2× auf 6 / 14.</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">Ebene 4 · Hall</span><b>Presets durchschalten</b><span><span class="nb">Encoder 7</span> = FDN-Preset, <span class="nb">Encoder 14</span> = Convolver-Preset (je eine Raste = ein Preset), Convolver 9–13 = seine ersten 5 Parameter. Reaper: die Presetliste des Plugins. Nuendo: nur, wenn das Plugin einen Parameter „Program“/„Preset“ hat – Nuendo gibt Skripten keine Presetliste.</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">Nuendo</span><b>gerasterte Encoder: feine Schritte</b><span>Gain 0,5 dB pro Raste, Frequenz in kleinen Schritten statt 7,5 dB bzw. 0 → 20 kHz. (Nuendo meldete bei IEM-Plugins die normierten statt der echten Werte; das Skript erkennt das jetzt und rechnet mit dem Anzeigetext.)</span></div>
+  </div>
+
+  <h3>Twister <span class="nb">Bank 2</span> erklärt</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--orange)"><span class="n">Bank 2 · Insert 1+2</span><b>keine Quick Controls</b><span><span class="nb">Encoder 1–8</span> = die ersten 8 Parameter von <span class="nb ins">Insert 1</span>, <span class="nb">9–16</span> = von <span class="nb ins">Insert 2</span> der ausgewählten Spur – in der Reihenfolge des <b>Remote Control Editors</b> des Plugins. Darum sehen die Namen „durcheinander“ aus, wenn das Plugin dort keine sinnvolle Reihenfolge hat; leere Felder = kein Plugin oder kein Parameter. Ordnen: Plugin öffnen › Remote Control Editor (Rechtsklick ins Plugin-Fenster).</span></div>
+  </div>
+
+  <h3>Einrichten</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="v61a"><div><div class="t">Nuendo: Skripte</div><p><code>serena/MFTView</code> und <code>serena/E16DAWLink</code> liegen schon in <b>MIDI Remote › Driver Scripts › Local</b>. MIDI Remote Manager › <b>Skripte neu laden</b>. Konsole: <code>Twister-Skript v6.1 geladen</code> und <code>[seren.a E16] Skript v6.1 geladen</code>.</p></div></li>
+    <li><input type="checkbox" id="v61b"><div><div class="t">Nuendo: MFTView neu anlegen</div><p>Das Gerät hat jetzt <b>vier</b> Ports (neu: Eingang „View“ für die Bank-Tasten). Im MIDI Remote Manager das alte <b>serena › MFTView</b> entfernen, dann <b>+</b> › serena › MFTView: Eingang „Twister“ = <b>Midi Fighter Twister</b>, Eingang „View“ = <b>TouchOSC Bridge</b>, Ausgang „TouchOSC“ = <b>TouchOSC Bridge</b>, Ausgang „Twister“ = <b>Midi Fighter Twister</b>.</p></div></li>
+    <li><input type="checkbox" id="v61c"><div><div class="t">E16: neue Szene</div><p><code>seren-a_E16.oxie16</code> (Ordner <code>OXI E16/seren-a_E16</code>) in den Scenes-Ordner der OXI App legen, <b>Refresh Views</b>, auf einen freien Platz unter <i>On Device</i> ziehen und aufrufen. Das Gerät E16DAWLink bleibt, wie es ist.</p></div></li>
+    <li><input type="checkbox" id="v61d"><div><div class="t">Reaper</div><p><code>Reaper_MultiEQ.lua</code> und <code>Reaper_Twister.lua</code> neu starten (gleiche Namen). Für E16 <span class="nb">Seite 1</span> läuft <code>reaper_to_e16.lua</code> wie bisher. Konsole: <code>MultiEQ v6.1 geladen</code>.</p></div></li>
+    <li><input type="checkbox" id="v61e"><div><div class="t">TouchOSC</div><p><code>Twister_View.tosc</code> bzw. <code>Twister_View_quer.tosc</code> neu öffnen (Version unten rechts „v6.1 · 04.11.26“). Look-Taste antippen, Lieblingslook wählen.</p></div></li>
+  </ol>
+  <div class="tip"><b>Bridge teilen:</b> 3D-Skript (TouchOSC3D) und Twister-Skript (MFTView) hängen beide an der TouchOSC Bridge; ihre Kanäle und SysEx-Kennungen überschneiden sich nicht. Bleibt ein Gerät im MIDI Remote Manager grau, weil Nuendo die Bridge nicht doppelt vergibt: am Mac in <b>Audio-MIDI-Setup › MIDI-Netzwerk</b> eine Session anlegen, das Handy verbinden, in TouchOSC für die Twister View <b>Verbindung 2</b> auf diese Session stellen und MFTViews Ports „View“ und „TouchOSC“ auf die Session legen.</div>
+</section>
+
+<!-- Neu -->
+<section class="guide" id="multieq" style="--c:var(--yellow)">
+  <div class="ghead"><div class="knob" style="--a:-160deg" aria-hidden="true"></div><h2>Plugins am Twister und E16 (seit v6.0, Stand v6.1)</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>MultiEQ, OmniComp, DirectionalComp und <b>Hall</b> (FDN Reverb + mcfx Convolver) · Reaper: <code>Reaper_MultiEQ.lua</code> · Nuendo: MFTView (Twister <span class="nb">Bank 4</span>) und E16DAWLink (E16 Seiten 2–4) · gleiche Griffe in beiden DAWs</span></div>
+  <h3>Auf jeder Ebene gleich</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--green)"><span class="n">8</span><b>OmniComp A</b><span>tippen = Bypass · <b>halten + loslassen</b> = nächste Ebene: MultiEQ → Omni → Directional → Hall (E16: eigene Seiten 2–4, auf Seite 3 Omni ↔ Directional)</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">15</span><b>Solo</b><span>tippen = Solo (blinkt gelb, orange = gemutet) · drücken + drehen = SceneRotator Yaw</span></div>
+    <div class="lvl" style="--c:var(--muted)"><span class="n">16</span><b>Spur · Master · Mute</b><span>drehen = Spur · drücken + drehen = Master −30…0 dB · tippen = Mute · <b>Nuendo/Twister: halten</b> = zurück zu Sends/QC</span></div>
+    <div class="lvl"><span class="n">Farben</span><b>Twister</b><span><span class="nb">Encoder 8</span> zeigt die Ebene: Utility-Farbe MultiEQ, grün Omni, magenta Directional, hellblau Hall. Vom Master/Stereo Out = cyan, gesperrtes Band = violett, Solo gelb, gemutet ohne Solo orange, Mute rot blinkend, Master einstellen = gedimmtes Rot. E16: vom Master weiß, Solo 53, gemutet 55, Mute 60, Master 0.</span></div>
+  </div>
+  <h3>Belegung pro Ebene</h3>
+  <div class="enclegend"><span><b>fett</b> = drehen</span><span class="p">drücken + drehen</span><span class="h">halten (0,45 s) + drehen</span><span class="t">tippen</span>
+<span class="sw" style="--c:var(--cyan)">MultiEQ A</span><span class="sw" style="--c:var(--pink)">MultiEQ B</span><span class="sw" style="--c:#8A5CF0">DirectionalComp</span><span class="sw" style="--c:var(--green)">OmniComp</span><span class="sw" style="--c:var(--red)">FDN Reverb</span><span class="sw" style="--c:var(--orange)">Convolver</span></div><div class="encmaps">
+<figure class="encmap"><figcaption><b>Ebene 1 · MultiEQ</b><span>zwei MultiEQ (A oben, B unten)</span></figcaption><div class="grid16">
+<div class="enc" style="--c:var(--cyan)"><span class="en">1</span><b>A1 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">2</span><b>A2 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">3</span><b>A3 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">4</span><b>Dir Width</b><span class="p" title="drücken+drehen">Thr 1+2</span><span class="h" title="halten+drehen">Ratio 1+2</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">5</span><b>A4 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">6</span><b>A5 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">7</span><b>A6 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--green)"><span class="en">8</span><b>Omni Thr</b><span class="p" title="drücken+drehen">Makeup</span><span class="h" title="halten+drehen">Ratio</span><span class="t" title="tippen">Bypass · halten: Ebene</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">9</span><b>B1 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">10</span><b>B2 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">11</span><b>B3 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">12</span><b>B4 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">13</span><b>B5 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--pink)"><span class="en">14</span><b>B6 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--yellow)"><span class="en">15</span><b>Solo</b><span class="p" title="drücken+drehen">Yaw</span><span class="t" title="tippen">Solo an/aus</span></div>
+<div class="enc" style="--c:var(--muted)"><span class="en">16</span><b>Spur ‹ ›</b><span class="p" title="drücken+drehen">Master</span><span class="t" title="tippen">Mute</span></div>
+</div></figure>
+<figure class="encmap"><figcaption><b>Ebene 1 · mit DirComp</b><span>DirectionalComp + MultiEQ + OmniComp da: oben Kompressor, unten MultiEQ A</span></figcaption><div class="grid16">
+<div class="enc" style="--c:#8A5CF0"><span class="en">1</span><b>C1 Thr</b><span class="p" title="drücken+drehen">Knee</span><span class="t" title="tippen">2× an/aus</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">2</span><b>C1 Ratio</b><span class="p" title="drücken+drehen">Attack</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">3</span><b>C1 Makeup</b><span class="p" title="drücken+drehen">Release</span><span class="h" title="halten+drehen">Azimut</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">4</span><b>Dir Width</b><span class="p" title="drücken+drehen">Thr 1+2</span><span class="h" title="halten+drehen">Ratio 1+2</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">5</span><b>C2 Thr</b><span class="p" title="drücken+drehen">Knee</span><span class="t" title="tippen">2× an/aus</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">6</span><b>C2 Ratio</b><span class="p" title="drücken+drehen">Attack</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">7</span><b>C2 Makeup</b><span class="p" title="drücken+drehen">Release</span></div>
+<div class="enc" style="--c:var(--green)"><span class="en">8</span><b>Omni Thr</b><span class="p" title="drücken+drehen">Makeup</span><span class="h" title="halten+drehen">Ratio</span><span class="t" title="tippen">Bypass · halten: Ebene</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">9</span><b>A1 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">10</span><b>A2 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">11</span><b>A3 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">12</span><b>A4 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">13</span><b>A5 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--cyan)"><span class="en">14</span><b>A6 Freq</b><span class="p" title="drücken+drehen">Gain</span><span class="h" title="halten+drehen">Q</span><span class="t" title="tippen">2× an · 3× Lock</span></div>
+<div class="enc" style="--c:var(--yellow)"><span class="en">15</span><b>Solo</b><span class="p" title="drücken+drehen">Yaw</span><span class="t" title="tippen">Solo an/aus</span></div>
+<div class="enc" style="--c:var(--muted)"><span class="en">16</span><b>Spur ‹ ›</b><span class="p" title="drücken+drehen">Master</span><span class="t" title="tippen">Mute</span></div>
+</div></figure>
+<figure class="encmap"><figcaption><b>Ebene 2 · Omni</b><span>E16 Seite 3 · neu: Makeup auf 8, LookAhead auf 7 (tippen)</span></figcaption><div class="grid16">
+<div class="enc" style="--c:#FE9F01"><span class="en">1</span><b>A Thr</b></div>
+<div class="enc" style="--c:#CF021C"><span class="en">2</span><b>A Ratio</b></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">3</span><b>A Attack</b></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">4</span><b>A Release</b></div>
+<div class="enc" style="--c:#FE9F01"><span class="en">5</span><b>A Knee</b></div>
+<div class="enc" style="--c:#50FE03"><span class="en">6</span><b>A Makeup</b><span class="t" title="tippen">2× LookAhead</span></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">7</span><b>A LookAhead</b><span class="t" title="tippen">tippen an/aus</span></div>
+<div class="enc" style="--c:#50FE03"><span class="en">8</span><b>A Makeup</b><span class="t" title="tippen">Bypass · halten: Ebene</span></div>
+<div class="enc" style="--c:#FE9F01"><span class="en">9</span><b>B Thr</b></div>
+<div class="enc" style="--c:#CF021C"><span class="en">10</span><b>B Ratio</b></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">11</span><b>B Attack</b></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">12</span><b>B Release</b></div>
+<div class="enc" style="--c:#FE9F01"><span class="en">13</span><b>B Knee</b></div>
+<div class="enc" style="--c:#50FE03"><span class="en">14</span><b>B Makeup</b><span class="t" title="tippen">2× LookAhead</span></div>
+<div class="enc" style="--c:var(--yellow)"><span class="en">15</span><b>Solo</b><span class="p" title="drücken+drehen">Yaw</span><span class="t" title="tippen">Solo an/aus</span></div>
+<div class="enc" style="--c:var(--muted)"><span class="en">16</span><b>Spur ‹ ›</b><span class="p" title="drücken+drehen">Master</span><span class="t" title="tippen">Mute</span></div>
+</div></figure>
+<figure class="encmap"><figcaption><b>Ebene 3 · Directional</b><span>E16 Seite 3, Encoder 8 halten</span></figcaption><div class="grid16">
+<div class="enc" style="--c:#8A5CF0"><span class="en">1</span><b>C1 Thr</b><span class="t" title="tippen">2× an/aus</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">2</span><b>C1 Ratio</b><span class="t" title="tippen">2× Driving</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">3</span><b>C1 Attack</b><span class="t" title="tippen">2× Apply to</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">4</span><b>C1 Release</b></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">5</span><b>C1 Knee</b></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">6</span><b>C1 Makeup</b></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">7</span><b>Azimut</b><span class="p" title="drücken+drehen">Width</span><span class="t" title="tippen">2× Listen</span></div>
+<div class="enc" style="--c:var(--green)"><span class="en">8</span><b>PreGain</b><span class="t" title="tippen">Bypass · halten: Ebene</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">9</span><b>C2 Thr</b><span class="t" title="tippen">2× an/aus</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">10</span><b>C2 Ratio</b><span class="t" title="tippen">2× Driving</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">11</span><b>C2 Attack</b><span class="t" title="tippen">2× Apply to</span></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">12</span><b>C2 Release</b></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">13</span><b>C2 Knee</b></div>
+<div class="enc" style="--c:#8A5CF0"><span class="en">14</span><b>C2 Makeup</b></div>
+<div class="enc" style="--c:var(--yellow)"><span class="en">15</span><b>Elevation</b><span class="p" title="drücken+drehen">Yaw</span><span class="t" title="tippen">Solo an/aus</span></div>
+<div class="enc" style="--c:var(--muted)"><span class="en">16</span><b>Spur ‹ ›</b><span class="p" title="drücken+drehen">Master</span><span class="t" title="tippen">Mute</span></div>
+</div></figure>
+<figure class="encmap"><figcaption><b>Ebene 4 · Hall</b><span>E16 Seite 4 · FDN Reverb oben, mcfx Convolver unten · Presets auf 7 und 14</span></figcaption><div class="grid16">
+<div class="enc" style="--c:#50FE03"><span class="en">1</span><b>Raumgröße</b></div>
+<div class="enc" style="--c:#D9D9D9"><span class="en">2</span><b>Nachhall</b></div>
+<div class="enc" style="--c:#D9D9D9"><span class="en">3</span><b>Fade-in</b></div>
+<div class="enc" style="--c:#FE9F01"><span class="en">4</span><b>Dry/Wet</b></div>
+<div class="enc" style="--c:#CF021C"><span class="en">5</span><b>Tiefen Freq</b><span class="p" title="drücken+drehen">Tiefen Gain</span></div>
+<div class="enc" style="--c:#00CAFE"><span class="en">6</span><b>Höhen Freq</b><span class="p" title="drücken+drehen">Höhen Gain</span></div>
+<div class="enc" style="--c:#D9D9D9"><span class="en">7</span><b>FDN Preset</b><span class="t" title="tippen">drehen = blättern</span></div>
+<div class="enc" style="--c:#50FE03"><span class="en">8</span><b>Omni A</b><span class="t" title="tippen">Bypass · halten: Ebene</span></div>
+<div class="enc" style="--c:#6495ED"><span class="en">9</span><b>Conv 1</b></div>
+<div class="enc" style="--c:#6495ED"><span class="en">10</span><b>Conv 2</b></div>
+<div class="enc" style="--c:#6495ED"><span class="en">11</span><b>Conv 3</b></div>
+<div class="enc" style="--c:#6495ED"><span class="en">12</span><b>Conv 4</b></div>
+<div class="enc" style="--c:#6495ED"><span class="en">13</span><b>Conv 5</b></div>
+<div class="enc" style="--c:#D9D9D9"><span class="en">14</span><b>Conv Preset</b><span class="t" title="tippen">drehen = blättern</span></div>
+<div class="enc" style="--c:var(--yellow)"><span class="en">15</span><b>Solo</b><span class="p" title="drücken+drehen">Yaw</span><span class="t" title="tippen">Solo an/aus</span></div>
+<div class="enc" style="--c:var(--muted)"><span class="en">16</span><b>Spur ‹ ›</b><span class="p" title="drücken+drehen">Master</span><span class="t" title="tippen">Mute</span></div>
+</div></figure>
+</div>
+  <h3>Woher die Plugins kommen</h3>
+  <div class="srcmap">
+  <div class="srow"><b style="--c:var(--cyan)">MultiEQ A/B</b><span class="chain"><i>Master / Stereo Out</i>→<i>Spuren</i><em>die ersten zwei</em></span></div>
+  <div class="srow"><b style="--c:var(--green)">OmniComp A/B</b><span class="chain"><i>ausgewählte Spur</i>→<i>Master</i></span></div>
+  <div class="srow"><b style="--c:#8A5CF0">DirectionalComp</b><span class="chain"><i>ausgewählte Spur</i>→<i>Master</i></span></div>
+  <div class="srow"><b style="--c:var(--red)">FDN · Convolver</b><span class="chain"><i>ausgewählte Spur</i>→<i>Master</i></span></div>
+  <div class="srow"><b style="--c:var(--yellow)">SceneRotator</b><span class="chain"><i>ausgewählte Spur</i>→<i>Master</i>→<i>AmbiDecoder</i></span></div>
+  <p class="srcnote">Vom Master/Stereo Out geliehen = Master-Farbe (Twister cyan, E16 weiß). Reaper: jeder FX-Slot · Nuendo: jeder Insert, empfohlen ist der <a href="#insertplan">Insert-Plan</a>.</p>
+</div>
+  <h3>Reaper</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="eq1"><div><div class="t">Twister <span class="nb">Bank 4</span></div><p>Wie bisher: <code>3_Reaper/Twister_Bank4_MultiEQ.mfs</code> im Midi Fighter Utility (Encoder <b>ENC 3FH/41H</b>, Switch <b>CC Hold</b>). Liegt sie schon drauf: nichts zu tun.</p></div></li>
+    <li><input type="checkbox" id="eq2"><div><div class="t">Skript neu starten</div><p><code>Reaper_MultiEQ.lua</code> (gleicher Name, die Aktion stimmt). Konsole: <code>MultiEQ v6.1 geladen</code>, dann die gefundenen Plugins, z. B. <code>FDN Reverb A = … auf Vox</code>.</p></div></li>
+  </ol>
+  <h3>Nuendo</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="eq3"><div><div class="t">Skripte tauschen und neu laden</div><p><code>serena/MFTView</code> und <code>serena/E16DAWLink</code> (liegen schon in <b>MIDI Remote › Driver Scripts › Local</b>), dann MIDI Remote Manager › <b>Skripte neu laden</b>. Konsole: <code>Twister-Skript v6.1 geladen</code> und <code>[seren.a E16] Skript v6.1 geladen</code>. Braucht Nuendo/Cubase <b>13 oder neuer</b> (Direct Access).</p></div></li>
+    <li><input type="checkbox" id="eq4"><div><div class="t">Twister: zweiter Ausgang</div><p>MFTView hat jetzt den Ausgang <b>„Twister“</b> (Ringe und Farben für <span class="nb">Bank 4</span>) neben „TouchOSC“. Im MIDI Remote Manager beim Gerät serena › MFTView prüfen: Twister-Ausgang = Midi Fighter Twister. Und die Twister-<span class="nb">Bank 4</span> muss relativ sein (dieselbe .mfs wie für Reaper).</p></div></li>
+    <li><input type="checkbox" id="eq5"><div><div class="t">Twister <span class="nb">Bank 4</span> umschalten</div><p><b><span class="nb">Encoder 16</span> halten (0,6 s) und loslassen</b>: Sends/QC ↔ Plugins. Der Tab in der Twister View sagt, was gilt („Sends/QC“ oder die Ebene). Sends/QC bleibt wie gehabt; in Nuendo heißen die Unterseiten „<span class="nb">Bank 4</span> › Sends/QC“ und „Plugins“.</p></div></li>
+    <li><input type="checkbox" id="eq6"><div><div class="t">E16: Seite wechseln</div><p>Szene <b>seren-a_E16</b>: <span class="nb">Seite 2</span> MultiEQ, <span class="nb">Seite 3</span> Kompressor, <span class="nb">Seite 4</span> Reverb, <span class="nb">Seite 1</span> DAW Link (Sends/EQ/Inserts wie bisher). Das Skript erkennt die Seite an der Seitenmeldung und zeichnet nur sie.</p></div></li>
+    <li><input type="checkbox" id="eq7"><div><div class="t">Kontrolle</div><p>Skript-Konsole nach einer Sekunde: <code>[seren.a Plugins] MultiEQ A = MultiEQ auf Out (Ersatz vom Out) · e 6, f 6, g 6, q 6, t 6</code> und je eine Zeile pro gefundenem Plugin. Fehlt ein Plugin oder ein Parameter, die Zeile abfotografieren.</p></div></li>
+  </ol>
+  <div class="tip warn"><b>Nuendo noch ungetestet:</b> Direct Access ist neu, geprüft ist alles nur gegen die API-Beschreibung und nachgebaute Plugins. Wenn etwas nicht reagiert: die <code>[seren.a Plugins]</code>-Zeilen aus der Skript-Konsole schicken – daran sieht man, welche Namen Nuendo liefert.</div>
+  <div class="tip"><b>E16-Gruppen lösen:</b> führenden Knopf halten und den Mitläufer antippen, bis er herausfällt (dritter Tipp). <b>Fenster (Reaper):</b> im Skript oben <code>OPEN_WINDOWS = false</code>, wenn keine Plugin-Fenster aufgehen sollen.</div>
+</section>
+
+<section class="guide" id="neu" style="--c:var(--pink)">
+  <div class="ghead"><div class="knob" style="--a:130deg" aria-hidden="true"></div><h2>Neu in v5.0</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>28.10.26 · große Ergänzung, daher neue Hauptversion · Einrichtung bleibt gleich, nur der Ordner heißt jetzt v5</span></div>
+  <div class="levels" style="margin-top:14px">
+    <div class="lvl"><span class="n">alle Listen</span><b>Nur Spuren mit Plugin</b><span>space zeigt nur Spuren mit Encoder, multi die MultiEncoder-Eingänge, panner die MultiPanner-Spuren, room die dearVR-Spuren. Die Liste rückt auf.</span></div>
+    <div class="lvl"><span class="n">room</span><b>Zoom wie dearVR</b><span>− und + in der Ecke: ± 3, 6, 12, 18, 24, 30 m. „Raum“ passt den ganzen Raum ein.</span></div>
+    <div class="lvl"><span class="n">Nuendo</span><b>dearVR PRO</b><span>Jetzt auch in Nuendo, in <span class="nb ins">Insert 4</span> oder <span class="nb ins">Insert 5</span>. Das erste eingeschaltete, nicht umgangene zählt.</span></div>
+    <div class="lvl"><span class="n">Option</span><b>Auslastung</b><span>CPU und Aussetzer dezent neben der Versionsnummer. Nur Reaper; Nuendo gibt Skripten keine Auslastung.</span></div>
+  </div>
+  <div class="tip"><b>Ausprobieren:</b> iPad oder Monitor öffnen, ⚙ antippen, „nur Spuren mit Plugin“ ist an. Zum Vergleich ausschalten, dann siehst du wieder alle Spuren der Bank.</div>
+</section>
+
+<!-- Nuendo -->
+<section class="guide" id="nuendo" style="--c:var(--red)">
+  <div class="ghead"><div class="knob" style="--a:-100deg" aria-hidden="true"></div><h2>Nuendo / Cubase einrichten</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>MIDI Remote · Skript <code>serena_TouchOSC3D.js</code> v5.0</span></div>
+  <p class="lead">Ein Skript bedient alle 3D-Oberflächen gleichzeitig. MIDI Remote erreicht Plugins nur über feste Insert-Slots; welche Parameter es sind, erkennt das Skript am Namen und fasst nichts anderes an.</p>
+  <h3>Schritte</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="n1"><div><div class="t">Skripte an ihren Platz</div><p>Ordner <b>serena</b> nach <b>Dokumente › Steinberg › Nuendo › MIDI Remote › Driver Scripts › Local</b> (liegt dort schon, Kopie in <code>2_Nuendo-Cubase</code>).</p></div></li>
+    <li><input type="checkbox" id="n2"><div><div class="t">Neu laden</div><p>Studio › MIDI Remote Manager › Skripte › <b>Skripte neu laden</b>.</p></div></li>
+    <li><input type="checkbox" id="n3"><div><div class="t">Gerät verbinden</div><p>„serena › TouchOSC3D“: <b>Eingang und Ausgang = TouchOSC Bridge</b>.</p></div></li>
+    <li><input type="checkbox" id="n4"><div><div class="t">Plugins in die Slots</div><p><span class="nb ins">Insert 1–4</span> frei für EQ, Dynamik … · <b><span class="nb ins">Insert 5 oder 6</span></b> StereoEncoder, MultiEncoder oder dearVR PRO · <b><span class="nb ins">Insert 5–9</span></b> SceneRotator. Alles Weitere zeigt der <a href="#insertplan">Insert-Plan</a>.</p></div></li>
+    <li><input type="checkbox" id="n5"><div><div class="t">Kontrolle</div><p>Skript-Konsole: <code>[seren.a 3D] Skript v5.5 geladen</code>. In TouchOSC unter LOG: <code>3D v5.5 aktiv · Encoder/dearVR PRO in Insert 5 oder 6, Rotator in Insert 5-9</code>.</p></div></li>
+  </ol>
+  <div class="ipage" id="insertplan-page" data-ptitle="Insert-Plan"><h3 id="insertplan">Insert-Plan ab v5.5</h3>
+  <style>
+    .ip{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(7,38px);
+        column-gap:6px;margin:14px 0 6px;position:relative}
+    .ip-h{grid-row:1;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:600 12px var(--mono);color:var(--c)}
+    .ip-h span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap}
+    .ip-corner{grid-column:1;justify-content:flex-start;color:var(--muted);font-weight:500}
+    .ip-r{grid-column:1;display:flex;align-items:center;font:600 13px var(--mono);color:var(--fg);z-index:1}
+    .ip-r.ip-free{color:var(--muted);font-weight:400}
+    .ip-line{grid-column:1/-1;border-top:1px solid var(--line);align-self:start;opacity:.7}
+    .ip-freetxt{grid-column:2/-1;align-self:center;color:var(--muted);font-size:12px;font-style:italic;z-index:1}
+    .ip-bar{margin:5px 0;border-radius:calc(var(--radius) + 4px);background:color-mix(in srgb,var(--c) 78%,transparent);
+        box-shadow:inset 0 0 0 2px var(--c);display:flex;align-items:flex-start;justify-content:center;padding-top:6px;z-index:1}
+    .ip-bar b{font:700 11px var(--mono);color:var(--bg);writing-mode:vertical-rl;transform:rotate(180deg)}
+    .ip-legend{list-style:none;padding:0;margin:10px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 14px;font-size:13px}
+    .ip-legend li{display:flex;align-items:baseline;gap:6px}
+    .ip-legend i{width:12px;height:12px;border-radius:3px;background:var(--c);flex:none;transform:translateY(1px)}
+    .ip-legend b{font-family:var(--mono);color:var(--c)}
+    .ip-legend span{color:var(--muted)}
+  </style>
+  <div class="ip" role="img" aria-label="Insert-Plan: Spalten = Plugins, Balken = erlaubte Inserts">
+    <div class="ip-h ip-corner">Insert</div><div class="ip-h" style="grid-column:2;--c:var(--pink)" title="Directional­Compressor"><span>Dir</span></div><div class="ip-h" style="grid-column:3;--c:var(--yellow)" title="MultiEQ"><span>EQ</span></div><div class="ip-h" style="grid-column:4;--c:var(--cyan)" title="Stereo-/MultiEncoder, dearVR PRO"><span>Enc</span></div><div class="ip-h" style="grid-column:5;--c:var(--hi)" title="SceneRotator"><span>Rot</span></div><div class="ip-h" style="grid-column:6;--c:var(--green)" title="OmniCompressor"><span>Omni</span></div><div class="ip-h" style="grid-column:7;--c:var(--orange)" title="mcfx Convolver"><span>Conv</span></div><div class="ip-h" style="grid-column:8;--c:var(--red)" title="FDN Reverb"><span>FDN</span></div><div class="ip-r ip-free" style="grid-row:2"><span class="nb">1–4</span></div><div class="ip-line" style="grid-row:2"></div><div class="ip-r" style="grid-row:3">5</div><div class="ip-line" style="grid-row:3"></div><div class="ip-r" style="grid-row:4">6</div><div class="ip-line" style="grid-row:4"></div><div class="ip-r" style="grid-row:5">7</div><div class="ip-line" style="grid-row:5"></div><div class="ip-r" style="grid-row:6">8</div><div class="ip-line" style="grid-row:6"></div><div class="ip-r" style="grid-row:7">9</div><div class="ip-line" style="grid-row:7"></div><div class="ip-r ip-free" style="grid-row:8">10+</div><div class="ip-line" style="grid-row:8"></div><div class="ip-freetxt" style="grid-row:2">frei: EQ, Dynamik …</div><div class="ip-freetxt" style="grid-row:8">frei</div><div class="ip-bar" style="grid-column:2;grid-row:3/5;--c:var(--pink)" title="Directional­Compressor: Insert 5–6"><b><span class="nb">5–6</span></b></div><div class="ip-bar" style="grid-column:3;grid-row:3/6;--c:var(--yellow)" title="MultiEQ: Insert 5–7"><b><span class="nb">5–7</span></b></div><div class="ip-bar" style="grid-column:4;grid-row:3/5;--c:var(--cyan)" title="Stereo-/MultiEncoder, dearVR PRO: Insert 5–6"><b><span class="nb">5–6</span></b></div><div class="ip-bar" style="grid-column:5;grid-row:3/8;--c:var(--hi)" title="SceneRotator: Insert 5–9"><b><span class="nb">5–9</span></b></div><div class="ip-bar" style="grid-column:6;grid-row:4/8;--c:var(--green)" title="OmniCompressor: Insert 6–9"><b><span class="nb">6–9</span></b></div><div class="ip-bar" style="grid-column:7;grid-row:5/8;--c:var(--orange)" title="mcfx Convolver: Insert 7–9"><b><span class="nb">7–9</span></b></div><div class="ip-bar" style="grid-column:8;grid-row:6/8;--c:var(--red)" title="FDN Reverb: Insert 8–9"><b><span class="nb">8–9</span></b></div>
+  </div>
+  <ul class="ip-legend"><li style="--c:var(--pink)"><i></i><b>Dir</b> DirectionalCompressor<span> · <span class="nb ins">Insert 5–6</span></span></li><li style="--c:var(--yellow)"><i></i><b>EQ</b> MultiEQ<span> · <span class="nb ins">Insert 5–7</span>, auch 2×</span></li><li style="--c:var(--cyan)"><i></i><b>Enc</b> Stereo-/MultiEncoder, dearVR PRO<span> · <span class="nb ins">Insert 5–6</span></span></li><li style="--c:var(--hi)"><i></i><b>Rot</b> SceneRotator<span> · <span class="nb ins">Insert 5–9</span></span></li><li style="--c:var(--green)"><i></i><b>Omni</b> OmniCompressor<span> · <span class="nb ins">Insert 6–9</span></span></li><li style="--c:var(--orange)"><i></i><b>Conv</b> mcfx Convolver<span> · <span class="nb ins">Insert 7–9</span></span></li><li style="--c:var(--red)"><i></i><b>FDN</b> FDN Reverb<span> · <span class="nb ins">Insert 8–9</span></span></li></ul>
+  <p style="margin-top:10px">Jedes Plugin außer MultiEQ kommt höchstens einmal pro Spur vor. In seinem Bereich zählt das <b>erste eingeschaltete, nicht umgangene</b>. Das 3D-Skript liest <span class="nb ins">Insert 5–9</span> und erkennt die Plugins am Namen. MultiEQ, Kompressoren und Hall steuern seit v6.0 auch in Nuendo der Twister (<span class="nb">Bank 4</span>, Modus Plugins) und der E16 (Szene MultiEQ) – siehe <a href="#multieq">Neu in v6.0</a>.</p>
+  <div class="tblwrap"><table>
+    <tr><th>Plugin</th><th>Erkannt an</th><th>Hinweis</th></tr>
+    <tr><td>StereoEncoder <b>oder</b> MultiEncoder (<span class="nb ins">Insert 5/6</span>)</td><td>„Azimuth Angle“, „Master azimuth angle“ …</td><td>16 Parameter je Slot (<span class="nb ins">Insert 5/6</span>) werden gelesen</td></tr>
+    <tr><td>SceneRotator (<span class="nb ins">Insert 5–9</span>)</td><td>„Yaw Angle“, „Pitch Angle“, „Roll Angle“</td><td>dreht die fertige Szene, gehört hinter den Encoder</td></tr>
+    <tr><td>dearVR PRO (<span class="nb ins">Insert 5/6</span>)</td><td>Plugin-Name „dearVR PRO“</td><td>nur Anzeige (room); Position/Raum unter den ersten 16 Parametern</td></tr>
+    <tr><td>VST MultiPanner (kein Slot)</td><td>Spur-Quick-Controls, Namen wie „Left-Right Pan“</td><td>siehe <a href="#multipanner">MultiPanner-Check</a></td></tr>
+  </table></div>
+  <div class="tip warn"><b>dearVR in Nuendo:</b> Nuendo liefert die Parameter in der Reihenfolge des Remote Control Editors. Liegen Position (X/Y/Z oder Azimut/Elevation/Distanz) und Preset nicht unter den ersten 16, steht im LOG „dearVR PRO: Position nicht erkannt“ mit den gefundenen Namen. Dann im Remote Control Editor des Plugins diese Parameter nach vorn ziehen.</div>
+  <div class="tip"><b>Last:</b> Bei 32 Spuren legt das Skript seit v5.5 rund 2800 Werte an (<span class="nb ins">Insert 5–9</span>; v5.0: rund 2000). Wird Nuendo träge, oben im Skript <code>OV_N</code> auf 16 oder <code>ME_N</code> auf 8 setzen.</div>
+</div>
+</section>
+
+<!-- Reaper -->
+<section class="guide" id="reaper" style="--c:var(--green)">
+  <div class="ghead"><div class="knob" style="--a:60deg" aria-hidden="true"></div><h2>Reaper einrichten</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>ReaScript · <code>3_Reaper/Reaper_3D.lua</code> v5.0</span></div>
+  <p class="lead">In Reaper ist der FX-Slot egal. Pro Rolle zählt das erste aktive Plugin der Kette. Der VST MultiPanner fehlt in Reaper, der Modus panner bleibt dort leer.</p>
+  <h3>Schritte</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="r1"><div><div class="t">MIDI-Geräte</div><p>Einstellungen › MIDI Devices: TouchOSC Bridge <b>Ausgang an</b>, <b>Eingang an</b> („nur Steuerung“).</p></div></li>
+    <li><input type="checkbox" id="r2"><div><div class="t">Skript laden</div><p>Actions › Show action list › New action › Load ReaScript › <code>Reaper_3D.lua</code>, einmal starten. Eine alte Aktion auf <code>seren-a_v3/…</code> neu laden.</p></div></li>
+    <li><input type="checkbox" id="r3"><div><div class="t">Twister dazu (optional)</div><p><code>Reaper_Twister.lua</code> als zweites ReaScript starten, Twister In/Out an. Beide laufen nebeneinander.</p></div></li>
+    <li><input type="checkbox" id="r4"><div><div class="t">Kontrolle</div><p>LOG zeigt <code>3D v5.0 aktiv (Reaper) - Plugins in beliebigem FX-Slot</code> und pro Spur mit mehreren Plugins eine Zeile wie <code>Spur 3 Plugins: StereoEncoder FX1 (aus), MultiEncoder FX2 *</code>.</p></div></li>
+  </ol>
+  <h3>Schalter oben im Skript</h3>
+  <div class="vals">
+    <div class="val"><span class="k">Spuren auf einmal</span><button class="pill">N = 64</button></div>
+    <div class="val"><span class="k">nur sichtbare Spuren</span><button class="pill">VISIBLE_ONLY = true</button></div>
+    <div class="val"><span class="k">Auslastung alle … s (0 = aus)</span><button class="pill">CPU_EVERY = 3</button></div>
+    <div class="val"><span class="k">dearVR Polar: +90° links?</span><button class="pill">DV_AZ_LEFT = false</button></div>
+    <div class="val"><span class="k">dearVR +X = rechts?</span><button class="pill">DV_X_RIGHT = true</button></div>
+    <div class="val"><span class="k">dearVR +Z = vorn?</span><button class="pill">DV_Z_FRONT = true</button></div>
+  </div>
+</section>
+
+<!-- TouchOSC -->
+<section class="guide" id="touchosc" style="--c:var(--cyan)">
+  <div class="ghead"><div class="knob" style="--a:10deg" aria-hidden="true"></div><h2>TouchOSC verbinden</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>pro Gerät einmal · Verbindungen sind App-Einstellungen, nicht Teil der tosc</span></div>
+  <ol class="steps">
+    <li><input type="checkbox" id="t1"><div><div class="t">Bridge-App auf dem Mac</div><p>TouchOSC Bridge läuft.</p></div></li>
+    <li><input type="checkbox" id="t2"><div><div class="t">Bridge-Tab</div><p>Verbindung <b>1</b> an, Host = dein Mac.</p></div></li>
+    <li><input type="checkbox" id="t3"><div><div class="t">MIDI-Tab</div><p>Verbindung <b>1</b>: Send Port <b>und</b> Receive Port = Bridge 1.</p></div></li>
+    <li><input type="checkbox" id="t4"><div><div class="t">Oberfläche öffnen</div><p>tosc aus <code>1_Oberflaechen</code>. Die Version steht klein in der Oberfläche, z. B. „v5.0 · 28.10.26“.</p></div></li>
+  </ol>
+  <h3>OSC nur für Pan_OSC</h3>
+  <p class="lead">Alle Skript-Fassungen reden nur über die Bridge, OSC im Plugin bleibt dort aus. Die OSC-Fassung spricht eine feste Plugin-Instanz direkt an. Lesart: Send-Port / Receive-Port in TouchOSC.</p>
+  <div class="vals" style="margin-top:10px">
+    <div class="val"><span class="k">OSC 1 · TotalMix</span><button class="pill">7001 / 9001</button></div>
+    <div class="val"><span class="k">OSC 2 · StereoEncoder</span><button class="pill">8001 / 9101</button></div>
+    <div class="val"><span class="k">OSC 3 · SceneRotator</span><button class="pill">8002 / 9102</button></div>
+    <div class="val"><span class="k">OSC 4 · MultiEncoder</span><button class="pill">8003 / 9103</button></div>
+  </div>
+  <div class="tip"><b>Im IEM-Plugin:</b> Listen to port = Send-Port (z. B. 8001) → OPEN · Sender: IP vom Handy, Receive-Port (z. B. 9101) → CONNECT.</div>
+</section>
+
+<!-- Oberflächen -->
+<section class="guide" id="oberflaechen" style="--c:var(--hi)">
+  <div class="ghead"><div class="knob" style="--a:-20deg" aria-hidden="true"></div><h2>Oberflächen und Modi</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>Ordner <code>1_Oberflaechen</code> · Bilder aller Seiten in <code>4_Vorschau</code></span></div>
+  <div class="tblwrap" style="margin-top:14px"><table>
+    <tr><th>Gerät</th><th>Datei</th><th>Modi / Seiten</th><th>Wofür</th></tr>
+    <tr><td>Handy quer</td><td><code>Pan_Skript</code>, <code>Pan_OSC</code> (je mit TotalMix)</td><td>MULTIPANNER · IEM · MP-IEM · MONITOR</td><td>die gewählte Spur fein bewegen</td></tr>
+    <tr><td>Handy hoch</td><td><code>Pan_Skript hochkant</code> (mit/ohne TotalMix)</td><td>wie oben</td><td>großes XY-Feld, Z als Fader</td></tr>
+    <tr><td>Handy quer</td><td><code>Objekt-Uebersicht</code></td><td>IEM · MULTIPANNER · MULTI-ENC · LOG</td><td>16 Spuren als Punkte, antippen = wählen</td></tr>
+    <tr><td>iPad</td><td><code>IEM-Space</code></td><td>space · multi · panner · room · log · ⚙</td><td>16 Spuren ziehen, Width/Yaw/Pitch</td></tr>
+    <tr><td>Monitor 5:4</td><td><code>IEM-Monitor</code></td><td>space · multi · panner · room; Ansicht 16 / 32v / 32h / 64</td><td>bis 64 Spuren mit Pegeln</td></tr>
+    <tr><td>Handy</td><td><code>Twister_View</code> (hoch/quer)</td><td>aktuelle Twister-Bank</td><td>siehe <a href="#twister">Twister &amp; E16</a></td></tr>
+  </table></div>
+  <h3>Die Modi</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--pink)"><span class="n">space</span><b>StereoEncoder / MultiEncoder</b><span>Ein Punkt je Spur. StereoEncoder mit Breite, MultiEncoder als Master-Punkt.</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">multi</span><b>MultiEncoder-Eingänge</b><span>Bis 16 Eingänge der gewählten Spur, ziehen und Gain.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">panner</span><b>VST MultiPanner</b><span>Nur Nuendo, über Quick Controls. Oben im Feld = vorn.</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">room</span><b>dearVR PRO</b><span>Quellen im Raum mit Wänden und Hörer. Nur Anzeige.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">log</span><b>Was das Skript erkannt hat</b><span>Oben ◆ ERKANNT, darunter ← kommt an, → geht raus.</span></div>
+  </div>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_SPACE__" alt="iPad IEM-Space im Modus space: Spurchips oben, IEM-Kreis, Detailfeld, Liste mit sieben Spuren" width="900" height="675"><figcaption>iPad · space: die Liste zeigt nur Spuren mit Encoder</figcaption></figure>
+  <div class="tip"><b>Spur wählen:</b> In der Liste antippen wählt die Spur auch in der DAW. Alle Oberflächen folgen der in der DAW gewählten Spur.</div>
+</section>
+
+<!-- room -->
+<section class="guide" id="room" style="--c:var(--yellow)">
+  <div class="ghead"><div class="knob" style="--a:150deg" aria-hidden="true"></div><h2>room · dearVR PRO</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>iPad und Monitor · seit v4.4 Reaper, seit v5.0 auch Nuendo</span></div>
+  <p class="lead">Draufsicht wie in dearVR PRO 2: Hörer in der Mitte, Nase zeigt nach vorn (oben), die Wände aus dem Plugin. Teilen alle Quellen denselben Raum, gibt es einen gemeinsamen Raum; Quellen in einem anderen Raum erscheinen blass, der Titel nennt ihre Zahl.</p>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_ROOM__" alt="iPad im Modus room: Raum mit Wänden, Hörer in der Mitte, acht Quellen, Zoom-Tasten" width="900" height="675"><figcaption>iPad · room: Medium Room, eine Quelle im Studio Room (blass)</figcaption></figure>
+  <h3>Zoom</h3>
+  <div class="vals">
+    <div class="val"><span class="k">+ (näher)</span><button class="pill">± 3 m</button></div>
+    <div class="val"><span class="k">− (weiter)</span><button class="pill">6 · 12 · 18 · 24 · 30 m</button></div>
+    <div class="val"><span class="k">Mitte</span><button class="pill">Raum</button></div>
+  </div>
+  <p class="lead">Die Stufen sind die von dearVR PRO 2. „Raum“ passt den ganzen Raum ein. Wände außerhalb des Ausschnitts verschwinden, Quellen außerhalb bleiben am Rand stehen.</p>
+  <h3>Woher die Werte kommen</h3>
+  <ul class="fix">
+    <li><b>Position:</b> im Modus Cartesian aus X/Y/Z, im Modus Polar aus Azimut, Elevation und Distanz (bis 30 m).</li>
+    <li><b>Wände:</b> aus den Wand-Parametern, wenn das Plugin sie zeigt, sonst aus der Preset-Tabelle des dearVR-Handbuchs (46 Presets). Unbekanntes Preset = kein Raum, nur Quellen.</li>
+    <li><b>Ziehen geht nicht:</b> room ist reine Anzeige. Bewegt wird in dearVR selbst.</li>
+    <li><b>Spiegelverkehrt?</b> Die Achsrichtungen stehen nicht im dearVR-Handbuch. Steht eine Quelle gespiegelt, in Reaper oder Nuendo oben im Skript <code>DV_AZ_LEFT</code>, <code>DV_X_RIGHT</code> oder <code>DV_Z_FRONT</code> umstellen und mir Bescheid sagen.</li>
+  </ul>
+</section>
+
+<!-- Plugins pro Spur -->
+<section class="guide" id="plugins" style="--c:var(--orange)">
+  <div class="ghead"><div class="knob" style="--a:90deg" aria-hidden="true"></div><h2>Mehrere Plugins auf einer Spur</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>Regel ab v4.4 (Reaper) und v5.0 (Nuendo, dearVR)</span></div>
+  <p class="lead">Pro Spur gibt es drei Rollen. Für jede zählt das <b>erste aktive</b> Plugin: nicht umgangen, nicht offline. Das Skript schaut nur hin, am Bypass ändert es nie etwas.</p>
+  <div class="tblwrap" style="margin-top:12px"><table>
+    <tr><th>Rolle</th><th>Plugins</th><th>Reaper</th><th>Nuendo</th></tr>
+    <tr><td>Encoder</td><td>StereoEncoder oder MultiEncoder</td><td>erster aktiver in der Kette</td><td>erster aktiver in <span class="nb ins">Insert 5/6</span></td></tr>
+    <tr><td>Rotator</td><td>SceneRotator</td><td>erster aktiver in der Kette</td><td>erster aktiver in <span class="nb ins">Insert 5–9</span></td></tr>
+    <tr><td>Raum</td><td>dearVR PRO</td><td>erster aktiver in der Kette</td><td>erster aktiver in <span class="nb ins">Insert 5/6</span></td></tr>
+  </table></div>
+  <h3>Typische Ketten (Reaper)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Kette</th><th>space</th><th>multi</th><th>Rotator</th><th>Status</th></tr>
+    <tr><td>StereoEncoder · SceneRotator</td><td>Punkt + Breite</td><td>–</td><td>ja</td><td><span class="st ok">gut</span></td></tr>
+    <tr><td>StereoEncoder (aus) · MultiEncoder · SceneRotator</td><td>Master-Punkt</td><td>Eingänge</td><td>ja</td><td><span class="st ok">gut</span></td></tr>
+    <tr><td>StereoEncoder · MultiEncoder (beide an)</td><td>Punkt + Breite</td><td>– (MultiEncoder ignoriert)</td><td>–</td><td><span class="st mid">einen umgehen</span></td></tr>
+    <tr><td>beide Encoder aus · SceneRotator</td><td>Spur fehlt</td><td>–</td><td>ja</td><td><span class="st mid">so gewollt</span></td></tr>
+    <tr><td>StereoEncoder · dearVR PRO</td><td>Punkt + Breite</td><td>–</td><td>– (room: Quelle im Raum)</td><td><span class="st ok">gut</span></td></tr>
+  </table></div>
+  <div class="tip"><b>Empfehlung:</b> Pro Spur einen Encoder aktiv lassen. Zum Vergleichen den anderen umgehen statt löschen, die Anzeige wechselt dann mit (spätestens nach 2 s).</div>
+  <h3>LOG-Zeile lesen</h3>
+  <div class="vals">
+    <div class="val"><span class="k">wird benutzt</span><button class="pill">*</button></div>
+    <div class="val"><span class="k">umgangen oder offline</span><button class="pill">(aus)</button></div>
+    <div class="val"><span class="k">aktiv, aber ein anderes davor</span><button class="pill">(ignoriert)</button></div>
+  </div>
+</section>
+
+<!-- Optionen -->
+<section class="guide" id="optionen" style="--c:var(--cyan)">
+  <div class="ghead"><div class="knob" style="--a:-60deg" aria-hidden="true"></div><h2>Optionen (⚙)</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>iPad IEM-Space und Monitor 5:4 · „fertig ♡“ schließt die Seite</span></div>
+  <div class="tblwrap" style="margin-top:14px"><table>
+    <tr><th>Bereich</th><th>Einstellungen</th></tr>
+    <tr><td>Pegel · Skala</td><td>Digital, DIN, EBU, British, Nordic, K-20, K-14, K-12, LUFS≈, LU≈ · Peak / RMS · +3 dB AES17 · LUFS M 400 ms / S 3 s · LU-Bezug −23/−24/−16/−14 · RMS-Auflösung, Schwelle Glühen</td></tr>
+    <tr><td>Ballistik</td><td>Typ I DIN/Nordic, Typ IIa EBU/BBC, Digital schnell, VU 300 ms · Rücklauf, Spitze halten, Glühen Anstieg/Abfall</td></tr>
+    <tr><td>Aussehen</td><td>Farben TouchOSC / Spurfarben · Theme seren.a / Nuendo dark</td></tr>
+    <tr><td>Spuren zeigen</td><td>Audio, FX, Gruppe/Ordner, MIDI/Instr · Kennzeichnung ─ FX · │ Gruppe · ♪ MIDI</td></tr>
+    <tr><td><b>nur Spuren mit Plugin</b> <span class="st ok">neu</span></td><td>an (Standard): pro Modus nur Spuren mit dem passenden Plugin, die Liste rückt auf. Aus: alle Spuren der Bank, wie bis v4.4.</td></tr>
+    <tr><td><b>Auslastung (Reaper)</b> <span class="st ok">neu</span></td><td>aus (Standard). An: <code>CPU 23 %  ·  REAPER 12 %</code> klein neben der Versionsnummer. Ab 85 % oder nach einem Aussetzer in Warnfarbe mit „Aussetzer!“.</td></tr>
+    <tr><td>Symbole</td><td>aus, Punkt, Liste, beide · Symbolgröße, Deckkraft</td></tr>
+    <tr><td>64er-Ansicht (Monitor)</td><td>Feldgröße, Feld-Deckkraft, Horizont-Deckkraft</td></tr>
+  </table></div>
+  <h3>Auslastung: was gemessen wird</h3>
+  <ul class="fix">
+    <li><b>Reaper, macOS:</b> alle 3 s die Summe aller Prozesse („CPU“) und der Anteil von REAPER, geteilt durch die Zahl der Kerne. Reaper hat für seine eigene Leistungsanzeige keine Skript-Schnittstelle, deshalb über das System.</li>
+    <li><b>Aussetzer:</b> Reaper meldet die Zeit des letzten Audio-Aussetzers. Ändert sie sich, steht 10 s lang „Aussetzer!“ da.</li>
+    <li><b>Reaper, Windows:</b> nur Aussetzer, keine Prozentzahlen.</li>
+    <li><b>Nuendo:</b> MIDI Remote gibt Skripten keine CPU- oder ASIO-Last. Angezeigt wird <code>CPU –  (Nuendo meldet keine Auslastung)</code>.</li>
+  </ul>
+  <div class="tip"><b>Warum neben der Versionsnummer?</b> Die Ecke unten rechts ist auf dem iPad von der Liste belegt und auf dem Monitor von den 64er-Feldern. Oben links neben der Version ist auf beiden Oberflächen immer Platz, und dort stört es nicht beim Ziehen.</div>
+</section>
+
+<!-- Twister & E16 -->
+<section class="guide" id="twister" style="--c:var(--green)">
+  <div class="ghead"><div class="knob" style="--a:30deg" aria-hidden="true"></div><h2>Midi Fighter Twister und OXI E16</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>eigene Skripte · laufen neben dem 3D-Skript · Twister und E16 haben dieselben Inhalte, nur anders verteilt</span></div>
+  <div class="tblwrap" style="margin-top:14px"><table>
+    <tr><th>Gerät</th><th>Skript</th><th>Einrichtung</th><th>Inhalt</th></tr>
+    <tr><td>Twister (Nuendo)</td><td><code>serena/MFTView</code></td><td>MIDI Remote: Eingänge = Twister <b>und</b> TouchOSC Bridge (View), Ausgänge = TouchOSC Bridge <b>und</b> Twister</td><td><span class="nb">Bank 1</span> Kanalzug/EQ, <span class="nb">Bank 2</span> Insert 1+2, <span class="nb">Bank 3</span> frei, <span class="nb">Bank 4</span> Sends + QC ↔ Plugins</td></tr>
+    <tr><td>Twister (Reaper)</td><td><code>Reaper_Twister.lua</code></td><td>Twister In/Out an, zweites ReaScript</td><td>gleiche Banken</td></tr>
+    <tr><td>Twister <span class="nb">Bank 4</span> (Reaper)</td><td><code>Reaper_MultiEQ.lua</code></td><td><span class="nb">Bank 4</span> relativ + CC Hold</td><td>Plugins: <a href="#multieq">Plugins am Twister &amp; E16</a></td></tr>
+    <tr><td>Twister View</td><td><code>Twister_View.tosc</code> (hoch/quer)</td><td>TouchOSC: Bridge 1, MIDI 1</td><td>zeigt Namen und Werte der aktuellen Bank, 5 Looks, Bank tippen = Twister wechselt</td></tr>
+    <tr><td>E16, Szene seren-a_E16</td><td><code>serena/E16DAWLink</code> + <code>seren_E16.lua</code></td><td>Nuendo: MIDI Remote, Ein- und Ausgang = E16 · Reaper: <code>reaper_to_e16.lua</code> (Seite 1) + <code>Reaper_MultiEQ.lua</code> (Seiten 2–4)</td><td><span class="nb">Seite 1</span> DAW Link (Sends + QC, EQ, Inserts), <span class="nb">2</span> MultiEQ, <span class="nb">3</span> Kompressor, <span class="nb">4</span> Reverb</td></tr>
+  </table></div>
+
+  <h3>Twister in Nuendo einrichten</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="tw1"><div><div class="t">Twister-Einstellung</div><p>Midi Fighter Utility: deine Einstellung mit <span class="nb">Bank 4</span> relativ laden (<code>3_Reaper/Twister_Bank4_MultiEQ.mfs</code>: Encoder <b>ENC 3FH/41H</b>, Switch <b>CC Hold</b>, <span class="nb">Kanal 1</span>/2, CC 49–64). Gilt für Nuendo und Reaper.</p></div></li>
+    <li><input type="checkbox" id="tw2"><div><div class="t">Skript an seinen Platz</div><p><code>serena/MFTView/serena_MFTView.js</code> in <b>Dokumente › Steinberg › Nuendo › MIDI Remote › Driver Scripts › Local</b> (liegt dort, Kopie in <code>2_Nuendo-Cubase</code>), MIDI Remote Manager › <b>Skripte neu laden</b>.</p></div></li>
+    <li><input type="checkbox" id="tw3"><div><div class="t">Gerät anlegen (nach jedem Port-Wechsel neu)</div><p>Seit v6.1 hat das Gerät <b>vier</b> Ports. Ein vorher angelegtes MFTView mit weniger Ports aktiviert Nuendo womöglich nicht mehr – dann zeigt die Twister View nichts und das Mapping fehlt. Abhilfe: im MIDI Remote Manager das alte <b>serena › MFTView</b> entfernen, dann unten links <b>+</b> › Hersteller <b>serena</b>, Modell <b>MFTView</b>: Eingang „Twister“ = <b>Midi Fighter Twister</b>, Eingang „View“ = <b>TouchOSC Bridge</b>, Ausgang „TouchOSC“ = <b>TouchOSC Bridge</b>, Ausgang „Twister“ = <b>Midi Fighter Twister</b>.</p></div></li>
+    <li><input type="checkbox" id="tw4"><div><div class="t">Kontrolle</div><p>Skript-Konsole: <code>[seren.a Twister] Twister-Skript v6.1 geladen</code> und <code>aktiv - Twister rein, TouchOSC Bridge raus</code>. In der Twister View erscheinen Spurname, Bankname und die Namen der Regler; in der unteren Zone von Nuendo zeigt MIDI Remote die 64 Regler des Twister.</p></div></li>
+  </ol>
+  <h3>Was auf den Banken liegt (Nuendo)</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">Bank 1 · Kanalzug</span><b>ausgewählte Spur</b><span>1–4 EQ Q, 5–8 EQ Gain, 9–12 EQ Freq, 13 Low Cut, 14 High Cut, 15 Pan, 16 Volume. Drücken: 1–4 Band an/aus, 5 Drum-Editor, 6 Pattern-Editor, 7 Instrument, 8 Kanaleinstellungen, 9 Read, 10 Write, 11 Monitor, 12 Record, 13/14 Low/High Cut an, 15 Mute, 16 Solo.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">Bank 2 · Insert 1+2</span><b>Insert 1 + 2</b><span>1–8 = <span class="nb ins">Insert 1</span>, 9–16 = <span class="nb ins">Insert 2</span>, je die ersten 8 Parameter in der Reihenfolge des Remote Control Editors (keine Quick Controls). Leere Felder = kein Plugin bzw. kein Parameter.</span></div>
+    <div class="lvl" style="--c:var(--muted)"><span class="n">Bank 3</span><b>frei</b><span>für den Mapping Assistant von Nuendo.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">Bank 4 · Sends/QC</span><b>Sends + Quick Controls</b><span>1–8 = Sends 1–8 (−40…0 dB, 0,5 dB pro Raste), drücken = an/aus, halten + drehen = pre/post; kein 8. Send: 8 = Volume, drücken = Solo. 9–16 = Quick Controls 1–8. <b>16 halten</b> = Plugins (<a href="#multieq">Plugins am Twister &amp; E16</a>).</span></div>
+  </div>
+
+  <h3 id="e16">OXI E16 einrichten</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="e1"><div><div class="t">Szene aufs E16</div><p>OXI App › Scenes › <i>Assign PC/Mac folder</i>: <code>seren-a_E16.oxie16</code> (Ordner <code>OXI E16/seren-a_E16</code>) in dessen Unterordner <b>Scenes</b> legen, <b>Refresh Views</b>, die Szene auf einen freien Platz unter <i>On Device</i> ziehen. Seit v6.1 ist das <b>eine</b> Szene mit 4 Seiten; die alten Szenen DAW-Link und MultiEQ können vom Gerät. Firmware mit Lua-API 1.3 nötig; Fehler zeigt der Scripts-Tab.</p></div></li>
+    <li><input type="checkbox" id="e2"><div><div class="t">Nuendo</div><p><code>serena/E16DAWLink</code> liegt in <b>MIDI Remote › Driver Scripts › Local</b>; Gerät <b>serena › E16DAWLink</b>: Eingang und Ausgang = <b>E16</b>. Konsole: <code>[seren.a E16] Skript v6.1 geladen</code>. Dieses eine Gerät bedient alle vier Seiten.</p></div></li>
+    <li><input type="checkbox" id="e3"><div><div class="t">Reaper</div><p>Einstellungen › MIDI Devices: E16-Ausgang an, E16-Eingang an. <span class="nb">Seite 1</span> (DAW Link): <code>reaper_to_e16.lua</code> als ReaScript starten (zeigt TCP-Parameter der Spur, sonst das IEM-Plugin, sonst Spurwerte). <span class="nb">Seiten 2–4</span>: <code>Reaper_MultiEQ.lua</code>.</p></div></li>
+  </ol>
+  <h3>Seite 1 · DAW Link in Nuendo: drei Unterseiten</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--green)"><span class="n">Unterseite 1 · = Twister Bank 4</span><b>Sends + QC</b><span>1–8 = Sends 1–8 (−40…0 dB), drücken = an/aus, halten + drehen = pre/post; kein 8. Send: 8 = Volume, drücken = Solo. 9–16 = Quick Controls 1–8.</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">Unterseite 2 · = Twister Bank 1</span><b>EQ / Kanalzug</b><span>1–4 Q, 5–8 Gain, 9–12 Freq, 13 Low Cut, 14 High Cut, 15 Pan, 16 Volume. Drücken wie Twister <span class="nb">Bank 1</span>.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">Unterseite 3 · = Twister Bank 2</span><b>Inserts</b><span>1–8 = <span class="nb ins">Insert 1</span>, 9–16 = <span class="nb ins">Insert 2</span>. Drücken: 1/9 Bypass, 8/15 nächste Parameterbank.</span></div>
+    <div class="lvl" style="--c:var(--muted)"><span class="n">jede Unterseite</span><b>Unterseiten und Spuren</b><span>16 <b>halten</b> (0,6 s) = nächste Unterseite, 13/14 halten = Spur zurück/vor; auf Sends und Inserts reicht kurz drücken. Seitenwechsel schreibt nichts in Nuendo.</span></div>
+  </div>
+  <div class="tip"><b>E16-Gruppen lösen:</b> führenden Knopf halten und den Mitläufer antippen, bis er herausfällt (dritter Tipp). <b>Nebeneinander:</b> 3D-Skript (<span class="nb">Kanäle 7–16</span>, SysEx 7D 4F/54), Twister View (<span class="nb">Kanäle 1 und 4</span>, SysEx 7D 4D) und die E16-Szene (DAW Link 14/16, Plugin-Seiten 8/10/11/12/13) überschneiden sich nicht.</div>
+</section>
+
+<!-- Fehlersuche -->
+<section class="guide" id="fehler" style="--c:var(--red)">
+  <div class="ghead"><div class="knob" style="--a:-130deg" aria-hidden="true"></div><h2>Fehlersuche</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>Ordner <code>0_Fehlersuche</code>: Bridge-Test.tosc, Reaper_Diagnose.lua</span></div>
+  <p class="lead">Erst LOG (iPad, Monitor, Übersicht) bzw. MONITOR (Pan) ansehen. Oben stehen die Zeilen vom DAW-Skript, z. B. <code>Spur 1 Vox Lead · Insert 5: StereoEncoder (Azimuth P7, …)</code>.</p>
+  <div class="tblwrap" style="margin-top:12px"><table>
+    <tr><th>Was du siehst</th><th>Bedeutung</th></tr>
+    <tr><td>„keine DAW“, LOG bleibt leer</td><td>Skript läuft nicht, oder Bridge / MIDI 1 nicht eingerichtet.</td></tr>
+    <tr><td>Spur fehlt in einer Liste</td><td>Seit v5.0 gewollt, wenn das Plugin des Modus fehlt (Reaper: auch wenn es umgangen ist). Zum Prüfen „nur Spuren mit Plugin“ ausschalten.</td></tr>
+    <tr><td>„<span class="nb ins">Insert 5</span> …“ fehlt bei einer Spur (Nuendo)</td><td>Kein Encoder/Rotator in <span class="nb ins">Insert 5–9</span>, oder andere Parameternamen. Seit v5.5 nicht mehr <span class="nb ins">Insert 4/5</span>.</td></tr>
+    <tr><td>Werte kommen an (←), Ziehen bewegt nichts</td><td>Nuendo: Bridge als Eingang fehlt · Reaper: Bridge-Eingang aus (das LOG sagt es).</td></tr>
+    <tr><td>„dearVR PRO: Position nicht erkannt“</td><td>Positions-Parameter nicht unter den ersten 16 (Nuendo) bzw. andere Namen. Die Zeile nennt die gefundenen Namen; bitte schicken.</td></tr>
+    <tr><td>„◆ Achtung: … senden gleichzeitig“</td><td>Zwei DAW-Skripte laufen. Nur eins laufen lassen.</td></tr>
+  </table></div>
+  <h3>Der Reihe nach</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="f1"><div><div class="t">Bridge-Test</div><p><code>Bridge-Test.tosc</code> auf Handy und iPad öffnen, <b>TEST SENDEN</b>. Jede ankommende Nachricht steht mit Verbindungsnummer da.</p></div></li>
+    <li><input type="checkbox" id="f2"><div><div class="t">Reaper-Diagnose</div><p><code>Reaper_3D.lua</code> beenden, <code>Reaper_Diagnose.lua</code> laden und ausführen. Sie listet alle Plugins mit „Zustand: an / UMGANGEN“ und alle dearVR-Parameter. Konsolentext kopieren und schicken, danach <code>Reaper_3D.lua</code> wieder starten.</p></div></li>
+    <li><input type="checkbox" id="f3"><div><div class="t">Nuendo-Konsole</div><p>MIDI Remote Manager › Skripte › Skript-Konsole. Erwartet: <code>Skript v5.0 geladen</code>, <code>aktiv - sende an TouchOSC Bridge</code>, Zeilen pro Spur. Rote Zeilen abfotografieren.</p></div></li>
+  </ol>
+  <div class="tip warn"><b>Noch nicht in echten DAWs gelaufen:</b> Alles ist gegen die Nuendo-API, das Reaper-SDK, die IEM-Quellen und das dearVR-Handbuch geprüft, mit Tests unter Lua 5.1 und 5.4. Offen sind u. a. ob Nuendo Bypass und Anzeigetexte der Insert-Slots zuverlässig liefert und ob die Bridge zwei Geräte gleichzeitig bedient.</div>
+</section>
+
+<!-- MultiPanner -->
+<section class="guide" id="multipanner" style="--c:var(--orange)">
+  <div class="ghead"><div class="knob" style="--a:110deg" aria-hidden="true"></div><h2>Fehlercheck VST MultiPanner</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>nur Nuendo/Cubase · der erste Punkt, der nicht klappt, ist die Ursache</span></div>
+  <h3>A · Verbindung</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="m1"><div><div class="t">Gerät da</div><p>MIDI Remote: „serena · TouchOSC3D“, Eingang und Ausgang = TouchOSC Bridge.</p></div></li>
+    <li><input type="checkbox" id="m2"><div><div class="t">Skript läuft</div><p>Konsole zeigt <code>Skript v5.0 geladen</code> und <code>aktiv - sende an TouchOSC Bridge</code>; LOG zeigt <code>◆ verbunden: NUENDO</code>.</p></div></li>
+    <li><input type="checkbox" id="m3"><div><div class="t">IEM-Spuren erscheinen in space</div><p>Wenn nicht: erst <a href="#fehler">Fehlersuche</a>, der MultiPanner kommt danach.</p></div></li>
+  </ol>
+  <h3>B · MultiPanner auf der Spur</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="m4"><div><div class="t">Mehrkanal-Bus</div><p>Die Spur geht auf 7.1.4 oder Ambisonics; nur dann bietet Nuendo den VST MultiPanner an.</p></div></li>
+    <li><input type="checkbox" id="m5"><div><div class="t">Richtiger Panner</div><p>Im Kanal ist der <b>VST MultiPanner</b> gewählt, keine VCA-Spur.</p></div></li>
+  </ol>
+  <h3>C · Quick Controls</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="m6"><div><div class="t">Drei Parameter auf QC <span class="nb">1–8</span></div><p>Reihenfolge egal: <code>Left-Right Pan</code> (X), <code>Front-Rear Pan</code> (Y), <code>Z-Axis Pan</code> (Z).</p></div></li>
+    <li><input type="checkbox" id="m7"><div><div class="t">Probe</div><p>QC-Regler im Inspector bewegen → Punkt im MultiPanner bewegt sich.</p></div></li>
+    <li><input type="checkbox" id="m8"><div><div class="t">Englische Namen</div><p>Bei anderen Namen erkennt das Skript sie nicht: Namen notieren und schicken.</p></div></li>
+  </ol>
+  <h3>D · Erkennt das Skript sie?</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="m9"><div><div class="t">Gewählte Spur</div><p>LOG: <code>Gewaehlt: &lt;Spur&gt; - MultiPanner X=QC… Y=QC… Z=QC…</code>. Steht dort „kein MultiPanner auf den Quick Controls“: zurück zu C.</p></div></li>
+    <li><input type="checkbox" id="m10"><div><div class="t">Übersicht</div><p>Pro Spur eine Zeile <code>Spur n &lt;Name&gt; - MultiPanner X=QC…</code>. Fehlt sie: Spur nicht unter den ersten 32 der MixConsole, Bank mit ◂ ▸ weiter.</p></div></li>
+  </ol>
+  <h3>E · Oberfläche</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="m11"><div><div class="t">Pan (Handy)</div><p>Seite MULTIPANNER, QC in Nuendo bewegen → X/Y/Z ändern sich.</p></div></li>
+    <li><input type="checkbox" id="m12"><div><div class="t">Übersicht / iPad / Monitor</div><p>Modus panner. Oben im Feld = vorn (Y +100, seit v4.3).</p></div></li>
+  </ol>
+  <div class="tip"><b>Wenn es hängt, schick mir:</b> Buchstabe und Zeile, Screenshot der Quick-Control-Liste, Text der Skript-Konsole nach dem Anwählen, Text von LOG/MONITOR, Nuendo-Version und Sprache.</div>
+</section>
+
+<!-- Ordner & Versionen -->
+<section class="guide" id="versionen" style="--c:var(--hi)">
+  <div class="ghead"><div class="knob" style="--a:-160deg" aria-hidden="true"></div><h2>Ordner und Versionen</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>Mac: <code>Downloads › Projekte › Touch OSC › v5</code></span></div>
+  <div class="tblwrap" style="margin-top:14px"><table>
+    <tr><th>Ordner</th><th>Inhalt</th></tr>
+    <tr><td><code>0_Fehlersuche</code></td><td>Bridge-Test.tosc, Reaper_Diagnose.lua</td></tr>
+    <tr><td><code>1_Oberflaechen</code></td><td>Handy_Pan, Handy_Objekt-Uebersicht, iPad_IEM-Space, Monitor_5zu4, Handy_Twister-View</td></tr>
+    <tr><td><code>2_Nuendo-Cubase</code></td><td>Kopie der MIDI-Remote-Skripte (TouchOSC3D, MFTView, E16DAWLink)</td></tr>
+    <tr><td><code>3_Reaper</code></td><td>Reaper_3D.lua, Reaper_Twister.lua, Reaper_MultiEQ.lua, Twister_Bank4_MultiEQ.mfs</td></tr>
+    <tr><td><code>4_Vorschau</code></td><td>Bilder aller Seiten</td></tr>
+    <tr><td><code>5_Werkzeug</code></td><td>Quellen, Build-Skripte, Tests, PROTOKOLL.md</td></tr>
+    <tr><td><code>z_alt</code></td><td>Sicherungen <code>JJMMTT-vX.Y.Z(wichtigste Neuerung)</code>, z. B. <code>261027-v4.4(room dearVR)</code></td></tr>
+  </table></div>
+  <h3>Versionsregel</h3>
+  <ul class="fix">
+    <li>Seit v5.0 gilt <b>vX.Y.Z</b> für alles in diesem Projekt.</li>
+    <li><b>X</b> zählt hoch bei einer großen Ergänzung, oder wenn Oberflächen und DAW-Skripte nur noch gemeinsam passen bzw. die Einrichtung neu gemacht werden muss.</li>
+    <li><b>Y</b> zählt hoch bei neuen Funktionen.</li>
+    <li><b>Z</b> zählt hoch bei Korrekturen. Steht nur da, wenn größer 0: v5.0, v5.0.1, v5.1 …</li>
+  </ul>
+  <h3>Verlauf</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Version</th><th>Datum</th><th>Wichtigste Neuerung</th></tr>
+    <tr><td><b>v6.1</b></td><td>04.11.26</td><td>Twister View: 5 Looks, große Schrift, Bank tippen; E16 in einer Szene mit Reverb-Seite und Presets; IEM-Farben; Threshold-Ring von oben; Nuendo-Sprünge am E16 behoben</td></tr>
+    <tr><td>v6.0.1</td><td>03.11.26</td><td>Fix: Twister-Skript (MFTView) lädt in Nuendo wieder vollständig, E16-Szene MultiEQ läuft in Nuendo</td></tr>
+    <tr><td>v6.0</td><td>02.11.26</td><td>Plugins (MultiEQ, Kompressoren, Hall) am Twister und E16 auch in Nuendo; Hall-Ebene</td></tr>
+    <tr><td>v5.5</td><td>30.10.26</td><td>Nuendo: Insert-Plan <span class="nb">5–9</span></td></tr>
+    <tr><td>v5.1–5.4</td><td>30.10.26</td><td>MultiEQ, Kompressoren, Spur/Master/Mute am Twister und E16 (Reaper)</td></tr>
+    <tr><td>v5.0</td><td>28.10.26</td><td>Listen nur mit Plugin, room-Zoom, dearVR in Nuendo, Auslastung</td></tr>
+    <tr><td>v4.4</td><td>27.10.26</td><td>room: dearVR-Raum; nur aktive Plugins zählen (Reaper)</td></tr>
+    <tr><td>v4.3</td><td>17.10.26</td><td>MultiPanner Y gedreht (oben = vorn), Pan hochkant neu</td></tr>
+    <tr><td>v4.2</td><td>16.10.26</td><td>Pan hochkant</td></tr>
+    <tr><td>v4.1</td><td>14.10.26</td><td>Twister <span class="nb">Bank 4</span> und OXI E16: Sends + Quick Controls</td></tr>
+    <tr><td>v4.0</td><td>14.10.26</td><td>Monitor 5:4</td></tr>
+    <tr><td>v3.x</td><td>14.10.26</td><td>Parameter am Namen erkannt, 64 Objekte, DAW-Wechsel leert die Oberflächen</td></tr>
+  </table></div>
+</section>
+
+<footer>Aufs iPad oder iPhone: Seite in Safari öffnen › Teilen › „Zum Home-Bildschirm“. Läuft dann wie eine App, braucht aber Internet. Kopie als <code>HANDBUCH.html</code> im Ordner v5.</footer>
+</div>

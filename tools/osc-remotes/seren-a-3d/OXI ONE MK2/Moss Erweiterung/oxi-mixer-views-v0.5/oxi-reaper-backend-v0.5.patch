@@ -1,0 +1,273 @@
+From c68d041fcf9129e019ec47172b30eeca4bf9c2f4 Mon Sep 17 00:00:00 2001
+From: Isabella Forster <studentinmaus@gmail.com>
+Date: Fri, 16 Oct 2026 21:56:08 +0200
+Subject: [PATCH] Send the FX of all tracks (opt-in via 'trackfx' updates) and
+ add per-track FX commands
+
+Used by the OXI One plugin mixer view.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RWJoAxq21KntMt8dAnUtaN
+---
+ reaper_drivenbymoss/DataCollector.cpp  | 12 ++++
+ reaper_drivenbymoss/DataCollector.h    |  1 +
+ reaper_drivenbymoss/Track.cpp          | 50 ++++++++++++++++
+ reaper_drivenbymoss/Track.h            | 17 ++++++
+ reaper_drivenbymoss/TrackProcessor.cpp | 82 ++++++++++++++++++++++++++
+ 5 files changed, 162 insertions(+)
+
+diff --git a/reaper_drivenbymoss/DataCollector.cpp b/reaper_drivenbymoss/DataCollector.cpp
+index e638667..ea3a7cb 100644
+--- a/reaper_drivenbymoss/DataCollector.cpp
++++ b/reaper_drivenbymoss/DataCollector.cpp
+@@ -28,6 +28,10 @@ DataCollector::DataCollector(Model& aModel) :
+ 
+ 	for (int i = 0; i < 8; i++)
+ 		this->eqBandTypes.push_back("-1");
++
++	// The FX of all tracks are opt-in. Create the entry here, so that it is never inserted later
++	// from the Java thread while the map is read
++	this->disableUpdateMap["trackfx"] = true;
+ }
+ 
+ 
+@@ -405,6 +409,12 @@ void DataCollector::CollectTrackData(std::ostringstream& ss, ReaProject* project
+ 
+ 	const bool isActive = IsActive("playingnotes");
+ 
++	// The FX of all tracks are only collected if explicitly enabled (opt-in), e.g. by a plugin
++	// mixer view. Send all data when it gets enabled.
++	const bool isTrackFxActive = !this->disableUpdateMap["trackfx"];
++	const bool dumpTrackFx = dump || !this->trackFxWasActive;
++	this->trackFxWasActive = isTrackFxActive;
++
+ 	for (int index = 0; index < count; index++)
+ 	{
+ 		MediaTrack* mediaTrack = GetTrack(project, index);
+@@ -417,6 +427,8 @@ void DataCollector::CollectTrackData(std::ostringstream& ss, ReaProject* project
+ 			continue;
+ 		const std::unique_ptr<Track>& track = this->model.GetTrack(trackIndex);
+ 		track->CollectData(ss, project, mediaTrack, trackIndex, this->slowCounter == 0, dump);
++		if (isTrackFxActive)
++			track->CollectFxData(ss, mediaTrack, trackIndex, this->slowCounter == 0, dumpTrackFx);
+ 
+ 		// Only collect note information, if enabled, track is active and playback is on
+ 		if (isActive && this->play > 0 && track->isSelected > 0)
+diff --git a/reaper_drivenbymoss/DataCollector.h b/reaper_drivenbymoss/DataCollector.h
+index 8763a65..54f3fcb 100644
+--- a/reaper_drivenbymoss/DataCollector.h
++++ b/reaper_drivenbymoss/DataCollector.h
+@@ -41,6 +41,7 @@ private:
+ 	static const int SLOW_UPDATE{ 16 };
+ 
+ 	std::map<std::string, bool> disableUpdateMap;
++	bool trackFxWasActive{ false };
+ 	std::map<std::string, long long> delayUpdateMap;
+ 	std::mutex delayMutex;
+ 
+diff --git a/reaper_drivenbymoss/Track.cpp b/reaper_drivenbymoss/Track.cpp
+index 43d6c74..743ada8 100644
+--- a/reaper_drivenbymoss/Track.cpp
++++ b/reaper_drivenbymoss/Track.cpp
+@@ -114,6 +114,56 @@ void Track::CollectData(std::ostringstream& ss, ReaProject* project, MediaTrack*
+ }
+ 
+ 
++/**
++ * Collect the (changed) data of all FX of the track: name, bypass, offline and window state.
++ *
++ * @param ss The stream where to append the formatted data
++ * @param track The track
++ * @param trackIndex The index of the track
++ * @param slowUpdate If true, also update the names
++ * @param dump If true all data is collected not only the changed one since the last call
++ */
++void Track::CollectFxData(std::ostringstream& ss, MediaTrack* track, int trackIndex, const bool& slowUpdate, const bool& dump)
++{
++	std::ostringstream das;
++	das << "/track/" << trackIndex << "/fx/";
++	const std::string fxAddress = das.str();
++
++	const int count = TrackFX_GetCount(track);
++	const bool countChanged = count != this->fxCount;
++	this->fxCount = Collectors::CollectIntValue(ss, fxAddress + "count", this->fxCount, count, dump);
++
++	if (gsl::narrow_cast<int>(this->fxs.size()) < count)
++		this->fxs.resize(count);
++
++	constexpr int LENGTH = 100;
++	std::string strBuffer(LENGTH, 0);
++	char* strBufferPointer = &*strBuffer.begin();
++
++	for (int index = 0; index < count; index++)
++	{
++		TrackFx& fx = this->fxs.at(index);
++
++		std::ostringstream ias;
++		ias << fxAddress << index << "/";
++		const std::string address = ias.str();
++
++		if (slowUpdate || countChanged || dump)
++		{
++			const bool result = TrackFX_GetFXName(track, index, strBufferPointer, LENGTH);
++			fx.name = Collectors::CollectStringValue(ss, address + "name", fx.name, result ? std::string(strBufferPointer) : "", dump);
++		}
++		fx.bypass = Collectors::CollectIntValue(ss, address + "bypass", fx.bypass, TrackFX_GetEnabled(track, index) ? 0 : 1, dump);
++		fx.offline = Collectors::CollectIntValue(ss, address + "offline", fx.offline, TrackFX_GetOffline(track, index) ? 1 : 0, dump);
++		fx.window = Collectors::CollectIntValue(ss, address + "window", fx.window, TrackFX_GetOpen(track, index) ? 1 : 0, dump);
++	}
++
++	// Reset the cached data of removed FX to force sending them again if they re-appear
++	for (int index = count; index < gsl::narrow_cast<int>(this->fxs.size()); index++)
++		this->fxs.at(index) = TrackFx();
++}
++
++
+ /**
+  * Get a send.
+  *
+diff --git a/reaper_drivenbymoss/Track.h b/reaper_drivenbymoss/Track.h
+index 0553de3..ba240f7 100644
+--- a/reaper_drivenbymoss/Track.h
++++ b/reaper_drivenbymoss/Track.h
+@@ -13,6 +13,18 @@
+ #include "Send.h"
+ 
+ 
++/**
++ * The data of one FX of a track (only collected if the "trackfx" updates are enabled).
++ */
++struct TrackFx
++{
++	std::string name;
++	int bypass{ -1 };
++	int offline{ -1 };
++	int window{ -1 };
++};
++
++
+ /**
+  * Encapsulates Reaper C functions for tracks.
+  */
+@@ -61,6 +73,8 @@ public:
+ 
+ 	std::unique_ptr<Send>& GetSend(const int index);
+ 
++	void CollectFxData(std::ostringstream& ss, MediaTrack* track, int trackIndex, const bool& slowUpdate, const bool& dump);
++
+ 	double GetVolume(MediaTrack* track, double position) const noexcept;
+ 	double GetPan(MediaTrack* track, double position) const noexcept;
+ 	int GetMute(MediaTrack* track, double position, int trackState) const noexcept;
+@@ -70,6 +84,9 @@ private:
+ 	std::vector<std::unique_ptr<Send>> sends;
+ 	std::mutex sendlock;
+ 
++	int fxCount{ -1 };
++	std::vector<TrackFx> fxs;
++
+ 
+ 	bool ShouldAddEnvelope(MediaTrack* track) const noexcept;
+ };
+diff --git a/reaper_drivenbymoss/TrackProcessor.cpp b/reaper_drivenbymoss/TrackProcessor.cpp
+index cc704a2..42ce345 100644
+--- a/reaper_drivenbymoss/TrackProcessor.cpp
++++ b/reaper_drivenbymoss/TrackProcessor.cpp
+@@ -42,6 +42,36 @@ void TrackProcessor::Process(std::deque<std::string>& path) noexcept
+ 
+ 	const char* cmd = SafeGet(path, 1);
+ 
++	// FX commands without a value: /track/{index}/fx/{fxIndex}/remove|duplicate
++	if (std::strcmp(cmd, "fx") == 0)
++	{
++		if (path.size() < 4)
++			return;
++		const int fx = atoi(SafeGet(path, 2));
++		if (fx < 0 || fx >= TrackFX_GetCount(track))
++			return;
++		const char* fxCmd = SafeGet(path, 3);
++
++		if (std::strcmp(fxCmd, "remove") == 0)
++		{
++			PreventUIRefresh(1);
++			Undo_BeginBlock2(project);
++			TrackFX_Delete(track, fx);
++			Undo_EndBlock2(project, "Delete device", UNDO_STATE_FX);
++			PreventUIRefresh(-1);
++			return;
++		}
++
++		if (std::strcmp(fxCmd, "duplicate") == 0)
++		{
++			Undo_BeginBlock2(project);
++			TrackFX_CopyToTrack(track, fx, track, fx + 1, false);
++			Undo_EndBlock2(project, "Duplicate device", UNDO_STATE_FX);
++			return;
++		}
++		return;
++	}
++
+ 	if (std::strcmp(cmd, "scrollto") == 0)
+ 	{
+ 		SetOnlyTrackSelected(track);
+@@ -190,6 +220,58 @@ void TrackProcessor::Process(std::deque<std::string>& path, int value)
+ 
+ 	const char* cmd = SafeGet(path, 1);
+ 
++	// FX commands with a value: /track/{index}/fx/{fxIndex}/select|bypass|offline|window {value}
++	if (std::strcmp(cmd, "fx") == 0)
++	{
++		if (path.size() < 4)
++			return;
++		const int fx = atoi(SafeGet(path, 2));
++		if (fx < 0 || fx >= TrackFX_GetCount(track))
++			return;
++		const char* fxCmd = SafeGet(path, 3);
++
++		if (std::strcmp(fxCmd, "select") == 0)
++		{
++			// Select the track and make the FX the cursor device. Unlike Model::SetDeviceSelection
++			// a floating window is not opened but if the FX chain window is visible, it shows the FX
++			// (otherwise the focused FX of the chain would immediately reset the selection)
++			SetOnlyTrackSelected(track);
++			ScrollTrackIntoView(track);
++			this->model.deviceSelected = fx % this->model.DEVICE_BANK_SIZE;
++			this->model.deviceBankOffset = fx / this->model.DEVICE_BANK_SIZE * this->model.DEVICE_BANK_SIZE;
++			if (this->model.deviceExpanded)
++			{
++				const int effectVisibleInChain = TrackFX_GetChainVisible(track);
++				if (effectVisibleInChain != -1 && effectVisibleInChain != fx)
++					TrackFX_SetOpen(track, fx, true);
++			}
++			return;
++		}
++
++		if (std::strcmp(fxCmd, "bypass") == 0)
++		{
++			Undo_BeginBlock2(project);
++			TrackFX_SetEnabled(track, fx, value > 0 ? false : true);
++			Undo_EndBlock2(project, "Toggle device bypass", UNDO_STATE_FX);
++			return;
++		}
++
++		if (std::strcmp(fxCmd, "offline") == 0)
++		{
++			Undo_BeginBlock2(project);
++			TrackFX_SetOffline(track, fx, value > 0);
++			Undo_EndBlock2(project, "Toggle device offline", UNDO_STATE_FX);
++			return;
++		}
++
++		if (std::strcmp(fxCmd, "window") == 0)
++		{
++			TrackFX_SetOpen(track, fx, value > 0);
++			return;
++		}
++		return;
++	}
++
+ 	if (std::strcmp(cmd, "select") == 0)
+ 	{
+ 		SetOnlyTrackSelected(track);
+-- 
+2.43.0
+
