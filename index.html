@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matrix MIDI/OSC Monitor</title>
+<!--
+  OSC-Bridge (Node.js, einmalig: npm i ws, dann: node bridge.js)
+  ---------------------------------------------------------------
+  const dgram = require("dgram");
+  const WebSocket = require("ws");
+  const udp = dgram.createSocket("udp4");
+  const wss = new WebSocket.Server({ port: 8081 });
+  udp.on("message", (buf) => {
+    for (const c of wss.clients) if (c.readyState === 1) c.send(buf);
+  });
+  udp.bind(8000);
+  console.log("OSC UDP :8000 -> WebSocket :8081");
+  ---------------------------------------------------------------
+  Max/MSP/RNBO: OSC-Nachrichten an localhost:8000 senden
+  ([oscformat] -> [udpsend localhost 8000] bzw. RNBO-Runner OSC remote).
+-->
+<style>
+  :root { --bg:#181818; --panel:#1c1917; --border:#2a2622; --text:#d5d0c9; --dim:#8a8078;
+    --accent:#d286b7; --hover:#e5c9f2; --chipon:rgba(190,201,117,.12); --chiponfg:#e3ebc3; }
+  /* UI-Chrome folgt dem gewählten Theme: applyTheme() setzt alle Variablen
+     je Theme neu (abgeleitet aus bg/readout/flash), kein fester hell/dunkel-Satz. */
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+  #app { display:flex; flex-direction:column; height:100vh; gap:7px; padding:9px; box-sizing:border-box; }
+  #app.noUI { gap:0; padding:2px; }
+  #app.noUI #bar, #app.noUI #bar2, #app.noUI #foot { display:none; }
+  #app.noTop #bar, #app.noTop #bar2 { display:none; }
+  #app.noSide #side { display:none; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .title { color:var(--accent); letter-spacing:.35em; font-size:11px; font-weight:700; }
+  .lbl { font-size:9px; letter-spacing:.2em; color:var(--dim); }
+  .sep { width:10px; }
+  button { cursor:pointer; background:none; border:1px solid var(--border); color:var(--dim);
+    font:inherit; font-size:9px; text-transform:uppercase; letter-spacing:.08em;
+    padding:3px 8px; border-radius:3px; }
+  button:hover { border-color:var(--accent); color:var(--hover); }
+  button.on { border-color:var(--accent); background:var(--chipon); color:var(--chiponfg); }
+  button.off { text-decoration:line-through; opacity:.45; }
+  button.exp { border:none; padding:1px 4px; color:var(--dim); }
+  input[type=text] { background:var(--panel); border:1px solid var(--border); color:var(--text);
+    font:inherit; font-size:10px; padding:3px 6px; border-radius:3px; box-sizing:border-box; }
+  #main { flex:1; display:flex; gap:8px; min-height:0; }
+  #side { width:236px; flex:none; overflow:auto; background:var(--panel); border:1px solid var(--border);
+    border-radius:5px; padding:8px; font-size:10px; }
+  .shead { display:flex; justify-content:space-between; align-items:center;
+    letter-spacing:.25em; font-size:9px; color:var(--dim); margin-bottom:6px; }
+  #srcBox { width:100%; margin-bottom:6px; }
+  .sect { margin-top:10px; letter-spacing:.22em; font-size:9px; color:var(--dim); }
+  .srow { display:flex; align-items:center; gap:4px; margin:2px 0; }
+  .srow .tgl { max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cnt { color:var(--dim); margin-left:auto; font-size:9px; opacity:.8; }
+  .chips { display:flex; flex-wrap:wrap; gap:3px; margin:3px 0 6px 8px; }
+  .chip { font-size:8px; padding:1px 4px; letter-spacing:0; }
+  .more { color:var(--dim); font-size:9px; padding-left:14px; opacity:.8; }
+  #wrap { flex:1; position:relative; min-width:0; background:var(--panel);
+    border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  #app.noUI #wrap { border-radius:4px; }
+  #cv { display:block; width:100%; height:100%; }
+  #floats { position:absolute; top:6px; right:8px; display:flex; gap:4px; z-index:5; }
+  #floats button { opacity:.5; font-size:8px; padding:2px 6px; border-radius:8px; }
+  #floats button:hover { opacity:1; }
+  /* Themen-Wahlfelder: jedes trägt sein eigenes Farbschema (bg, Text, Rand,
+     aktiver Ring in der eigenen Flash-Farbe – inline je Button gesetzt) */
+  #themes button { border-radius:9px; font-weight:700; letter-spacing:.04em; padding:3px 8px; }
+  #foot { font-size:9px; color:var(--dim); line-height:1.6; }
+  #status { font-size:9px; color:var(--dim); }
+  input[type=range] { width:70px; accent-color:var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="row" id="bar">
+    <span class="title">MATRIX MIDI / OSC MONITOR</span>
+    <button id="demoBtn" class="on">Demo an</button>
+    <button id="midiBtn">MIDI verbinden</button>
+    <input id="wsUrl" type="text" value="ws://localhost:8081" style="width:170px">
+    <button id="oscBtn">OSC verbinden</button>
+    <button id="clearBtn">Clear</button>
+    <span id="status"></span>
+  </div>
+  <div class="row" id="bar2">
+    <span class="lbl">GRUPPIERUNG</span>
+    <button class="mbtn on" data-mode="raster">Raster</button>
+    <button class="mbtn" data-mode="device">Gerät-Spalten</button>
+    <button class="mbtn" data-mode="mindmap">Mindmap</button>
+    <button class="mbtn" data-mode="treemap">Fraktal</button>
+    <span class="sep"></span>
+    <span class="lbl">FARBE</span>
+    <span id="themes" class="row" style="gap:5px"></span>
+    <span class="sep"></span>
+    <span class="lbl">TEMPO</span><input type="range" id="speed" min="10" max="300" value="100">
+    <span class="lbl">MUTATION</span><input type="range" id="mut" min="0" max="100" value="35">
+  </div>
+  <div id="main">
+    <aside id="side">
+      <div class="shead"><span>FILTER</span><button id="resetBtn">reset</button></div>
+      <input id="srcBox" type="text" placeholder="suche (gerät, adresse…)">
+      <div id="sideList"></div>
+    </aside>
+    <div id="wrap"><canvas id="cv"></canvas>
+      <div id="floats"><button id="sideBtn">Filter</button><button id="topBtn">Oben</button><button id="frameBtn" class="on">Rahmen</button><button id="uiBtn">UI</button></div>
+    </div>
+  </div>
+  <div id="foot">
+    Menüs wegklappen: «Filter» / «Oben» / «UI» oben rechts oder Tasten F · O · U · C (Clear).
+    Rahmen der Fraktal-Blöcke und seltenen Streams: Taste R (an/aus; wenn an, blenden sie mit der Aktivität aus).
+    Farbschema «auto» folgt der Systemeinstellung hell/dunkel; das gesamte Menü färbt sich im Theme mit.
+    Der Hintergrund wird je Theme deckend neu gesetzt – nichts brennt ein, nach dem Ausblenden bleibt die Fläche sauber.
+    MIDI: Web MIDI (Chrome/Edge; Firefox bietet kein Web MIDI – OSC läuft überall).
+    OSC: Node-Bridge UDP :8000 (Skript im Quelltext-Kopf) oder
+    «matrix-monitor-server» (HTTP + WebSocket in einem, automatischer Verbindungsaufbau beim Hosting).
+    Max/MSP/Jitter/RNBO senden OSC an localhost:8000 ([oscformat] → [udpsend localhost 8000], RNBO-Runner: OSC remote).
+    Zu viele Streams: die regelmäßigsten laufen verdrängt im kompakten Streifen unten mit, seltene Streams werden hervorgehoben.
+  </div>
+</div>
+<script>
+"use strict";
+/* ===================== Konstanten ===================== */
+var GLYPHS = "ｦｧｨｩｪｫｬｭｮｯｰｱｳｴｵｶｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789Z:・.";
+var GA = GLYPHS.split("");
+var FONT = '"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace';
+var CW = 9, CH = 14, NCELL = 16, RGW = NCELL * CW + 12, TRAIL = 10, RGH = (3 + TRAIL) * CH + 6;
+var CW2 = 7, CH2 = 9, RGW2 = NCELL * CW2 + 8, TRAIL2 = 4, RGH2 = (2 + TRAIL2) * CH2 + 6, STRIP = RGH2 + 10;
+var MIDI_KINDS = ["NOTE", "CC", "PB", "PRG", "ATP", "CP", "CLOCK", "SYS"];
+var MAXHUB = 176;
+
+/* ===================== Farbthemen (cutiepro-Palette) ===================== */
+function h2r(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function rgbs(c){ return "rgb(" + (c[0]|0) + "," + (c[1]|0) + "," + (c[2]|0) + ")"; }
+function shade(h, f){ var c = h2r(h); return rgbs([c[0]*f, c[1]*f, c[2]*f]); }
+function tint(h, f){ var c = h2r(h), w = h2r("#efe9df"); return rgbs([c[0]+(w[0]-c[0])*f, c[1]+(w[1]-c[1])*f, c[2]+(w[2]-c[2])*f]); }
+function hexA(h, a){ var c = h2r(h); return "rgba(" + (c[0]|0) + "," + (c[1]|0) + "," + (c[2]|0) + "," + a + ")"; }
+function mixc(a, b, f){ return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f]; }
+/* dunkle Hintergründe: helle Glyphen, Kopf fast weiß */
+function rainDark(base, acc){
+  var cols = [base].concat(acc);
+  return cols.map(function(c){ return { d2: shade(c, .8), d1: rgbs(h2r(c)), head: tint(c, .6) }; });
+}
+/* helle Hintergründe: satte, dunkle Glyphen, Kopf am dunkelsten */
+function rainLight(base, acc){
+  var cols = [base].concat(acc);
+  return cols.map(function(c){ return { d2: shade(c, .5), d1: shade(c, .78), head: shade(c, .34) }; });
+}
+var THEMES = {
+  matrix: { bg: "#031007", label: "rgba(190,235,190,.5)", readout: "#b9f2c9", flash: "#eafff0", rain: rainDark("#7de08a", ["#42d9c5","#bec975","#37cb8a"]) },
+  pink:   { bg: "#160a13", label: "rgba(229,209,239,.5)", readout: "#e5c9f2", flash: "#f6e7fa", rain: rainDark("#d286b7", ["#f56e7f","#42d9c5","#f58669","#37cb8a"]) },
+  aqua:   { bg: "#041014", label: "rgba(128,197,222,.5)", readout: "#a9e6f5", flash: "#e2f9ff", rain: rainDark("#42d9c5", ["#37cb8a","#d286b7","#80c5de"]) },
+  mint:   { bg: "#03110c", label: "rgba(158,215,168,.5)", readout: "#c2ecd0", flash: "#eafff2", rain: rainDark("#37cb8a", ["#bec975","#42d9c5","#9ed7a8"]) },
+  sage:   { bg: "#0d0f08", label: "rgba(200,207,160,.5)", readout: "#e3ebc3", flash: "#f6f9e3", rain: rainDark("#bec975", ["#f58669","#9ed7a8","#d7c3ba"]) },
+  peach:  { bg: "#150d06", label: "rgba(243,176,97,.5)",  readout: "#ffd9a8", flash: "#fff0da", rain: rainDark("#f58669", ["#f3b061","#f56e7f","#e8d6a7"]) },
+  rose:   { bg: "#140609", label: "rgba(229,161,163,.5)", readout: "#f7c9d0", flash: "#ffeef1", rain: rainDark("#f56e7f", ["#e5a1a3","#d286b7","#c3a6cb"]) },
+  mix:    { bg: "#0b0a0e", label: "rgba(213,208,201,.42)", readout: "#e7e2dc", flash: "#ffffff", rain: rainDark("#c3a6cb", ["#d286b7","#f56e7f","#bec975","#f58669","#42d9c5","#37cb8a"]) },
+  rosa:     { bg: "#f9dce8", label: "rgba(107,67,88,.62)", readout: "#a04a72", flash: "#c24b82", light: 1, rain: rainLight("#c77fa8", ["#b76fa8","#9a7fc0","#e58fb7"]) },
+  lilac:    { bg: "#ece2f7", label: "rgba(88,74,112,.62)", readout: "#6f4fa3", flash: "#5c349b", light: 1, rain: rainLight("#9a7fc0", ["#b78fd8","#7b62a8","#d286b7"]) },
+  peachh:   { bg: "#f9e8d9", label: "rgba(122,79,61,.62)", readout: "#b35435", flash: "#cf6038", light: 1, rain: rainLight("#d97a52", ["#c96b8a","#e0a26e","#a3502e"]) },
+  pistazie: { bg: "#e7f2e4", label: "rgba(63,94,80,.62)", readout: "#3f7a5e", flash: "#2c6b4e", light: 1, rain: rainLight("#7da88f", ["#5c8f72","#a8c694","#8fae6d"]) }
+};
+var THEME_KEYS = Object.keys(THEMES);
+function currentTheme(){
+  var key = S.themeKey;
+  if (key === "auto") key = mqLight.matches ? "rosa" : "pink";
+  return THEMES[key] || THEMES.pink;
+}
+
+/* ===================== Hilfsfunktionen ===================== */
+function pick(a){ return a[(Math.random()*a.length)|0]; }
+function hashStr(s){ var h = 5381; for (var i = 0; i < s.length; i++) h = ((h<<5)+h+s.charCodeAt(i))|0; return Math.abs(h); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function trunc16(s){ return s.length <= 16 ? s : s.slice(0,10) + "…" + s.slice(-5); }
+function fmtArgs(args){
+  if (!args || !args.length) return "";
+  return args.map(function(a){
+    if (typeof a === "number") return Number.isInteger(a) ? String(a) : a.toFixed(2);
+    return String(a);
+  }).join(" ").slice(0,16);
+}
+
+/* ===================== OSC-Dekoder ===================== */
+function rdStr(dv, off){
+  var bytes = [], end = off;
+  while (end < dv.byteLength && dv.getUint8(end) !== 0) { bytes.push(dv.getUint8(end)); end++; }
+  var len = end - off + 1;
+  return { s: String.fromCharCode.apply(null, bytes), next: off + Math.ceil(len/4)*4 };
+}
+function decodeMsg(dv, off){
+  var a = rdStr(dv, off);
+  var address = a.s, p = a.next;
+  var args = [];
+  if (p < dv.byteLength && dv.getUint8(p) === 44){ // ","
+    var t = rdStr(dv, p);
+    var tags = t.s.slice(1); p = t.next;
+    for (var i = 0; i < tags.length; i++){
+      var tag = tags[i];
+      try {
+        if (tag === "i") { args.push(dv.getInt32(p)); p += 4; }
+        else if (tag === "f") { args.push(dv.getFloat32(p)); p += 4; }
+        else if (tag === "s") { var s = rdStr(dv, p); args.push(s.s); p = s.next; }
+        else if (tag === "T") { args.push(true); }
+        else if (tag === "F") { args.push(false); }
+        else if (tag === "N") { args.push(null); }
+        else if (tag === "b") { var bl = dv.getInt32(p); p += 4 + bl + ((4 - (bl % 4)) % 4); }
+        else if (tag === "h") { p += 8; }
+        else if (tag === "t" || tag === "d") { p += 8; }
+        else break;
+      } catch (e) { break; }
+    }
+  }
+  return { address: address, args: args, next: p };
+}
+function decodePacket(dv){
+  var out = [], off = 0;
+  var head = rdStr(dv, 0);
+  if (head.s === "#bundle"){
+    off = head.next + 8; // timetag überspringen
+    while (off + 4 <= dv.byteLength){
+      var size = dv.getInt32(off); off += 4;
+      if (size <= 0 || off + size > dv.byteLength) break;
+      var sub = new DataView(dv.buffer, dv.byteOffset + off, size);
+      out = out.concat(decodePacket(sub));
+      off += size;
+    }
+    return out;
+  }
+  while (off < dv.byteLength){
+    var m = decodeMsg(dv, off);
+    if (!m.address || m.address.charAt(0) !== "/") break;
+    out.push({ address: m.address, args: m.args });
+    off = m.next;
+  }
+  return out;
+}
+
+/* ===================== Stream ===================== */
+var SID = 0;
+function Stream(sim, key, l1, l2, proto, srcName, ch, kind, segs){
+  this.id = SID++; this.key = key; this.label1 = l1; this.label2 = l2; this.proto = proto;
+  this.src = srcName || ""; this.ch = ch; this.kind = kind || "";
+  this.segs = segs || [];
+  this.bereich = proto === "midi" ? (this.kind || "?") : (this.segs.length ? this.segs[0] : "/");
+  this.ro = ""; this.lmut = null;
+  this.trail = [];
+  for (var i = 0; i < 3; i++) this.trail.push(this.newDrop());
+  this.lastMsg = sim.now; this.activity = 0; this.slot = null; this.isCompact = false;
+  this.hue = hashStr(key); this.lastClock = 0; this.bpm = null; this.pulses = [];
+}
+Stream.prototype.newDrop = function(){
+  return { y: -Math.random()*40, sp: 40 + Math.random()*90,
+    col: (Math.random()*NCELL)|0, gl: pick(GA), m: Math.random() < 0.18, a: .4 + Math.random()*.6 };
+};
+
+/* ===================== Sim ===================== */
+function Sim(cv){
+  this.cv = cv; this.ctx = cv.getContext("2d");
+  this.streams = new Map(); this.midiFilter = new Map(); this.oscSources = new Map();
+  this.demo = true; this.midiOn = true; this.oscOn = true; this.search = "";
+  this.themeKey = "auto"; this.mode = "raster"; this.speed = 1; this.mut = 0.35; this.frames = true;
+  this.W = 300; this.H = 200; this.now = performance.now(); this.clk = 0; this.beat = 0.5; this.stripH = 0;
+  this.decor = { headers: [], hubs: [], conn: [], blocks: [], lines: [] };
+  this.oscLabel = "OSC";
+}
+Sim.prototype.resize = function(w, h){ this.W = w; this.H = h; };
+Sim.prototype.midiFilterFor = function(dev){
+  var f = this.midiFilter.get(dev);
+  if (!f){ f = { on: true, count: 0, ch: Array(16).fill(true), kinds: Array(8).fill(true) }; this.midiFilter.set(dev, f); }
+  return f;
+};
+Sim.prototype.oscSourceFor = function(name){
+  var s = this.oscSources.get(name);
+  if (!s){ s = { on: true, tree: { name: name, on: true, count: 0, children: new Map() } }; this.oscSources.set(name, s); }
+  return s;
+};
+Sim.prototype.oscNodeFor = function(src, segs){
+  var n = src.tree; n.count++;
+  for (var i = 0; i < segs.length; i++){
+    var g = segs[i], c = n.children.get(g);
+    if (!c){ c = { name: g, on: true, count: 0, children: new Map() }; n.children.set(g, c); }
+    c.count++; n = c;
+  }
+  return n;
+};
+Sim.prototype.feed = function(msg){
+  var now = this.now;
+  if (msg.proto === "midi"){
+    var f = this.midiFilterFor(msg.dev); f.count++;
+    var key = msg.dev + "|" + msg.ch + "|" + msg.kind;
+    var s = this.streams.get(key);
+    if (!s){
+      var l2 = msg.ch ? ("CH" + msg.ch + " " + msg.kind) : msg.kind;
+      s = new Stream(this, key, msg.dev, l2, "midi", "", msg.ch, msg.kind, []);
+      this.streams.set(key, s);
+    }
+    s.lastMsg = now; s.activity += 1;
+    if (s.pulses.length < 14) s.pulses.push({ p: 0 });
+    if (msg.kind === "CLOCK"){
+      if (s.lastClock){
+        var iv = now - s.lastClock;
+        if (iv > 5 && iv < 1000){
+          var bpm = 60000 / (iv * 24);
+          s.bpm = s.bpm ? s.bpm * 0.8 + bpm * 0.2 : bpm;
+          s.ro = s.bpm.toFixed(1) + " BPM";
+        }
+      }
+      s.lastClock = now;
+    } else {
+      s.ro = msg.ro || "";
+    }
+  } else {
+    var src = this.oscSourceFor(msg.src || this.oscLabel);
+    var segs = (msg.address || "/").split("/").filter(Boolean);
+    this.oscNodeFor(src, segs);
+    var okey = "osc|" + (msg.src || this.oscLabel) + "|" + msg.address;
+    var os = this.streams.get(okey);
+    if (!os){
+      os = new Stream(this, okey, msg.src || this.oscLabel, trunc16(msg.address), "osc", msg.src || this.oscLabel, 0, "", segs);
+      this.streams.set(okey, os);
+    }
+    os.lastMsg = now; os.activity += 1; os.ro = fmtArgs(msg.args);
+    if (os.pulses.length < 14) os.pulses.push({ p: 0 });
+  }
+};
+Sim.prototype.streamAllowed = function(s){
+  if (s.proto === "midi"){
+    if (!this.midiOn) return false;
+    var f = this.midiFilter.get(s.label1);
+    if (!f || !f.on) return false;
+    if (s.ch > 0 && !f.ch[s.ch - 1]) return false;
+    var ki = MIDI_KINDS.indexOf(s.kind);
+    if (ki >= 0 && !f.kinds[ki]) return false;
+  } else {
+    if (!this.oscOn) return false;
+    var src = this.oscSources.get(s.src);
+    if (!src || !src.on) return false;
+    var node = src.tree;
+    for (var i = 0; i < s.segs.length; i++){
+      var c = node.children.get(s.segs[i]);
+      if (!c || !c.on) return false;
+      node = c;
+    }
+  }
+  if (this.search){
+    var q = this.search.toLowerCase();
+    if (s.key.toLowerCase().indexOf(q) < 0 && s.label2.toLowerCase().indexOf(q) < 0) return false;
+  }
+  return true;
+};
+Sim.prototype.setOscNode = function(name, path){
+  var src = this.oscSources.get(name); if (!src) return;
+  var segs = path ? path.split("/") : [];
+  var node = src.tree, chain = [src.tree];
+  for (var i = 0; i < segs.length; i++){
+    var c = node.children.get(segs[i]); if (!c) return;
+    chain.push(c); node = c;
+  }
+  node.on = !node.on;
+  if (node.on){ for (var j = 0; j < chain.length; j++) chain[j].on = true; }
+};
+Sim.prototype.resetFilters = function(){
+  this.midiOn = true; this.oscOn = true; this.search = "";
+  var self = this;
+  this.midiFilter.forEach(function(f){ f.on = true; f.ch = f.ch.map(function(){ return true; }); f.kinds = f.kinds.map(function(){ return true; }); });
+  this.oscSources.forEach(function(s){ s.on = true; (function walk(n){ n.on = true; n.children.forEach(walk); })(s.tree); });
+};
+
+/* ===================== Demo ===================== */
+Sim.prototype.demoTick = function(dt){
+  var self = this, r = Math.random;
+  function ev(rate, fn){ if (r() < rate * dt) fn(); }
+  function o(src, a, args){ self.feed({ proto: "osc", src: src, address: a, args: args }); }
+  function m(dev, ch, kind, ro){ self.feed({ proto: "midi", dev: dev, ch: ch, kind: kind, ro: ro }); }
+  ev(3,   function(){ m("KBD25", 1, "NOTE", (48 + (r()*24|0)) + " " + (1 + (r()*126|0))); });
+  ev(1.1, function(){ m("KBD25", 1, "CC", "1 " + (r()*127|0)); });
+  ev(2.2, function(){ m("PADS", 10, "NOTE", (36 + (r()*16|0)) + " " + (60 + (r()*60|0))); });
+  ev(1.6, function(){ m("PADS", 10, "CC", "74 " + (r()*127|0)); });
+  ev(0.8, function(){ m("SYNTH", 3, "PB", "" + ((r()*16383|0) - 8192)); });
+  ev(0.35,function(){ m("SYNTH", 3, "PRG", "" + (1 + (r()*127|0))); });
+  ev(0.5, function(){ m("SYNTH", 3, "ATP", "" + (r()*127|0)); });
+  this.clk += dt;
+  var cl = 1 / (126 * 24 / 60);
+  while (this.clk > cl){ this.clk -= cl; m("SYNC", 0, "CLOCK", ""); }
+  ev(3,   function(){ o("REAPER", "/track/1/volume", [Math.round(r()*100)/100]); });
+  ev(2,   function(){ o("REAPER", "/track/2/volume", [Math.round(r()*100)/100]); });
+  ev(1,   function(){ o("REAPER", "/master/volume", [Math.round(r()*100)/100]); });
+  ev(1.6, function(){ o("REAPER", "/track/1/pan", [Math.round((r()*2-1)*100)/100]); });
+  ev(0.5, function(){ o("REAPER", "/fx/1/fxparam/3/value", [Math.round(r()*100)/100]); });
+  ev(0.25,function(){ o("REAPER", "/transport/play", [1]); });
+  ev(5,   function(){ o("TOTALMIX", "/1/fader/ch/01/fb", [Math.round(r()*100)/100]); });
+  ev(3,   function(){ o("TOTALMIX", "/1/fader/ch/02/fb", [Math.round(r()*100)/100]); });
+  ev(1.2, function(){ o("TOTALMIX", "/2/fader/ch/05/fb", [Math.round(r()*100)/100]); });
+  ev(0.4, function(){ o("TOTALMIX", "/1/mute/ch/01/fb", [r() < .5 ? 0 : 1]); });
+  ev(0.3, function(){ o("TOTALMIX", "/1/mute/ch/02/fb", [r() < .5 ? 0 : 1]); });
+  ev(2,   function(){ o("DIGICO", "/Input_Channels/1/fader_level", [Math.round(r()*100)/10]); });
+  ev(1.3, function(){ o("DIGICO", "/Input_Channels/1/Dynamics/comp_attack_1", [1 + (r()*100|0)]); });
+  ev(3,   function(){ o("DIGICO", "/Aux_Outputs/1/Buss_Trim/trim", [Math.round((r()*20-10)*10)/10]); });
+  ev(1.4, function(){ o("DIGICO", "/Input_Channels/2/fader_level", [Math.round(r()*100)/10]); });
+  ev(1.5, function(){ o("DM7", "/yosc:req/set/MIXER:Current/InCh/Fader/Level/12", [Math.round(r()*1000)/10]); });
+  ev(0.7, function(){ o("DM7", "/yosc:req/set/MIXER:Current/InCh/On/12", [r() < .5 ? 0 : 1]); });
+  ev(2,   function(){ o("MAX", "/rnbo/inst/1/params/gain", [Math.round(r()*100)/100]); });
+  ev(1.3, function(){ o("MAX", "/rnbo/inst/1/params/freq", [Math.round(220 * Math.pow(2, (r()*24|0)/12))]); });
+  ev(2.4, function(){ o("MAX", "/rnbo/inst/1/params/delay_time", [Math.round(r()*1000)/1000]); });
+  ev(2.8, function(){ o("MAX", "/rnbo/inst/1/midi/note", [36 + (r()*60|0)]); });
+  ev(1.7, function(){ o("MAX", "/jitter/glsl/1/brightness", [Math.round(r()*100)/100]); });
+};
+
+/* ===================== Schritt ===================== */
+Sim.prototype.step = function(dt){
+  var decay = Math.exp(-dt / 8);
+  var t = this.now / 1000;
+  this.beat = 0.5 + 0.3 * Math.sin(t * Math.PI * 2 * 0.70) + 0.2 * Math.sin(t * Math.PI * 2 * 0.733);
+  var self = this;
+  this.streams.forEach(function(s, k){
+    s.activity *= decay;
+    if (self.now - s.lastMsg > 45000) self.streams.delete(k);
+    if (s.pulses.length){
+      for (var pi = 0; pi < s.pulses.length; pi++) s.pulses[pi].p += dt * 1.7 * self.speed;
+      s.pulses = s.pulses.filter(function(pp){ return pp.p < 1; });
+    }
+    var TRH = (s.slot && s.slot.cp) ? TRAIL2 * CH2 : TRAIL * CH;
+    for (var i = 0; i < s.trail.length; i++){
+      var d = s.trail[i];
+      d.y += d.sp * dt * self.speed * (0.35 + 0.9 * self.beat);
+      if (d.y > TRH){
+        d.y -= TRH + Math.random() * 30;
+        d.col = (Math.random() * NCELL) | 0; d.gl = pick(GA);
+        d.m = Math.random() < 0.18; d.a = .4 + Math.random() * .6;
+      }
+    }
+  });
+  if (Math.random() < this.mut * dt * 2){
+    var arr = []; this.streams.forEach(function(s){ arr.push(s); });
+    if (arr.length){
+      var s2 = arr[(Math.random() * arr.length) | 0];
+      var L = s2.label2.length;
+      if (L) s2.lmut = { i: (Math.random() * L) | 0, gl: pick(GA), until: this.now + 200 + Math.random() * 500 };
+    }
+  }
+};
+
+/* ===================== Layout ===================== */
+Sim.prototype.capacity = function(W, H){
+  if (this.mode === "mindmap") return Math.max(4, Math.floor((W - 200) * (H - STRIP) / 3000));
+  var rows = Math.max(1, Math.floor((H - STRIP) / RGH));
+  var cols = Math.max(1, Math.floor(W / RGW));
+  return cols * rows;
+};
+Sim.prototype.layRaster = function(list, comp, extra, strip){
+  var cols = Math.max(1, Math.floor(this.W / RGW));
+  var rows = Math.max(1, Math.floor((this.H - strip) / RGH));
+  var i = 0;
+  for (var k = 0; k < list.length; k++){
+    var s = list[k];
+    if (comp.has(s)) continue;
+    var c = i % cols, r = (i / cols) | 0;
+    if (r >= rows){ extra.push(s); i++; continue; }
+    s.slot = { x: 2 + c * RGW, y: r * RGH, cp: false }; i++;
+  }
+};
+Sim.prototype.layDevice = function(list, comp, extra, strip){
+  var HEAD = 26, H2 = this.H - strip - HEAD, W = this.W;
+  var groups = new Map();
+  for (var i = 0; i < list.length; i++){
+    var s = list[i];
+    if (comp.has(s)) continue;
+    var g = groups.get(s.label1);
+    if (!g){ g = { dev: s.label1, items: [] }; groups.set(s.label1, g); }
+    g.items.push(s);
+  }
+  var total = 0; groups.forEach(function(g){ total += g.items.length; });
+  total = total || 1;
+  var x = 0;
+  var self = this;
+  groups.forEach(function(g){
+    var w = Math.max(RGW, Math.round(g.items.length / total * W));
+    if (x + w > W + 4){ g.items.forEach(function(s){ extra.push(s); }); return; }
+    self.decor.headers.push({ x: x + 4, y: 4, t: g.dev, big: 1 });
+    var bm = new Map();
+    for (var j = 0; j < g.items.length; j++){
+      var s2 = g.items[j];
+      var a = bm.get(s2.bereich);
+      if (!a){ a = []; bm.set(s2.bereich, a); }
+      a.push(s2);
+    }
+    var bArr = []; bm.forEach(function(v, kk){ bArr.push([kk, v]); });
+    bArr.sort(function(a, b){ return b[1].length - a[1].length; });
+    var maxCols = Math.max(1, Math.floor((w - 8) / RGW));
+    var rows = Math.max(1, Math.floor(H2 / RGH));
+    if (bi === 0) self.decor.lines.push({ x: x - 2 });
+    var bx = x + 4, bi = 0;
+    for (var q = 0; q < bArr.length; q++){
+      var bk = bArr[q][0], arr = bArr[q][1];
+      if (bi >= maxCols){ arr.forEach(function(s){ extra.push(s); }); continue; }
+      self.decor.headers.push({ x: bx, y: 15, t: bk, big: 0 });
+      var r2 = 0;
+      for (var m = 0; m < arr.length; m++){
+        var s3 = arr[m];
+        if (r2 >= rows){ extra.push(s3); continue; }
+        s3.slot = { x: bx, y: HEAD + r2 * RGH, cp: false }; r2++;
+      }
+      bx += RGW; bi++;
+    }
+    x += w;
+  });
+};
+Sim.prototype.layMindmap = function(list, comp, extra, strip){
+  /* Freie Canvas-Fläche: Hubs links, Streams als verstreute Ereignis-Knoten
+     (Sonnenbluten-Streuung + Hash-Jitter, stabil pro Stream), verbunden über
+     geschwungene Kurven; Pulse wandern bei jeder Nachricht vom Hub zum Knoten. */
+  var H = this.H - strip;
+  var groups = new Map();
+  for (var i = 0; i < list.length; i++){
+    var s = list[i];
+    if (comp.has(s)) continue;
+    var g = groups.get(s.label1);
+    if (!g){ g = { dev: s.label1, items: [] }; groups.set(s.label1, g); }
+    g.items.push(s);
+  }
+  var gs = []; groups.forEach(function(g){ gs.push(g); });
+  gs.sort(function(a, b){ return b.items.length - a.items.length; });
+  var usableH = Math.max(60, H - 16);
+  var nodes = [];
+  for (var q = 0; q < gs.length; q++){
+    var g2 = gs[q];
+    var hy = 14 + (q + 0.5) / Math.max(1, gs.length) * (usableH - 10);
+    this.decor.hubs.push({ x: 16, y: hy, t: g2.dev });
+    for (var j = 0; j < g2.items.length; j++)
+      nodes.push({ s: g2.items[j], hx: 30, hy: hy + 5 });
+  }
+  var x0 = 175, y0 = 10, aw = Math.max(60, this.W - x0 - 140), ah = Math.max(60, usableH - y0 - 6);
+  var cx = x0 + aw * 0.5, cy = y0 + ah * 0.5;
+  var n = Math.max(1, nodes.length);
+  var spacing = Math.min(52, Math.sqrt(aw * ah / n) * 0.66);
+  for (var k = 0; k < nodes.length; k++){
+    var nd = nodes[k], s3 = nd.s, hsh = s3.hue;
+    var ang = k * 2.39996323 + (hsh % 17) * 0.017;
+    var rad = spacing * Math.sqrt(k + 0.6) * (0.8 + (hsh % 23) / 60);
+    var px = Math.max(x0, Math.min(x0 + aw, cx + Math.cos(ang) * rad));
+    var py = Math.max(y0, Math.min(y0 + ah, cy + Math.sin(ang) * rad * 0.72));
+    s3.slot = { x: px, y: py, cp: false, mm: 1 };
+    var mx = (nd.hx + px) / 2, my = (nd.hy + py) / 2;
+    var dx = px - nd.hx, dy = py - nd.hy, L2 = Math.sqrt(dx * dx + dy * dy) || 1;
+    var bow = (hsh % 60) - 30;
+    this.decor.conn.push({ x1: nd.hx, y1: nd.hy, x2: px, y2: py,
+      cx: mx - dy / L2 * bow, cy: my + dx / L2 * bow, curve: 1, s: s3 });
+  }
+};
+Sim.prototype.layTreemap = function(list){
+  var W = this.W, H = this.H, self = this;
+  function mfade(items){
+    var m = 0.06;
+    for (var i = 0; i < items.length; i++){ var f = self.fadeOf(items[i]); if (f > m) m = f; }
+    return m;
+  }
+  var groups = new Map();
+  for (var i = 0; i < list.length; i++){
+    var s = list[i];
+    var g = groups.get(s.label1);
+    if (!g){ g = { dev: s.label1, items: [] }; groups.set(s.label1, g); }
+    g.items.push(s);
+  }
+  var gs = []; groups.forEach(function(g){ gs.push(g); });
+  gs.sort(function(a, b){ return b.items.length - a.items.length; });
+  var total = 0; gs.forEach(function(g){ total += g.items.length; });
+  total = total || 1;
+  var x = 0;
+  gs.forEach(function(g){
+    var w = Math.round(g.items.length / total * W);
+    if (x + w > W) w = W - x;
+    x += w;
+    if (w < 60) return;
+    self.decor.blocks.push({ x: x - w + 1, y: 1, w: w - 2, h: H - 2, t: g.dev, big: 1, act: mfade(g.items) });
+    var bm = new Map();
+    for (var j = 0; j < g.items.length; j++){
+      var s2 = g.items[j];
+      var a = bm.get(s2.bereich);
+      if (!a){ a = []; bm.set(s2.bereich, a); }
+      a.push(s2);
+    }
+    var bArr = []; bm.forEach(function(v, kk){ bArr.push([kk, v]); });
+    bArr.sort(function(a, b){ return b[1].length - a[1].length; });
+    var bt = 0; bArr.forEach(function(e){ bt += e[1].length; });
+    bt = bt || 1;
+    var y = 0;
+    for (var q = 0; q < bArr.length; q++){
+      var bk = bArr[q][0], arr = bArr[q][1];
+      var h = Math.round(arr.length / bt * H);
+      if (y + h > H) h = H - y;
+      y += h;
+      if (h < 40) continue;
+      var bx = x - w, by = y - h;
+      self.decor.blocks.push({ x: bx + 2, y: by + 12, w: w - 4, h: h - 14, t: bk, big: 0, act: mfade(arr) });
+      var cols = Math.max(1, Math.floor((w - 8) / RGW));
+      var rows = Math.max(1, Math.floor((h - 18) / RGH));
+      var colc = Math.max(1, Math.floor((w - 8) / RGW2));
+      var rowc = Math.max(1, Math.floor((h - 18) / RGH2));
+      for (var m = 0; m < arr.length; m++){
+        var s3 = arr[m];
+        if (m < cols * rows){
+          s3.slot = { x: bx + 4 + (m % cols) * RGW, y: by + 16 + ((m / cols) | 0) * RGH, cp: false };
+        } else if (m < colc * rowc){
+          s3.slot = { x: bx + 4 + (m % colc) * RGW2, y: by + 16 + ((m / colc) | 0) * RGH2, cp: true };
+          s3.isCompact = true;
+        }
+      }
+    }
+  });
+};
+Sim.prototype.layStrip = function(comp, H){
+  var y0 = H - STRIP + 4;
+  var cols = Math.max(1, Math.floor(this.W / RGW2));
+  var arr = []; comp.forEach(function(s){ arr.push(s); });
+  arr.sort(function(a, b){ return b.activity - a.activity; });
+  for (var i = 0; i < arr.length; i++){
+    if (i >= cols) break;
+    arr[i].slot = { x: 2 + i * RGW2, y: y0, cp: true };
+    arr[i].isCompact = true;
+  }
+};
+Sim.prototype.clearStreams = function(){ this.streams.clear(); };
+Sim.prototype.layoutFrame = function(){
+  this.decor = { headers: [], hubs: [], conn: [], blocks: [], lines: [] };
+  var list = [];
+  var self = this;
+  this.streams.forEach(function(s){
+    s.slot = null; s.isCompact = false;
+    if (self.streamAllowed(s)) list.push(s);
+  });
+  var comp = new Set(), extra = [], strip = 0;
+  if (this.mode !== "treemap"){
+    var cap = this.capacity(this.W, this.H);
+    if (list.length > cap){
+      var sorted = list.slice().sort(function(a, b){ return b.activity - a.activity; });
+      for (var i = 0; i < list.length - cap; i++) comp.add(sorted[i]);
+    }
+    strip = comp.size ? STRIP : 0;
+    this.stripH = strip;
+  }
+  if (this.mode === "raster") this.layRaster(list, comp, extra, strip);
+  else if (this.mode === "device") this.layDevice(list, comp, extra, strip);
+  else if (this.mode === "mindmap") this.layMindmap(list, comp, extra, strip);
+  else this.layTreemap(list);
+  for (var j = 0; j < extra.length; j++) comp.add(extra[j]);
+  if (strip) this.layStrip(comp, this.H);
+};
+
+/* ===================== Zeichnen ===================== */
+Sim.prototype.text = function(str, x, y, color, cw){
+  var ctx = this.ctx; ctx.fillStyle = color;
+  for (var i = 0; i < str.length; i++){ ctx.fillText(str[i], x, y); x += cw; }
+};
+Sim.prototype.glyph = function(gl, x, y, cw, mirror){
+  var ctx = this.ctx;
+  if (mirror){
+    ctx.save(); ctx.translate(x + cw / 2, y); ctx.scale(-1, 1);
+    ctx.fillText(gl, -cw / 2, 0); ctx.restore();
+  } else ctx.fillText(gl, x, y);
+};
+Sim.prototype.label2Row = function(s, x, y, color, cw){
+  var str = s.label2, ctx = this.ctx;
+  var m = s.lmut && this.now < s.lmut.until && s.lmut.i < str.length;
+  if (!m){ this.text(str, x, y, color, cw); return; }
+  ctx.fillStyle = color;
+  var X = x, i0 = s.lmut.i;
+  for (var k = 0; k < str.length; k++){
+    if (k === i0) this.glyph(s.lmut.gl, X, y, cw, true);
+    else ctx.fillText(str[k], X, y);
+    X += cw;
+  }
+};
+Sim.prototype.drawStream = function(s, sl, th, now){
+  var ctx = this.ctx, cp = sl.cp;
+  var cw = cp ? CW2 : CW, chh = cp ? CH2 : CH;
+  ctx.font = (cp ? "700 9px " : "700 11px ") + FONT;
+  var idle = now - s.lastMsg;
+  var fade = idle > 6000 ? Math.max(.06, 1 - (idle - 6000) / 9000) : 1;
+  if (fade <= 0.07) return; // vollständig ausgeblendet: nichts bleibt stehen
+  ctx.globalAlpha = fade;
+  var emph = !cp && s.activity < 4; // EWMA: stationär ≈ Rate × 8 s → Schwelle ≈ 0,5 Nachrichten/s
+  var set = th.rain[s.hue % th.rain.length];
+  if (cp){
+    this.label2Row(s, sl.x + 2, sl.y, th.label, cw);
+    this.text(s.ro, sl.x + 2, sl.y + chh, th.readout, cw);
+    var ty = sl.y + 2 * chh;
+    ctx.save(); ctx.beginPath(); ctx.rect(sl.x - 2, ty, RGW2, TRAIL2 * chh + 2); ctx.clip();
+    for (var i = 0; i < s.trail.length; i++){
+      var d = s.trail[i];
+      var depth = Math.max(0, Math.min(1, d.y / (TRAIL2 * chh)));
+      ctx.fillStyle = depth > 0.72 ? set.head : depth > 0.35 ? set.d1 : set.d2;
+      ctx.globalAlpha = fade * (0.25 + 0.75 * depth);
+      this.glyph(d.gl, sl.x + 2 + d.col * cw, ty + d.y, cw, d.m);
+    }
+    ctx.restore();
+  } else {
+    this.text(s.label1, sl.x + 2, sl.y, emph ? th.flash : th.label, cw);
+    this.label2Row(s, sl.x + 2, sl.y + chh, emph ? th.flash : th.label, cw);
+    this.text(s.ro, sl.x + 2, sl.y + 2 * chh, th.readout, cw);
+    var ty2 = sl.y + 3 * chh;
+    ctx.save(); ctx.beginPath(); ctx.rect(sl.x - 2, ty2, RGW, TRAIL * chh + 2); ctx.clip();
+    for (var j = 0; j < s.trail.length; j++){
+      var d2 = s.trail[j];
+      var dep = Math.max(0, Math.min(1, d2.y / (TRAIL * chh)));
+      ctx.fillStyle = dep > 0.72 ? set.head : dep > 0.35 ? set.d1 : set.d2;
+      ctx.globalAlpha = fade * (0.25 + 0.75 * dep);
+      this.glyph(d2.gl, sl.x + 2 + d2.col * cw, ty2 + d2.y, cw, d2.m);
+    }
+    ctx.restore();
+    if (emph && this.frames){
+      ctx.strokeStyle = th.flash; ctx.globalAlpha = 0.3 * fade;
+      ctx.strokeRect(sl.x + 0.5, sl.y + 0.5, RGW - 3, RGH - 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+};
+/* Sichtbarkeits-Fade eines Streams ( EWMA-Idle, wie drawStream ) */
+Sim.prototype.fadeOf = function(s){
+  var idle = this.now - s.lastMsg;
+  return idle > 6000 ? Math.max(.06, 1 - (idle - 6000) / 9000) : 1;
+};
+/* Mindmap: verstreuter Ereignis-Knoten mit Puls-Glow statt Tabellenzelle */
+Sim.prototype.drawMindNode = function(s, sl, th, now){
+  var ctx = this.ctx, set = th.rain[s.hue % th.rain.length];
+  var fade = this.fadeOf(s);
+  if (fade <= 0.07) return;
+  var act = Math.min(1, s.activity / 6);
+  ctx.globalAlpha = fade;
+  var r = 2 + 2.5 * act;
+  ctx.fillStyle = act > 0.25 ? set.head : set.d1;
+  ctx.beginPath(); ctx.arc(sl.x, sl.y, r, 0, Math.PI * 2); ctx.fill();
+  if (act > 0.05){
+    ctx.globalAlpha = fade * act * 0.3;
+    ctx.beginPath(); ctx.arc(sl.x, sl.y, r + 4 + 3 * act, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = fade * (act > 0.25 ? 1 : 0.9);
+  ctx.font = "700 10px " + FONT;
+  ctx.fillStyle = act > 0.25 ? th.flash : th.label;
+  ctx.fillText(trunc16(s.label2), sl.x + 8, sl.y - 6);
+  if (s.ro){
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = th.readout;
+    ctx.fillText(s.ro.slice(0, 16), sl.x + 8, sl.y + 7);
+  }
+  ctx.globalAlpha = 1;
+};
+Sim.prototype.draw = function(now){
+  var ctx = this.ctx, th = currentTheme();
+  /* Hintergrund je Theme deckend – kein Frame-Fading, keine eingebrannten Schlieren */
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = th.bg;
+  ctx.fillRect(0, 0, this.W, this.H);
+  ctx.textBaseline = "top"; ctx.textAlign = "left";
+  var i;
+  /* dünne Trennlinien (ShowMIDI-Minimalismus) */
+  ctx.strokeStyle = th.label; ctx.lineWidth = 1; ctx.globalAlpha = 0.22;
+  for (i = 0; i < this.decor.lines.length; i++){
+    var L = this.decor.lines[i];
+    ctx.beginPath();
+    ctx.moveTo(L.x, 0); ctx.lineTo(L.x, this.H - this.stripH);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  for (i = 0; i < this.decor.headers.length; i++){
+    var hd = this.decor.headers[i];
+    ctx.font = (hd.big ? "700 11px " : "700 8px ") + FONT;
+    ctx.fillStyle = hd.big ? th.readout : th.label;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(hd.t, hd.x, hd.y);
+  }
+  for (i = 0; i < this.decor.blocks.length; i++){
+    var b = this.decor.blocks[i];
+    if (this.frames){
+      ctx.strokeStyle = th.label;
+      ctx.globalAlpha = (b.big ? 0.4 : 0.28) * Math.max(.12, b.act || 1);
+      ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+    }
+    ctx.font = (b.big ? "700 11px " : "700 9px ") + FONT;
+    ctx.fillStyle = b.big ? th.readout : th.label;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(b.t, b.x + 3, b.y + (b.big ? 2 : 1));
+  }
+  for (i = 0; i < this.decor.conn.length; i++){
+    var c = this.decor.conn[i];
+    var cf = c.s ? this.fadeOf(c.s) : 1;
+    ctx.strokeStyle = th.label; ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.42 * Math.max(.1, cf);
+    ctx.beginPath();
+    ctx.moveTo(c.x1, c.y1);
+    ctx.quadraticCurveTo(c.cx, c.cy, c.x2, c.y2);
+    ctx.stroke();
+    if (c.s && c.s.pulses && c.s.pulses.length){
+      var pset = th.rain[c.s.hue % th.rain.length];
+      for (var q2 = 0; q2 < c.s.pulses.length; q2++){
+        var pp = c.s.pulses[q2].p, iu = 1 - pp;
+        var bx2 = iu * iu * c.x1 + 2 * iu * pp * c.cx + pp * pp * c.x2;
+        var by2 = iu * iu * c.y1 + 2 * iu * pp * c.cy + pp * pp * c.y2;
+        ctx.globalAlpha = (1 - pp * 0.45) * Math.max(.2, cf);
+        ctx.fillStyle = pset.head;
+        ctx.beginPath(); ctx.arc(bx2, by2, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  for (i = 0; i < this.decor.hubs.length; i++){
+    var hb = this.decor.hubs[i];
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = th.readout;
+    ctx.beginPath(); ctx.arc(hb.x + 3, hb.y + 5, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.font = "700 11px " + FONT;
+    ctx.fillText(hb.t, hb.x + 10, hb.y);
+  }
+  ctx.globalAlpha = 1;
+  var self = this;
+  this.streams.forEach(function(s){
+    if (!s.slot) return;
+    if (s.slot.mm) self.drawMindNode(s, s.slot, th, now);
+    else self.drawStream(s, s.slot, th, now);
+  });
+};
+
+/* ===================== Web MIDI ===================== */
+var midiTxt = "–", oscTxt = "–";
+function parseMidi(dev, data){
+  if (!data || data.length < 1) return null;
+  var st = data[0], d1 = data[1] || 0, d2 = data[2] || 0;
+  var hi = st & 0xf0, ch = (st & 0x0f) + 1;
+  if (st === 0xF8) return { proto: "midi", dev: dev, ch: 0, kind: "CLOCK", ro: "" };
+  if (hi === 0x90) return { proto: "midi", dev: dev, ch: ch, kind: "NOTE", ro: d1 + " " + d2 };
+  if (hi === 0x80) return { proto: "midi", dev: dev, ch: ch, kind: "NOTE", ro: d1 + " 0" };
+  if (hi === 0xA0) return { proto: "midi", dev: dev, ch: ch, kind: "ATP", ro: d1 + " " + d2 };
+  if (hi === 0xB0) return { proto: "midi", dev: dev, ch: ch, kind: "CC", ro: d1 + " " + d2 };
+  if (hi === 0xC0) return { proto: "midi", dev: dev, ch: ch, kind: "PRG", ro: String(d1) };
+  if (hi === 0xD0) return { proto: "midi", dev: dev, ch: ch, kind: "CP", ro: String(d1) };
+  if (hi === 0xE0) return { proto: "midi", dev: dev, ch: ch, kind: "PB", ro: String(((d2 << 7) | d1) - 8192) };
+  if (hi === 0xF0) return { proto: "midi", dev: dev, ch: 0, kind: "SYS", ro: st.toString(16) };
+  return null;
+}
+function connectMidi(){
+  if (!navigator.requestMIDIAccess){
+    midiTxt = "nicht verfügbar"; return;
+  }
+  navigator.requestMIDIAccess().then(function(acc){
+    function hook(){
+      acc.inputs.forEach(function(inp){
+        inp.onmidimessage = function(ev){
+          var msg = parseMidi(inp.name || "MIDI", ev.data);
+          if (msg) S.feed(msg);
+        };
+      });
+    }
+    hook();
+    acc.onstatechange = hook;
+    midiTxt = acc.inputs.size + " Inputs";
+  }).catch(function(){ midiTxt = "Zugriff verweigert"; });
+}
+
+/* ===================== WebSocket (OSC-Bridge) ===================== */
+var ws = null;
+function connectOsc(url){
+  try {
+    if (ws){ try { ws.close(); } catch (e){} }
+    var host = "bridge";
+    try { host = new URL(url).host; } catch (e){}
+    S.oscLabel = "OSC@" + host;
+    ws = new WebSocket(url);
+    ws.binaryType = "arraybuffer";
+    ws.onopen = function(){ oscTxt = "verbunden (" + host + ")"; };
+    ws.onclose = function(){ oscTxt = "getrennt"; };
+    ws.onerror = function(){ oscTxt = "Fehler – Bridge läuft?"; };
+    ws.onmessage = function(ev){
+      if (typeof ev.data === "string"){
+        try {
+          var j = JSON.parse(ev.data);
+          if (j.address) S.feed({ proto: "osc", src: j.src || S.oscLabel, address: j.address, args: j.args || [] });
+        } catch (e){}
+      } else {
+        try {
+          var dv = new DataView(ev.data);
+          var msgs = decodePacket(dv);
+          for (var i = 0; i < msgs.length; i++)
+            S.feed({ proto: "osc", src: S.oscLabel, address: msgs[i].address, args: msgs[i].args });
+        } catch (e){}
+      }
+    };
+  } catch (e){ oscTxt = "nicht möglich"; }
+}
+
+/* ===================== Sidebar ===================== */
+var expMidi = new Set(), expOsc = new Set();
+function treeHtml(srcName, node, lv, ppath){
+  var h = "", kids = [];
+  node.children.forEach(function(k){ kids.push(k); });
+  kids.sort(function(a, b){ return b.count - a.count; });
+  var shown = kids.slice(0, 24);
+  for (var i = 0; i < shown.length; i++){
+    var k = shown[i];
+    var p = ppath ? ppath + "/" + k.name : k.name;
+    var key = srcName + "|" + p;
+    var open = expOsc.has(key);
+    var hasKids = k.children.size > 0;
+    h += '<div class="srow" style="padding-left:' + (4 + lv * 10) + 'px">'
+      + '<button class="exp" data-act="node" data-dev="' + esc(srcName) + '" data-p="' + esc(p) + '">' + (k.on ? "☑" : "☐") + '</button>'
+      + (hasKids ? '<button class="exp" data-act="expn" data-dev="' + esc(srcName) + '" data-p="' + esc(p) + '">' + (open ? "▾" : "▸") + '</button>' : '<span style="width:14px"></span>')
+      + '<span class="nm">' + esc(k.name) + '</span><span class="cnt">' + k.count + '</span></div>';
+    if (open && hasKids) h += treeHtml(srcName, k, lv + 1, p);
+  }
+  if (kids.length > 24) h += '<div class="more">+' + (kids.length - 24) + ' weitere</div>';
+  return h;
+}
+function renderSide(){
+  var el = document.getElementById("sideList");
+  var h = "";
+  h += '<div class="srow"><button class="tgl ' + (S.midiOn ? "on" : "off") + '" data-act="gmidi">MIDI</button>'
+     + '<button class="tgl ' + (S.oscOn ? "on" : "off") + '" data-act="gosc">OSC</button>'
+     + '<span class="cnt">' + S.streams.size + ' Streams</span></div>';
+  h += '<div class="sect">MIDI-GERÄTE</div>';
+  S.midiFilter.forEach(function(f, dev){
+    var open = expMidi.has(dev);
+    h += '<div class="srow"><button class="tgl ' + (f.on ? "on" : "off") + '" data-act="dev" data-dev="' + esc(dev) + '">' + esc(dev) + '</button>'
+       + '<button class="exp" data-act="expm" data-dev="' + esc(dev) + '">' + (open ? "▾" : "▸") + '</button>'
+       + '<span class="cnt">' + f.count + '</span></div>';
+    if (open){
+      h += '<div class="chips">CH&nbsp;';
+      for (var i = 0; i < 16; i++)
+        h += '<button class="chip ' + (f.ch[i] ? "on" : "off") + '" data-act="ch" data-dev="' + esc(dev) + '" data-i="' + i + '">' + (i + 1) + '</button>';
+      h += '</div><div class="chips">';
+      for (var j = 0; j < MIDI_KINDS.length; j++)
+        h += '<button class="chip ' + (f.kinds[j] ? "on" : "off") + '" data-act="kind" data-dev="' + esc(dev) + '" data-i="' + j + '">' + MIDI_KINDS[j] + '</button>';
+      h += '</div>';
+    }
+  });
+  h += '<div class="sect">OSC-QUELLEN</div>';
+  S.oscSources.forEach(function(src, name){
+    var open = expOsc.has(name);
+    h += '<div class="srow"><button class="tgl ' + (src.on ? "on" : "off") + '" data-act="src" data-dev="' + esc(name) + '">' + esc(name) + '</button>'
+       + '<button class="exp" data-act="expo" data-dev="' + esc(name) + '">' + (open ? "▾" : "▸") + '</button>'
+       + '<span class="cnt">' + src.tree.count + '</span></div>';
+    if (open) h += treeHtml(name, src.tree, 0, "");
+  });
+  el.innerHTML = h;
+}
+document.getElementById("sideList").addEventListener("click", function(e){
+  var t = e.target.closest("[data-act]");
+  if (!t) return;
+  var a = t.dataset.act, dev = t.dataset.dev, i = t.dataset.i;
+  if (a === "gmidi") S.midiOn = !S.midiOn;
+  else if (a === "gosc") S.oscOn = !S.oscOn;
+  else if (a === "dev"){ var f = S.midiFilter.get(dev); if (f) f.on = !f.on; }
+  else if (a === "expm"){ if (expMidi.has(dev)) expMidi.delete(dev); else expMidi.add(dev); }
+  else if (a === "ch"){ var f2 = S.midiFilter.get(dev); if (f2) f2.ch[+i] = !f2.ch[+i]; }
+  else if (a === "kind"){ var f3 = S.midiFilter.get(dev); if (f3) f3.kinds[+i] = !f3.kinds[+i]; }
+  else if (a === "src"){ var s2 = S.oscSources.get(dev); if (s2) s2.on = !s2.on; }
+  else if (a === "expo"){ if (expOsc.has(dev)) expOsc.delete(dev); else expOsc.add(dev); }
+  else if (a === "node") S.setOscNode(dev, t.dataset.p);
+  else if (a === "expn"){ var k = dev + "|" + t.dataset.p; if (expOsc.has(k)) expOsc.delete(k); else expOsc.add(k); }
+  renderSide();
+});
+document.getElementById("resetBtn").addEventListener("click", function(){ S.resetFilters(); renderSide(); });
+document.getElementById("srcBox").addEventListener("input", function(){ S.search = this.value; });
+
+/* ===================== Kopfleiste ===================== */
+var S = new Sim(document.getElementById("cv"));
+document.getElementById("demoBtn").addEventListener("click", function(){
+  S.demo = !S.demo;
+  this.textContent = S.demo ? "Demo an" : "Demo aus";
+  this.classList.toggle("on", S.demo);
+});
+document.getElementById("midiBtn").addEventListener("click", connectMidi);
+document.getElementById("oscBtn").addEventListener("click", function(){ connectOsc(document.getElementById("wsUrl").value); });
+document.querySelectorAll(".mbtn").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    S.mode = btn.dataset.mode;
+    document.querySelectorAll(".mbtn").forEach(function(b){ b.classList.toggle("on", b === btn); });
+  });
+});
+var mqLight = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : { matches: false };
+/* UI-Chrome im Theme mitfärben: alle Variablen werden je Theme aus
+   bg/readout/flash abgeleitet (kein fester hell/dunkel-Satz mehr). */
+function applyTheme(){
+  var th = currentTheme(), light = !!th.light;
+  var bg = h2r(th.bg), fg = h2r(th.readout), w = [255, 255, 255];
+  var rs = document.documentElement.style;
+  rs.setProperty("--bg", rgbs(bg));
+  rs.setProperty("--panel", rgbs(light ? mixc(bg, w, .45) : mixc(bg, w, .05)));
+  rs.setProperty("--border", rgbs(light ? mixc(bg, fg, .22) : mixc(bg, w, .14)));
+  rs.setProperty("--text", th.readout);
+  rs.setProperty("--dim", rgbs(mixc(bg, fg, light ? .55 : .5)));
+  rs.setProperty("--accent", th.flash);
+  rs.setProperty("--hover", th.flash);
+  rs.setProperty("--chipon", hexA(th.flash, light ? .22 : .16));
+  rs.setProperty("--chiponfg", th.flash);
+}
+if (mqLight.addEventListener) mqLight.addEventListener("change", applyTheme);
+(function buildThemes(){
+  var box = document.getElementById("themes");
+  var names = ["auto"].concat(THEME_KEYS);
+  function setActive(){
+    box.querySelectorAll("button").forEach(function(x){
+      var on = x.dataset.k === S.themeKey;
+      x.classList.toggle("on", on);
+      var f = x.dataset.flash;
+      x.style.boxShadow = on ? ("inset 0 0 0 1px " + f + ", 0 0 7px " + f) : "none";
+    });
+  }
+  names.forEach(function(k){
+    var b = document.createElement("button");
+    b.textContent = k; b.dataset.k = k;
+    if (k === "auto"){
+      b.style.background = "linear-gradient(135deg,#f9dce8 50%,#160a13 50%)";
+      b.style.color = "#b9aeb8";
+      b.style.borderColor = "rgba(150,140,150,.55)";
+      b.dataset.flash = "rgba(233,215,235,.9)";
+    } else {
+      var th = THEMES[k];
+      b.style.background = th.bg;
+      b.style.color = th.readout;
+      b.style.borderColor = hexA(th.readout, .5);
+      b.dataset.flash = th.flash;
+    }
+    b.addEventListener("click", function(){
+      S.themeKey = k;
+      applyTheme();
+      setActive();
+    });
+    box.appendChild(b);
+  });
+  setActive();
+  applyTheme();
+})();
+document.getElementById("speed").addEventListener("input", function(){ S.speed = this.value / 100; });
+document.getElementById("mut").addEventListener("input", function(){ S.mut = this.value / 100; });
+document.getElementById("clearBtn").addEventListener("click", function(){ S.clearStreams(); });
+document.getElementById("sideBtn").addEventListener("click", function(){
+  document.getElementById("app").classList.toggle("noSide"); fit();
+});
+document.getElementById("uiBtn").addEventListener("click", function(){
+  document.getElementById("app").classList.toggle("noUI"); fit();
+});
+document.getElementById("topBtn").addEventListener("click", function(){
+  document.getElementById("app").classList.toggle("noTop"); fit();
+});
+document.getElementById("frameBtn").addEventListener("click", function(){
+  S.frames = !S.frames;
+  this.classList.toggle("on", S.frames);
+});
+window.addEventListener("keydown", function(e){
+  if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+  var k = e.key.toLowerCase();
+  if (k === "c") S.clearStreams();
+  else if (k === "f") document.getElementById("sideBtn").click();
+  else if (k === "o") document.getElementById("topBtn").click();
+  else if (k === "r") document.getElementById("frameBtn").click();
+  else if (k === "u") document.getElementById("uiBtn").click();
+});
+/* über den Matrix-Monitor-Server gehostet: OSC-Bridge automatisch verbinden */
+if (location.protocol === "http:" || location.protocol === "https:"){
+  document.getElementById("wsUrl").value =
+    (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
+  connectOsc(document.getElementById("wsUrl").value);
+}
+
+/* ===================== Hauptschleife ===================== */
+var wrap = document.getElementById("wrap");
+function fit(){
+  /* Retina-Schärfe: Canvas in Gerätepixeln, Kontext skaliert – Schriften
+     bleiben scharf, auch im Fraktal-Modus */
+  var dpr = window.devicePixelRatio || 1;
+  var w = Math.max(100, wrap.clientWidth), h = Math.max(80, wrap.clientHeight);
+  S.cv.width = Math.round(w * dpr);
+  S.cv.height = Math.round(h * dpr);
+  S.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  S.resize(w, h);
+}
+window.addEventListener("resize", fit);
+fit();
+setInterval(function(){
+  renderSide();
+  document.getElementById("status").textContent =
+    "Demo " + (S.demo ? "an" : "aus") + " · MIDI: " + midiTxt + " · OSC: " + oscTxt;
+}, 700);
+var last = performance.now();
+function frame(t){
+  var dt = Math.min(0.1, (t - last) / 1000); last = t;
+  S.now = t;
+  if (S.demo) S.demoTick(dt);
+  S.step(dt);
+  S.layoutFrame();
+  S.draw(t);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

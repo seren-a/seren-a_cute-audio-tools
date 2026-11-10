@@ -1,0 +1,9 @@
+{
+  "name": "matrix-monitor",
+  "productName": "Matrix Monitor",
+  "version": "2.0.0",
+  "description": "Matrix MIDI/OSC Monitor – eigenständige App",
+  "main": "main.js",
+  "author": "Isabella Forster",
+  "private": true
+}

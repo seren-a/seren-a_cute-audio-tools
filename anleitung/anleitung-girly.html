@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matrix Monitor · Kurzanleitung · Girly Edition</title>
+<style>
+  :root{
+    /* girly dark */
+    --bg:#160a13; --panel:#1c1520; --panel2:#221829; --ink:#d5c9d9;
+    --dim:#9a8898; --accent:#d286b7; --flash:#f6e7fa; --border:#3a2b36;
+    --codebg:#221829; --r1:#d286b7; --r2:#f56e7f; --r3:#42d9c5; --r4:#bec975;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      /* girly pink (auto-hell) */
+      --bg:#f9dce8; --panel:#faf0f6; --panel2:#f3dcea; --ink:#5d4250;
+      --dim:#a08797; --accent:#a04a72; --flash:#c24b82; --border:#e5c9d8;
+      --codebg:#f3dcea; --r1:#c77fa8; --r2:#c96b8a; --r3:#5c8f72; --r4:#a08d3f;
+    }
+  }
+  body.force-pink{
+    --bg:#f9dce8; --panel:#faf0f6; --panel2:#f3dcea; --ink:#5d4250;
+    --dim:#a08797; --accent:#a04a72; --flash:#c24b82; --border:#e5c9d8;
+    --codebg:#f3dcea; --r1:#c77fa8; --r2:#c96b8a; --r3:#5c8f72; --r4:#a08d3f;
+  }
+  body.force-dark{
+    --bg:#160a13; --panel:#1c1520; --panel2:#221829; --ink:#d5c9d9;
+    --dim:#9a8898; --accent:#d286b7; --flash:#f6e7fa; --border:#3a2b36;
+    --codebg:#221829; --r1:#d286b7; --r2:#f56e7f; --r3:#42d9c5; --r4:#bec975;
+  }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; }
+  .page{ max-width:860px; margin:0 auto; padding:34px 28px 60px; box-sizing:border-box; }
+  header{ margin-bottom:28px; }
+  .rain{ font-size:12px; letter-spacing:.35em; white-space:nowrap; overflow:hidden;
+    opacity:.75; margin-bottom:10px; user-select:none; }
+  .rain span{ display:inline-block; }
+  .rain .m{ transform:scaleX(-1); }
+  .rain .c1{ color:var(--r1); } .rain .c2{ color:var(--r2); }
+  .rain .c3{ color:var(--r3); } .rain .c4{ color:var(--r4); }
+  .rain .p{ animation:pulse 3.2s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:.35} 50%{opacity:1} }
+  h1{ margin:0; font-size:23px; letter-spacing:.3em; color:var(--accent); }
+  .sub{ margin:6px 0 0; font-size:11px; letter-spacing:.22em; color:var(--dim); }
+  .modes{ margin-top:14px; display:flex; gap:6px; }
+  .modes button{ cursor:pointer; font:inherit; font-size:9px; letter-spacing:.12em;
+    text-transform:uppercase; padding:4px 10px; border-radius:12px; border:1px solid var(--border); }
+  .modes button.on{ box-shadow:0 0 0 1px rgba(255,255,255,.85) inset, 0 0 6px rgba(255,255,255,.3); }
+  #mAuto{ background:linear-gradient(135deg,#f9dce8 50%,#160a13 50%); color:#b9aeb8; border-color:#8a7683; }
+  #mPink{ background:#f9dce8; color:#a04a72; border-color:#d8a8bf; }
+  #mDark{ background:#160a13; color:#e5c9f2; border-color:#5a4460; }
+  h2{ margin:30px 0 8px; font-size:12px; letter-spacing:.25em; text-transform:uppercase;
+    color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px; }
+  p{ font-size:12px; line-height:1.75; margin:8px 0; }
+  ol,ul{ font-size:12px; line-height:1.8; margin:8px 0; padding-left:20px; }
+  li{ margin:2px 0; }
+  table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:11px; }
+  th,td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--border);
+    vertical-align:top; line-height:1.6; }
+  th{ color:var(--dim); font-weight:400; letter-spacing:.08em; text-transform:uppercase; font-size:9px; }
+  td code, p code, li code{ background:var(--panel2); border:1px solid var(--border);
+    border-radius:3px; padding:1px 5px; font-size:10px; color:var(--flash); }
+  pre{ background:var(--codebg); border:1px solid var(--border); border-radius:5px;
+    padding:10px 12px; overflow-x:auto; margin:10px 0; }
+  pre code{ font-size:11px; color:var(--flash); line-height:1.7; }
+  .note{ background:var(--panel); border:1px solid var(--border); border-radius:5px;
+    padding:10px 12px; font-size:11px; line-height:1.7; color:var(--dim); }
+  footer{ margin-top:34px; padding-top:12px; border-top:1px solid var(--border);
+    font-size:10px; color:var(--dim); letter-spacing:.06em; line-height:1.7; }
+  @media print{
+    body{ background:#fff; }
+    body, body.force-dark, body.force-pink{
+      --bg:#ffffff; --panel:#fff7fb; --panel2:#f9e2ee; --ink:#5d4250;
+      --dim:#a08797; --accent:#a04a72; --flash:#c24b82; --border:#e5c9d8;
+      --codebg:#f9e2ee; --r1:#a04a72; --r2:#c24b82; --r3:#3f7a5e; --r4:#8a7a3a;
+    }
+    .modes{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="rain" id="rain"></div>
+    <h1>MATRIX MONITOR</h1>
+    <p class="sub">KURZANLEITUNG · GIRLY EDITION</p>
+    <div class="modes">
+      <button id="mAuto" class="on">auto</button>
+      <button id="mPink">girly pink</button>
+      <button id="mDark">girly dark</button>
+    </div>
+  </header>
+
+  <h2>1 · Ordner</h2>
+  <p>Ein Ordner, zwei Dateien, beide zusammen:</p>
+  <table>
+    <tr><th>Datei</th><th>Rolle</th></tr>
+    <tr><td><code>server.js</code></td><td>Programm · Seite, WebSocket, OSC-Bridge (UDP)</td></tr>
+    <tr><td><code>index.html</code></td><td>Monitor-Seite · Name exakt so lassen</td></tr>
+  </table>
+
+  <h2>2 · Start</h2>
+  <ol>
+    <li>Terminal öffnen.</li>
+    <li><code>node -v</code> — erscheint eine Versionsnummer, passt alles. Sonst einmalig den Installer von nodejs.org ausführen.</li>
+    <li><code>cd</code> tippen, Leertaste, den Ordner ins Terminal ziehen, Eingabetaste.</li>
+    <li><code>node server.js</code></li>
+    <li>Browser auf <code>http://localhost:8080</code></li>
+  </ol>
+  <p>Beenden mit <code>Strg + C</code>. Jeder weitere Start: nur Schritt 4.</p>
+  <p>Ports frei wählbar:</p>
+  <pre><code>node server.js [Seiten-Port] [OSC-Port]</code></pre>
+
+  <h2>3 · Bedienung</h2>
+  <table>
+    <tr><th>Element</th><th>Wirkung</th></tr>
+    <tr><td><code>Filter</code> / <code>Oben</code> / <code>Rahmen</code> / <code>UI</code> (rechts oben)</td><td>Seitenleiste · Kopfzeilen · Blockrahmen · alle Menüleisten wegklappen</td></tr>
+    <tr><td><code>F</code> · <code>O</code> · <code>U</code> · <code>R</code> · <code>C</code></td><td>Filter · Kopfzeilen · Menüs · Rahmen an/aus · Clear</td></tr>
+    <tr><td><code>Demo an/aus</code></td><td>Probetakte ohne angeschlossene Geräte</td></tr>
+    <tr><td><code>MIDI verbinden</code></td><td>Web-MIDI, Systemabfrage bestätigen (Chrome/Edge; Firefox bietet kein Web MIDI)</td></tr>
+    <tr><td><code>FARBE: auto</code></td><td>folgt hell/dunkel der Systemeinstellung, live; das Menü färbt im Theme mit</td></tr>
+    <tr><td><code>GRUPPIERUNG</code></td><td>Raster · Gerät-Spalten · Mindmap (freie Fläche) · Fraktal</td></tr>
+  </table>
+  <p class="note">Regelmäßigste Streams rutschen bei Andrang in den kompakten Streifen unten. Seltene Ereignisse werden hervorgehoben; die Rahmen (Taste <code>R</code>) lassen sich ganz ausblenden und blenden, wenn an, mit der Aktivität aus.</p>
+
+  <h2>4 · OSC-Sender anschließen</h2>
+  <p>Alle Geräte senden UDP an denselben Rechner, auf dem der Server läuft — Standardport <code>8000</code>:</p>
+  <table>
+    <tr><th>Quelle</th><th>Einstellung</th></tr>
+    <tr><td>REAPER</td><td>OSC-Gerät, Rückmeldung an <code>udp://127.0.0.1:8000</code></td></tr>
+    <tr><td>TotalMix FX</td><td>Remote-Ziel auf Server-IP, Port <code>8000</code></td></tr>
+    <tr><td>DiGiCo</td><td>Über Companion/OSC-Hub auf <code>8000</code></td></tr>
+    <tr><td>Yamaha DM7</td><td>OSC-Ziel auf <code>8000</code></td></tr>
+    <tr><td>Max/MSP</td><td><code>[oscformat]</code> → <code>[udpsend &lt;ip&gt; 8000]</code></td></tr>
+    <tr><td>RNBO Runner</td><td>OSC remote aktivieren, Host = Server, Port <code>8000</code></td></tr>
+  </table>
+
+  <h2>5 · Port-Konflikt (REAPER)</h2>
+  <p>REAPER belegt <code>8000</code> selbst, sobald dessen OSC aktiv ist. Dann:</p>
+  <pre><code>node server.js 8080 9001</code></pre>
+  <p>und in REAPER die Rückmeldung auf <code>udp://127.0.0.1:9001</code> stellen. Beide laufen parallel, keiner stört den anderen. Das Programm meldet Belegungen von selbst und nennt den Ausweg.</p>
+
+  <h2>6 · LAN</h2>
+  <p>Im Startbanner stehen die Adressen: <code>http://&lt;mac-ip&gt;:8080</code>. Jedes Gerät im selben Netz öffnet nur den Browser, Installation entfällt. macOS fragt einmalig nach Firewall-Freigabe für node — erlauben.</p>
+
+  <h2>7 · Wenn etwas schweigt</h2>
+  <table>
+    <tr><th>Symptom</th><th>Prüfen</th></tr>
+    <tr><td>Seite bleibt leer</td><td>Demo-Taste: Darstellung funktioniert, Verbindung folgt</td></tr>
+    <tr><td>MIDI fehlt</td><td>Chrome/Edge verwenden, Abfrage bei „MIDI verbinden“ bestätigen</td></tr>
+    <tr><td>OSC leer</td><td>Ziel-IP und Port im Sender gegen Startbanner vergleichen</td></tr>
+    <tr><td>Streams verschwunden</td><td>Taste <code>C</code> oder Filter zurücksetzen (<code>reset</code>)</td></tr>
+  </table>
+
+  <h2>8 · Als App (ohne Terminal)</h2>
+  <h3>Eigenständige App (Version 2)</h3>
+  <p>«Matrix Monitor.app» der Version 2 ist eine vollwertige, eigenständige App: eigene Fenster-Instanz mit eigenem Dock-Symbol, ohne Browser, ohne Firefox-Profil und ohne installiertes Node.js. Die OSC-Bridge läuft eingebettet im App-Prozess, Web-MIDI ist über die eingebaute Chromium-Engine verfügbar.</p>
+  <table>
+    <tr><th>Schritt</th><th>Aktion</th></tr>
+    <tr><td>1</td><td>ZIP entpacken, <code>Matrix Monitor.app</code> in den Programme-Ordner legen</td></tr>
+    <tr><td>2</td><td>Erster Start: Doppelklick; macOS fragt nach → Systemeinstellungen → Datenschutz &amp; Sicherheit → «Trotzdem öffnen» (App ist nicht notarisiert)</td></tr>
+    <tr><td>3</td><td>Fenster öffnet sich; OSC verbindet sich automatisch mit der eingebauten Bridge</td></tr>
+    <tr><td>4</td><td>Beenden über das Fenster (rote Taste) oder Dock → «Beenden»</td></tr>
+  </table>
+  <p>Ist der OSC-Port 8000 belegt (REAPER nutzt ihn selbst), weicht die App automatisch auf 9001 aus. Ports und Fenstergröße beim Start wählbar:</p>
+  <pre><code>open -a "Matrix Monitor" --env MM_PORT=8080 MM_UDP=9001</code></pre>
+  <h3>Leichte Variante (mit installiertem Node.js)</h3>
+  <p>Das Programmbündel «Matrix Monitor.app» enthält alles: Seite, Server und Bridge.</p>
+  <table>
+    <tr><th>Schritt</th><th>Aktion</th></tr>
+    <tr><td>1</td><td>ZIP entpacken, <code>Matrix Monitor.app</code> in den Programme-Ordner legen</td></tr>
+    <tr><td>2</td><td>Erster Start: Rechtsklick → «Öffnen» → bestätigen (macOS Vertrauensfrage)</td></tr>
+    <tr><td>3</td><td>Doppelklick startet die App, ein eigenständiges Fenster öffnet sich (bevorzugt Firefox mit reduzierter Oberfläche; alternativ Chrome/Edge im App-Modus; sonst Tab im Standardbrowser)</td></tr>
+    <tr><td>4</td><td>Beenden über das Dock-Icon → «Beenden» stoppt auch den Server</td></tr>
+  </table>
+  <p>Voraussetzung bleibt einmalig Node.js — am einfachsten der LTS-Installer von nodejs.org (er installiert nach <code>/usr/local/bin</code>, wo die App ihn sicher findet). Die App erkennt Node zusätzlich bei Homebrew- und nvm-Installationen, auch wenn sie aus dem Dock gestartet wird. Die App läuft ohne sichtbares Terminal; Meldungen stehen im Logfile <code>matrix-monitor.log</code> (Ordner <code>~/Library/Logs</code>). Ports beim Start wählbar:</p>
+  <pre><code>MM_PORT=8080 MM_UDP=9001 open -a "Matrix Monitor"</code></pre>
+  <p>Die Firewall-Rückfrage beim ersten Start bestätigen, dann sind auch die LAN-Geräte wieder dabei.</p>
+
+  <footer>
+    Girly Edition · Diese Anleitung erscheint in beiden Farbwelten von Isabella Forster:
+    girly pink (hellrosa) und girly dark (nachtviolett), im auto-Modus folgt sie der
+    Systemeinstellung hell/dunkel. Wahl über die Schalter oben. Beim Drucken erscheint
+    automatisch die helle Variante.
+  </footer>
+</div>
+<script>
+(function(){
+  var G = "ｦｧｨｩｪｫｬｭｮｯｰｱｳｴｵｶｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ";
+  var seed = "MATRIX MONITOR ";
+  var out = "", i = 0;
+  while (i < 78){
+    if (i % 7 === 0){ out += "<span class=\"c" + ((i % 4) + 1) + "\">" + seed.charAt((i / 7) % seed.length) + "</span>"; }
+    else {
+      var cls = "c" + (i % 4 + 1);
+      if (Math.floor(i / 11) % 2 === 0) cls += " m";
+      if (i % 5 === 0) cls += " p";
+      out += "<span class=\"" + cls + "\">" + G.charAt(i % G.length) + "</span>";
+    }
+    i++;
+  }
+  document.getElementById("rain").innerHTML = out;
+
+  var body = document.body;
+  var btns = { auto: document.getElementById("mAuto"),
+               pink: document.getElementById("mPink"),
+               dark: document.getElementById("mDark") };
+  function setMode(m){
+    body.classList.remove("force-pink", "force-dark");
+    if (m === "pink") body.classList.add("force-pink");
+    if (m === "dark") body.classList.add("force-dark");
+    ["auto", "pink", "dark"].forEach(function(k){
+      btns[k].classList.toggle("on", k === m);
+    });
+    try { localStorage.setItem("mm-guide-mode", m); } catch (e) {}
+  }
+  Object.keys(btns).forEach(function(k){
+    btns[k].addEventListener("click", function(){ setMode(k); });
+  });
+  var saved = null;
+  try { saved = localStorage.getItem("mm-guide-mode"); } catch (e) {}
+  if (saved === "pink" || saved === "dark") setMode(saved);
+})();
+</script>
+</body>
+</html>
