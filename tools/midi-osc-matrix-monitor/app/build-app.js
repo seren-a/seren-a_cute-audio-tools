@@ -3,7 +3,7 @@
 /* Baut die eigenständige macOS-App «Matrix Monitor.app» (Apple Silicon,
    arm64). Benötigt nur Node.js sowie unzip und zip im Systempfad; optional
    python3 für das App-Symbol. Läuft auch unter Linux (Cross-Build).
-   Der komplette Bau reproduziert die veröffentlichte App Version 2:
+   Der komplette Bau reproduziert die veröffentlichte App:
    1. Chromium-Laufzeit (Electron-Fertigbau) herunterladen
    2. umbenennen und Info.plist anpassen
    3. App-Symbol erzeugen (make-icon.py)
@@ -80,8 +80,8 @@ function download(url, dest, redirects){
     .replace(/(<key>CFBundleName<\/key>\s*<string>)Electron<\/string>/, "$1" + APPNAME + "</string>")
     .replace(/com\.github\.Electron/, BUNDLEID)
     .replace(/(<key>CFBundleIconFile<\/key>\s*<string>)electron\.icns<\/string>/, "$1AppIcon.icns</string>")
-    .replace(/(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]+/, "$12.0.0")
-    .replace(/(<key>CFBundleVersion<\/key>\s*<string>)[^<]+/, "$12.0.0");
+    .replace(/(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]+/, "$12.0.1")
+    .replace(/(<key>CFBundleVersion<\/key>\s*<string>)[^<]+/, "$12.0.1");
   fs.writeFileSync(plistPath, plist);
 
   /* App-Kern: Bridge, Seite, Hauptprozess */
