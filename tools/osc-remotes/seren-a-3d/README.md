@@ -5,6 +5,9 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 ---
 
+> **Einzelne Werkzeuge als eigene Branches:** Puzzle, E16 und Twister (Reaper, Nuendo) in [seren-a-reaper-scripts](https://github.com/seren-a/seren-a-reaper-scripts#branches-seren-a-3d), die Moss-Erweiterung der OXI (Reaper, Bitwig) in [`oxi-mk2-moss-extended`](https://github.com/seren-a/seren-a_cute-audio-tools/tree/oxi-mk2-moss-extended). Dieser Ordner ist das Gesamtpaket.
+
+
 ## 1. Was gehört wohin (Stand v8.15)
 
 ### Reaper – Aktionsliste (ReaScript laden)
