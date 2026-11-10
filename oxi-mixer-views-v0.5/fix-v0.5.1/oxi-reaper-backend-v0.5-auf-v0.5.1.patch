@@ -1,0 +1,103 @@
+diff --git a/reaper_drivenbymoss/TrackProcessor.cpp b/reaper_drivenbymoss/TrackProcessor.cpp
+index 42ce345..4b326f3 100644
+--- a/reaper_drivenbymoss/TrackProcessor.cpp
++++ b/reaper_drivenbymoss/TrackProcessor.cpp
+@@ -498,6 +498,98 @@ void TrackProcessor::Process(std::deque<std::string>& path, const std::string& v
+ 		return;
+ 
+ 	const char* cmd = SafeGet(path, 1);
++
++	// Edit the FX chains (OXI One Plugin Mixer):
++	// /track/{index}/fx/{fxIndex}/edit "copy|replace|move|swap {destinationTrack} {destinationFx}"
++	// A destination FX of -1 means the end of the destination chain.
++	if (std::strcmp(cmd, "fx") == 0)
++	{
++		if (path.size() < 4 || std::strcmp(SafeGet(path, 3), "edit") != 0)
++			return;
++		const int srcFx = atoi(SafeGet(path, 2));
++		const int srcCount = TrackFX_GetCount(track);
++		if (srcFx < 0 || srcFx >= srcCount)
++			return;
++
++		std::istringstream iss(value);
++		std::string operation;
++		int destDawIndex = -1;
++		int destFx = -1;
++		if (!(iss >> operation >> destDawIndex >> destFx))
++			return;
++		const int destTrackIndex = GetTrackIndex(project, destDawIndex);
++		if (destTrackIndex < 0)
++			return;
++		MediaTrack* destTrack = GetTrack(project, destTrackIndex);
++		if (!destTrack)
++			return;
++		const bool sameTrack = destTrack == track;
++		const int destCount = TrackFX_GetCount(destTrack);
++		if (destFx >= destCount)
++			destFx = -1;
++
++		PreventUIRefresh(1);
++		Undo_BeginBlock2(project);
++		const char* undoName = "Edit device chain";
++
++		if (operation == "copy")
++		{
++			// Insert a copy before the destination FX or at the end of the chain
++			TrackFX_CopyToTrack(track, srcFx, destTrack, destFx < 0 ? destCount : destFx, false);
++			undoName = "Copy device";
++		}
++		else if (operation == "replace")
++		{
++			// Insert a copy before the destination FX, then remove the old destination FX
++			if (destFx < 0)
++				TrackFX_CopyToTrack(track, srcFx, destTrack, destCount, false);
++			else if (!(sameTrack && destFx == srcFx))
++			{
++				TrackFX_CopyToTrack(track, srcFx, destTrack, destFx, false);
++				TrackFX_Delete(destTrack, destFx + 1);
++			}
++			undoName = "Replace device";
++		}
++		else if (operation == "move")
++		{
++			if (sameTrack)
++			{
++				// Same chain: the index is the final position of the moved FX
++				int finalIndex = destFx < 0 ? srcCount - 1 : (destFx > srcFx ? destFx - 1 : destFx);
++				if (finalIndex != srcFx)
++					TrackFX_CopyToTrack(track, srcFx, track, finalIndex, true);
++			}
++			else
++				TrackFX_CopyToTrack(track, srcFx, destTrack, destFx < 0 ? destCount : destFx, true);
++			undoName = "Move device";
++		}
++		else if (operation == "swap" && destFx >= 0)
++		{
++			if (sameTrack)
++			{
++				if (destFx != srcFx)
++				{
++					const int first = srcFx < destFx ? srcFx : destFx;
++					const int second = srcFx < destFx ? destFx : srcFx;
++					// Move the first to the position of the second, the second slides down by one
++					TrackFX_CopyToTrack(track, first, track, second, true);
++					TrackFX_CopyToTrack(track, second - 1, track, first, true);
++				}
++			}
++			else
++			{
++				// Source goes before the destination FX, which slides to destFx + 1
++				TrackFX_CopyToTrack(track, srcFx, destTrack, destFx, true);
++				TrackFX_CopyToTrack(destTrack, destFx + 1, track, srcFx, true);
++			}
++			undoName = "Swap devices";
++		}
++
++		Undo_EndBlock2(project, undoName, UNDO_STATE_FX);
++		PreventUIRefresh(-1);
++		return;
++	}
++
+ 	if (std::strcmp(cmd, "color") == 0)
+ 	{
+ 		SetColorOfTrack(project, track, value);

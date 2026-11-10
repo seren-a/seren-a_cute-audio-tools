@@ -1,0 +1,11 @@
+OXI One Mixer-Erweiterungen v0.5 (DrivenByMoss 26.6.5)
+
+Neuinstallation: ANLEITUNG-oxi-mixer-views-v0.5.md lesen und diese Patches verwenden:
+  oxi-reaper-backend-v0.5.patch   (Reaper, C++-Backend)
+  oxi-reaper-java-v0.5.patch      (Reaper, Java-Teil)
+  oxi-bitwig-v0.5.patch           (Bitwig)
+
+Die Patches vorher nach ~/Downloads legen, die Anleitung geht davon aus.
+
+Ordner upgrade-von-v0.4: nur für ein Upgrade einer bestehenden v0.4-Reaper-Installation,
+bei einer Neuinstallation nicht nötig.
