@@ -14,6 +14,7 @@ README – hier gibt es nur die Übersicht.
 | [osc-remotes](tools/osc-remotes/) | OSC-Fernbedienungen für Anwendungen und Geräte (REAPER, TotalMix FX, DM7, OBS, Max/RNBO) – Konzept steht, erstes Remote in Arbeit. |
 | [synth-surfaces](tools/synth-surfaces/) | Control-Surfaces für Synthesizer per MIDI/OSC, mit Learn-Modus, Mutate & Morph – Konzept steht. |
 | [daw_key_commander](tools/daw_key_commander/) | Tasten-Commander: DAW-Befehle auf Pads/OSC legen, mit Macros und Feedback – Konzept steht. |
+| [daw-helper](tools/daw-helper/) | Helfer rund um DAWs und Plugins – aktuell der **dearvr-konverter**: dearVR-Presets (PRO v1 ↔ PRO 2, .ini/.vstpreset/.aupreset/.fxp, Excel) in einer Browser-Werkstatt ansehen, bearbeiten und umwandeln. |
 
 ## Struktur
 

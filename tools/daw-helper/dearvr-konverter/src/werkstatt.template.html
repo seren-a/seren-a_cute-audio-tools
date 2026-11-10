@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="ref">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dearVR Preset-Werkstatt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --panel:#f4f4f2; --line:#dcdcd8; --text:#1a1a1a; --muted:#595959;
+  --card:#313131; --card2:#3b3b3b; --cardtext:#ffffff; --cardmuted:#b9b9b9; --brand:#fe9f4d;
+  --accent:#fe9f4d; --accenttext:#1a1a1a; --input:#262626; --inputline:#4a4a4a; --diff:rgba(254,159,77,.28);
+  --chip:#c6dcff; --chiptext:#305bab; --radius:12px;
+}
+:root[data-theme=dark]{
+  --bg:#121212; --panel:#1b1b1b; --line:#2e2e2e; --text:#ececec; --muted:#9a9a9a;
+  --card:#1e1e1e; --card2:#262626; --cardtext:#f1f1f1; --cardmuted:#9d9d9d; --brand:#50e8d8;
+  --accent:#50e8d8; --accenttext:#062b2a; --input:#141414; --inputline:#3a3a3a; --diff:rgba(80,232,216,.22);
+  --chip:#0b4f55; --chiptext:#50e8d8;
+}
+:root[data-theme=kawaii]{
+  --bg:#fff4f9; --panel:#ffe6f1; --line:#ffc2dd; --text:#4a2b3d; --muted:#8b5f78;
+  --card:#ffffff; --card2:#fff0f7; --cardtext:#4a2b3d; --cardmuted:#8b5f78; --brand:#d05aa0;
+  --accent:#ff7eb6; --accenttext:#ffffff; --input:#ffffff; --inputline:#ffb3d4; --diff:rgba(255,126,182,.25);
+  --chip:#e9dcff; --chiptext:#7a4fd0; --radius:20px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Noto Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:12.5px;line-height:1.35}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+
+/* Kopf */
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+header.top h1{margin:0;font-size:16px;font-weight:700;margin-right:6px}
+header.top .ver{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-right:10px}
+.btn{border:1px solid var(--line);background:var(--panel);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accenttext);border-color:var(--accent)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn[disabled]{opacity:.4;cursor:default}
+.sp{flex:1}
+.menu{position:relative}
+.menu .pop{display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:260px;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:6px;z-index:30}
+.menu.open .pop{display:block}
+.pop button.it{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;font-size:13px}
+.pop button.it:hover{background:var(--panel)}
+.pop button.it small{display:block;color:var(--muted);font-size:11.5px}
+.pop label.it{display:flex;gap:8px;align-items:center;padding:8px 10px;font-size:13px}
+.pop hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+
+/* Layout */
+.wrap.noside{grid-template-columns:minmax(0,1fr)}.wrap.noside aside{display:none}
+.wrap{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 56px)}
+aside{border-right:1px solid var(--line);background:var(--panel);padding:14px;position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto}
+main{padding:20px;min-width:0}
+aside h2{margin:0 0 8px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+aside input.q{width:100%;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg);margin-bottom:8px}
+.sel-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.pi{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;border:1px solid transparent}
+.pi:hover{background:var(--bg)}
+.pi.f{background:var(--bg);border-color:var(--accent)}
+.pi .pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.pi input.rn{flex:1;min-width:0;padding:2px 6px;border:1px solid var(--accent);border-radius:6px;background:var(--bg)}
+.pi button{background:none;border:0;padding:2px 5px;border-radius:6px;opacity:.55;font-size:14px}
+.pi button:hover{opacity:1;background:var(--line)}
+.bd{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:1px 6px;border-radius:999px;background:var(--chip);color:var(--chiptext);white-space:nowrap}
+.bd.v1{background:#ffe2b8;color:#8a4b00}
+.bd.werk{background:#d9d9d9;color:#333}
+.sec-toggles{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.sec-toggles label{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--bg);cursor:pointer;user-select:none}
+.sec-toggles input{margin-right:4px}
+
+/* Leerzustand */
+.empty{border:2px dashed var(--line);border-radius:var(--radius);padding:50px 24px;text-align:center;color:var(--muted)}
+.empty h2{color:var(--text);margin:0 0 6px}
+.drop-on .empty,.drop-on main{outline:3px dashed var(--accent);outline-offset:-8px}
+
+/* Karten */
+.card{background:var(--card);color:var(--cardtext);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;border:1px solid transparent}
+:root[data-theme=kawaii] .card{border-color:var(--line);box-shadow:0 6px 0 var(--line)}
+.card .brand{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--brand)}
+.card h3{margin:2px 0 4px;font-size:17px}
+.card .chips{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--chip);color:var(--chiptext)}
+.card-body{display:flex;gap:18px;align-items:flex-start}
+.tbl-wrap{flex:1;min-width:0;overflow:auto;max-height:640px;border-radius:8px}
+.pv{flex:0 0 var(--pvw,420px);position:sticky;top:70px}
+.pv svg{width:100%;height:auto;display:block;border-radius:10px;background:#1f1f1f;touch-action:none}
+.pv .cap{font-size:12px;color:var(--cardmuted);margin-top:6px}
+.pv.full{flex:1}
+.pv.off{display:none}
+table.t{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content}
+table.t th,table.t td{padding:2px 4px;border-bottom:1px solid var(--card2);vertical-align:middle}
+table.t thead th{position:sticky;top:0;background:var(--card);z-index:3;text-align:left;vertical-align:top;padding-bottom:8px}
+table.t th.rowh,table.t td.rowh{position:sticky;left:0;background:var(--card);z-index:2;min-width:150px;max-width:190px}
+table.t thead th.rowh{z-index:4}
+.rowh .lab{font-weight:600}
+.rowh .key{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cardmuted)}
+.rowh .sp2{float:right}
+.rowh button.spread{background:none;border:1px solid var(--inputline);border-radius:6px;font-size:11px;padding:0 5px;color:var(--cardmuted)}
+.rowh button.spread:hover{border-color:var(--accent);color:var(--accent)}
+th.pc{width:92px;min-width:92px;max-width:110px}
+.rowh .lab{font-size:11.5px}.rowh .key{font-size:9.5px!important}
+th.pc input.nm{font-size:11px;padding:2px 4px!important}
+th.pc input.nm{width:100%;background:var(--input);border:1px solid var(--inputline);border-radius:6px;padding:3px 6px;font-weight:700;color:var(--cardtext)}
+th.pc.focus input.nm{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+th.pc .acts{display:flex;gap:4px;margin-top:4px;align-items:center}
+th.pc .acts button{background:none;border:1px solid var(--inputline);border-radius:6px;font-size:12px;padding:0 6px;color:var(--cardmuted)}
+th.pc .acts button:hover{border-color:var(--accent);color:var(--accent)}
+th.pc .acts button.on{background:var(--accent);color:var(--accenttext);border-color:var(--accent)}
+td input.cell,td select.cell{width:100%;background:var(--input);border:1px solid var(--inputline);border-radius:6px;padding:2px 5px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--cardtext)}
+td input.cell:focus,td select.cell:focus{outline:2px solid var(--accent);outline-offset:-1px}
+td.diff input.cell,td.diff select.cell{background:var(--diff)}
+td.chk{text-align:center}
+td.chk input{width:18px;height:18px;accent-color:var(--accent)}
+td.diff.chk{background:var(--diff)}
+.note{font-size:12px;color:var(--cardmuted);margin-top:8px}
+.pnotes{margin:0 0 16px;padding:10px 14px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.pnotes b{color:var(--text)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.35);display:none}
+.toast.on{display:flex;gap:12px;align-items:center}
+.toast button{background:none;border:0;color:#fe9f4d;font-weight:700}
+@media (max-width:1100px){.wrap{grid-template-columns:1fr}aside{position:static;height:auto}.card-body{flex-direction:column}.pv{position:static;flex:none;width:100%}}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="btn" id="bSide" title="Preset-Liste ein-/ausklappen">☰ Liste</button>
+  <h1>dearVR Preset-Werkstatt</h1><span class="ver">v1.9.0</span>
+  <div class="menu" id="mLoad"><button class="btn pri" data-menu="mLoad">Presets laden ▾</button>
+    <div class="pop">
+      <button class="it" id="bFiles">Dateien wählen…<small>Reaper .ini, .vstpreset, .aupreset, .csv, .xlsx (mehrere möglich)</small></button>
+      <button class="it" id="bFolder">Ordner wählen…<small>liest alle Presets darin, auch aus Unterordnern</small></button>
+      <button class="it" id="bFactory">Werkspresets dearVR PRO 2<small>die 47 mitgelieferten Presets</small></button>
+      <button class="it" id="bNew">Neues Preset (Standardwerte)</button>
+      <hr><div style="padding:6px 10px;font-size:12px;color:var(--muted)">Oder Dateien einfach ins Fenster ziehen.</div>
+    </div>
+  </div>
+  <div class="menu" id="mExp"><button class="btn" data-menu="mExp">Exportieren ▾</button>
+    <div class="pop">
+      <div style="padding:6px 10px 2px;font-size:11px;letter-spacing:1px;color:var(--muted)" class="mono">ZIELFORMAT PLUGIN-PRESETS</div>
+      <label class="it"><input type="radio" name="tgt" value="pro2" checked> dearVR PRO 2</label>
+      <label class="it"><input type="radio" name="tgt" value="pro1"> dearVR PRO (v1, Plugin Alliance)</label>
+      <label class="it" style="opacity:.45"><input type="radio" name="tgt" value="iem" disabled> IEM RoomEncoder (nächster Schritt)</label>
+      <hr>
+      <button class="it" data-exp="xlsx">Tabelle als Excel (.xlsx)<small>alle gehakten Presets, eine Zeile pro Preset</small></button>
+      <button class="it" data-exp="csv">Tabelle als CSV<small>UTF-8, Semikolon, für Excel/Numbers</small></button>
+      <label class="it"><input type="checkbox" id="optComma" checked> CSV mit Dezimalkomma (deutsches Excel)</label>
+      <hr>
+      <div style="padding:6px 10px 2px;font-size:11px;letter-spacing:1px;color:var(--muted)" class="mono">DATEITYPEN</div>
+      <label class="it"><input type="checkbox" class="fmt" value="vst3" checked> VST3 (.vstpreset) – Nuendo, Reaper, Cubase</label>
+      <label class="it"><input type="checkbox" class="fmt" value="fxp"> VST2 (.fxp) – nur dearVR PRO v1, Reaper</label>
+      <label class="it"><input type="checkbox" class="fmt" value="au"> AU (.aupreset) – Logic</label>
+      <button class="it" data-exp="plug"><b>Plugin-Presets exportieren</b><small>ein Preset + ein Typ = einzelne Datei, sonst ZIP</small></button>
+    </div>
+  </div>
+  <div class="menu" id="mPar"><button class="btn" data-menu="mPar" id="bPar">Parameter ▾</button><div class="pop" id="parPop" style="max-height:70vh;overflow:auto;min-width:280px"></div></div>
+  <div class="menu" id="mTpl"><button class="btn" data-menu="mTpl">Vorlage ▾</button>
+    <div class="pop">
+      <button class="it" data-exp="tplx">Vorlage Excel (.xlsx)<small>zum Ausfüllen ohne Browser-Oberfläche, mit Hilfeblatt</small></button>
+      <button class="it" data-exp="tplc">Vorlage CSV</button>
+    </div>
+  </div>
+  <button class="btn" id="bUndo" disabled>↶ Rückgängig</button>
+  <div class="menu" id="mHist"><button class="btn" data-menu="mHist" id="bHist">Verlauf ▾</button><div class="pop" id="histPop" style="max-height:60vh;overflow:auto;min-width:300px"></div></div>
+  <label class="btn" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="optDiff"> Unterschiede markieren</label>
+  <select class="btn" id="editMode" title="Worauf wirken Regler im Plugin-Bild und Eingaben in der Tabelle?">
+    <option value="focus">Änderungen wirken auf: nur dieses Preset</option>
+    <option value="abs">Änderungen wirken auf: alle gezeigten (gleicher Wert)</option>
+    <option value="rel">Änderungen wirken auf: alle gezeigten (relativ)</option>
+  </select>
+  <label class="btn" style="display:flex;gap:6px;align-items:center" title="Statt Plugin-Einheiten die Rohwerte 0–1 aus der Datei zeigen"><input type="checkbox" id="optRaw"> Rohwerte</label>
+  <span class="sp"></span>
+  <select class="btn" id="uiz" title="Gesamtgröße der Oberfläche"><option value="0.85">Schrift S</option><option value="1">Schrift M</option><option value="1.15">Schrift L</option></select>
+  <select class="btn" id="theme" title="Darstellung">
+    <option value="ref">Referenz</option><option value="dark">Dunkel</option><option value="kawaii">Kawaii</option>
+  </select>
+</header>
+<div class="wrap" id="wrap">
+  <aside>
+    <h2>Presets</h2>
+    <input class="q" id="q" placeholder="Suchen…">
+    <div class="sel-row"><button class="btn sm" id="selAll">Alle</button><button class="btn sm" id="selNone">Keine</button><button class="btn sm" id="selFiltered">Nur Treffer</button><button class="btn sm" id="clearAll" title="Alle Presets aus der Werkstatt entfernen (Dateien bleiben unberührt)">Alle entfernen</button></div>
+    <div id="plist"></div>
+    <div class="sec-toggles" id="secT"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast"><span id="toastTxt"></span><button id="toastUndo">Rückgängig</button></div>
+<input type="file" id="fileIn" multiple hidden accept=".ini,.vstpreset,.aupreset,.csv,.xlsx,.txt">
+<input type="file" id="dirIn" webkitdirectory multiple hidden>
+
+<script>
+'use strict';
+/* ===================================================================
+   Daten: Werkspresets dearVR PRO 2 (aus /Library/Audio/Presets/Dear Reality)
+   =================================================================== */
+const FACTORY = __FACTORY_JSON__;
+
+/* ===================================================================
+   Parameter-Definition (Reihenfolge exakt wie im Plugin-State)
+   =================================================================== */
+const ORDER = ["OutputMode","CoordinateSystem","Azimuth","Elevation","Distance","X","Y","Z","DirectGain","AzimuthScale","DistanceScale","Occlusion","VirtualAcoustics","RoomSize","ReverbON","ReverbGain","ReverbLowPass","ReverbHighPass","ReflectionON","ReflectionGain","ReflectionLowPass","ReflectionHighPass","RealTimeAuralization","TopWall","BottomWall","FrontWall","BackWall","LeftWall","RightWall","Bypass","BassBoost","PerformanceMode","StereoWidth","MasterGain","LfeGain","Clarity","xyPadView","xyPadZoom"];
+const RENAME = {Polar:"CoordinateSystem", ReverbDamping:"ReverbLowPass", ReflectionDamping:"ReflectionLowPass"};
+const DEF_NEW = {OutputMode:"0.02400000020861626",CoordinateSystem:"0",AzimuthScale:"0.23076921701431274414",DistanceScale:"0.099099099636077880859",
+  ReverbLowPass:"1",ReverbHighPass:"0",ReflectionLowPass:"1",ReflectionHighPass:"0",StereoWidth:"0.3333333432674407959",LfeGain:"0",Clarity:"0",xyPadView:"0",xyPadZoom:"2"};
+
+// type: n = 0..1 | b = 0/1 | z = Zoom 0..4 | r = Raum-Auswahl | o = OutputMode (frei)
+const P = {
+  CoordinateSystem:{l:"Koordinaten-Umschalter",t:"b",h:"0 = Kartesisch-/Polar-Ansicht links, 1 = rechts"},
+  Azimuth:{l:"Azimut",t:"n",h:"0–1, 0.5 = Mitte"},
+  Elevation:{l:"Elevation",t:"n",h:"0–1, 0.5 = Mitte"},
+  Distance:{l:"Distanz (Radius)",t:"n"},
+  X:{l:"Position X",t:"n"}, Y:{l:"Position Y",t:"n"}, Z:{l:"Position Z",t:"n"},
+  DirectGain:{l:"Direktsignal-Gain",t:"n"},
+  AzimuthScale:{l:"Azimut-Skalierung",t:"n"},
+  DistanceScale:{l:"Distanz-Skalierung",t:"n"},
+  Occlusion:{l:"Occlusion (Verdeckung)",t:"n"},
+  Clarity:{l:"Clarity",t:"n"},
+  xyPadView:{l:"XY-Pad Ansicht",t:"b",h:"0 oder 1"},
+  xyPadZoom:{l:"XY-Pad Zoom",t:"z",h:"0–4"},
+  VirtualAcoustics:{l:"Raum-Preset (Virtual Acoustics)",t:"r"},
+  RoomSize:{l:"Raumgröße (Size)",t:"n",h:"1 = 100 %"},
+  ReverbON:{l:"Reverb an",t:"b"},
+  ReverbGain:{l:"Reverb-Gain",t:"n"},
+  ReverbLowPass:{l:"Reverb-Damping (Tiefpass)",t:"n"},
+  ReverbHighPass:{l:"Reverb-Hochpass",t:"n",h:"nur PRO 2"},
+  ReflectionON:{l:"Reflections an",t:"b"},
+  RealTimeAuralization:{l:"Realtime Auralisation",t:"b"},
+  ReflectionGain:{l:"Reflections-Gain",t:"n"},
+  ReflectionLowPass:{l:"Reflections-Damping (Tiefpass)",t:"n"},
+  ReflectionHighPass:{l:"Reflections-Hochpass",t:"n",h:"nur PRO 2"},
+  LeftWall:{l:"Wand links",t:"n"}, FrontWall:{l:"Wand vorn",t:"n"}, RightWall:{l:"Wand rechts",t:"n"},
+  TopWall:{l:"Wand oben (Decke)",t:"n"}, BackWall:{l:"Wand hinten",t:"n"}, BottomWall:{l:"Wand unten (Boden)",t:"n"},
+  OutputMode:{l:"Ausgabeformat (OutputMode)",t:"o",h:"Dateiwert; 0.024 = Binaural. Über „⇉“ für alle setzen."},
+  MasterGain:{l:"Master-Gain",t:"n"},
+  LfeGain:{l:"LFE-Gain",t:"n"},
+  StereoWidth:{l:"Stereo-Breite",t:"n",h:"nur PRO 2"},
+  Bypass:{l:"Bypass",t:"b"}, BassBoost:{l:"Bass Boost",t:"b"}, PerformanceMode:{l:"Performance Mode",t:"b"}
+};
+const SECTIONS = [
+  {id:"pos", en:"POSITION",    de:"Position & Quelle",  vb:[71,75,654,660],
+   keys:["CoordinateSystem","Azimuth","Elevation","Distance","X","Y","Z","xyPadView","xyPadZoom","DirectGain","AzimuthScale","DistanceScale","Occlusion","Clarity"]},
+  {id:"rev", en:"REVERB",      de:"Reverb & Raum",       vb:[738,75,615,285],
+   keys:["VirtualAcoustics","RoomSize","ReverbON","ReverbGain","ReverbLowPass","ReverbHighPass"]},
+  {id:"ref", en:"REFLECTIONS", de:"Reflexionen & Wände", vb:[738,367,615,369],
+   keys:["ReflectionON","RealTimeAuralization","ReflectionGain","ReflectionLowPass","ReflectionHighPass","LeftWall","FrontWall","RightWall","TopWall","BackWall","BottomWall"]},
+  {id:"out", en:"MASTER",      de:"Master & Ausgabe",    vb:[1364,75,219,660],
+   keys:["OutputMode","MasterGain","LfeGain","StereoWidth","Bypass","BassBoost","PerformanceMode"]}
+];
+const SEC_HINT = {id:"hint"};
+
+/* Werkspresets entpacken */
+const FACT = {};   // name -> params
+FACTORY.names.forEach((n,i)=>{ const o={}; ORDER.forEach((k,j)=>o[k]=FACTORY.vals[i][j]); FACT[n]=o; });
+const DEFAULT_PARAMS = FACT["Default"] || Object.fromEntries(ORDER.map(k=>[k,DEF_NEW[k]||"0"]));
+
+/* Raum-Auswahl: Wert → Name (aus den Werkspresets; die zwei ersten Plätze sind aus dem Muster 0.004 + 0.01·i abgeleitet) */
+const ROOMS = [{v:0.004,n:"Direct Signal (abgeleitet)"},{v:0.014,n:"Reflections Only (abgeleitet)"}];
+FACTORY.names.forEach(n=>{ if(n!=="Default") ROOMS.push({v:parseFloat(FACT[n].VirtualAcoustics), n}); });
+ROOMS.sort((a,b)=>a.v-b.v);
+function roomName(v){ const x=parseFloat(v); const r=ROOMS.find(r=>Math.abs(r.v-x)<0.0006); return r?r.n:null; }
+function roomByName(n){ n=String(n).toLowerCase().replace(/[*]|\(abgeleitet\)/g,"").trim(); const r=ROOMS.find(r=>r.n.toLowerCase().replace(" (abgeleitet)","")===n); return r?r.v:null; }
+/* Ausgabeformat: bekannte Dateiwerte */
+const OUT_LBL=[{v:0.02,n:"Binaural (2CH) · v1-Wert"},{v:0.024,n:"Binaural (2CH)"},{v:0.064,n:"TOA ambiX (16CH) · v1-Wert"}];
+function outLabel(v){ const r=OUT_LBL.find(r=>Math.abs(r.v-num(v))<1e-6); return r?r.n:null; }
+
+/* ===================================================================
+   Umrechnung Dateiwert (0–1) ↔ Plugin-Anzeige
+   bestätigt an „Cantina_Küche“ (Plugin-Screenshot) und den Werkspresets
+   =================================================================== */
+const f1=d=>d.toFixed(1), f2d=d=>d.toFixed(2);
+const DB  ={toD:v=>v<=0.0005?-Infinity:(v-.8)*120, fromD:d=>(d===-Infinity||d<=-95.9)?0:.8+d/120, fmt:d=>d===-Infinity?"-inf":f1(d), u:"dB", rng:"−inf … +24 dB"};
+const POS ={toD:v=>(v-.5)*60, fromD:d=>.5+d/60, fmt:f2d, u:"m", rng:"−30 … +30 m"};
+const WALL={toD:v=>v*30, fromD:d=>d/30, fmt:f1, u:"m", rng:"0 … 30 m"};
+const HZ  ={toD:v=>20*Math.pow(1000,v), fromD:d=>Math.log(Math.max(d,20)/20)/Math.log(1000), fmt:d=>String(Math.round(d)), u:"Hz", rng:"20 … 20000 Hz", guess:"Hz-Kurve angenommen (logarithmisch); bestätigt ist nur 1 = 20000 Hz"};
+const U={X:POS,Y:POS,Z:POS, DirectGain:DB,ReverbGain:DB,ReflectionGain:DB,MasterGain:DB,LfeGain:DB,
+  LeftWall:WALL,FrontWall:WALL,RightWall:WALL,TopWall:WALL,BackWall:WALL,BottomWall:WALL,
+  ReverbLowPass:HZ, ReflectionLowPass:HZ,
+  RoomSize:{toD:v=>v*100,fromD:d=>d/100,fmt:d=>String(Math.round(d)),u:"%",rng:"0 … 100"},
+  AzimuthScale:{toD:v=>.1+3.9*v,fromD:d=>(d-.1)/3.9,fmt:f1,u:"×",rng:"0,1 … 4"},
+  DistanceScale:{toD:v=>.01+9.99*v,fromD:d=>(d-.01)/9.99,fmt:f2d,u:"×",rng:"0,01 … 10"},
+  Azimuth:{polar:"az",fmt:d=>String(Math.round(d)),u:"°",rng:"−180 … 180°"},
+  Elevation:{polar:"el",fmt:d=>String(Math.round(d)),u:"°",rng:"−90 … 90°"},
+  Distance:{polar:"d",fmt:f2d,u:"m",rng:"0 … 27 m"}};
+const DIST_A=0.404, DIST_B=26.77;   // Rohwert Distance ↔ m, aus 3,00 m ≙ 0.09699 und 7,40 m ≙ 0.2614
+const P_OF=p=>p.params||p;
+function polarOf(p){ const q=P_OF(p);
+  // Position = X/Y/Z (Y = oben, Z = vorn). Azimut/Elevation/Radius werden in beiden Modi daraus berechnet –
+  // die Datei-Rohwerte Azimuth/Elevation sind bei kartesischen Presets veraltet (z. B. Küche: 0.63/0 statt 166°/12°).
+  const x=(num(q.X)-.5)*60,y=(num(q.Y)-.5)*60,z=(num(q.Z)-.5)*60;
+  return {az:Math.atan2(x,z)*180/Math.PI, el:Math.atan2(y,Math.hypot(x,z))*180/Math.PI, d:Math.sqrt(x*x+y*y+z*z)}; }
+function polarRaw(c){ let az=((c.az+180)%360+360)%360-180; const el=clamp(c.el,-90,90), d=Math.max(0.01,c.d), a=az*Math.PI/180, e=el*Math.PI/180;
+  const x=d*Math.cos(e)*Math.sin(a), y=d*Math.sin(e), z=d*Math.cos(e)*Math.cos(a);
+  return {X:clamp(.5+x/60,0,1),Y:clamp(.5+y/60,0,1),Z:clamp(.5+z/60,0,1),Azimuth:clamp(.5+az/360,0,1),Elevation:clamp(.5+el/180,0,1),Distance:clamp((d-DIST_A)/DIST_B,0,1)}; }
+function dispOf(p,k){ const u=U[k]; if(u.polar) return polarOf(p)[u.polar]; return u.toD(num(P_OF(p)[k])); }
+function dispStr(p,k){ const u=U[k]; if(!u) return fmt(P_OF(p)[k]); return u.fmt(dispOf(p,k)); }
+function rawFromDisp(p,k,d){ const u=U[k], q=P_OF(p);
+  if(u.polar){ const c=polarOf(q); c[u.polar]=d; return polarRaw(c); }
+  const o={[k]:clamp(u.fromD(d),0,1)};
+  if(k==="X"||k==="Y"||k==="Z"){ const t={...q,[k]:String(o[k])}; const x=(num(t.X)-.5)*60,y=(num(t.Y)-.5)*60,z=(num(t.Z)-.5)*60; o.Distance=clamp((Math.sqrt(x*x+y*y+z*z)-DIST_A)/DIST_B,0,1); }
+  return o; }
+function parseDisp(s){ s=String(s).trim().replace(",",".").replace(/[^\d.eE+\-inf]/g,""); if(/^-?inf/i.test(s)) return -Infinity; const n=parseFloat(s); return isNaN(n)?null:n; }
+/* Reglerweg 0–1 im Plugin-Bild (Azimut/Elevation-Slider zeigen den Winkel) */
+function normOf(p,k){ if(k==="Azimuth") return (polarOf(p).az+180)/360; if(k==="Elevation") return (polarOf(p).el+90)/180; return num(P_OF(p)[k]); }
+function normToRaw(p,k,n){ n=clamp(n,0,1); if(k==="Azimuth") return rawFromDisp(p,k,-180+360*n); if(k==="Elevation") return rawFromDisp(p,k,-90+180*n); if(k==="X"||k==="Y"||k==="Z") return rawFromDisp(p,k,(n-.5)*60); return {[k]:n}; }
+
+/* ===================================================================
+   Hilfsfunktionen
+   =================================================================== */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const num = s=>{ const n=parseFloat(String(s).replace(",",".")); return isNaN(n)?0:n; };
+function fmt(s){ const n=parseFloat(s); if(isNaN(n)) return String(s); return String(Number(n.toFixed(5))); }
+function safeName(n){ n=String(n).replace(/[\/\\:*?"<>|]+/g,"-").trim().replace(/^\.+|\.+$/g,""); return n||"Preset"; }
+const utf8 = s=>new TextEncoder().encode(s);
+function concat(...arrs){ let n=0; arrs.forEach(a=>n+=a.length); const o=new Uint8Array(n); let p=0; arrs.forEach(a=>{o.set(a,p);p+=a.length}); return o; }
+const u32le=n=>{const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b};
+const i32le=n=>{const b=new Uint8Array(4);new DataView(b.buffer).setInt32(0,n,true);return b};
+const i64le=n=>{const b=new Uint8Array(8);new DataView(b.buffer).setBigInt64(0,BigInt(n),true);return b};
+function b64(u8){ let s=""; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
+function unb64(s){ const b=atob(s.replace(/\s+/g,"")); const o=new Uint8Array(b.length); for(let i=0;i<b.length;i++) o[i]=b.charCodeAt(i); return o; }
+function findBytes(h,n,from=0){ outer: for(let i=from;i<=h.length-n.length;i++){ for(let j=0;j<n.length;j++) if(h[i+j]!==n[j]) continue outer; return i; } return -1; }
+function download(name,data,type){ const blob=new Blob([data],{type:type||"application/octet-stream"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500); }
+
+/* ===================================================================
+   Zustand, Rückgängig, Speicherung
+   =================================================================== */
+const S = { presets:[], focus:null, theme:"ref", diff:false, raw:false, edit:"focus", secOff:{}, scale:{}, nextId:1, q:"" };
+const hist = [];
+function snap(){ return JSON.stringify({presets:S.presets,focus:S.focus,nextId:S.nextId}); }
+function pushHist(label){ hist.push({label,t:new Date(),s:snap()}); if(hist.length>60) hist.shift(); $("#bUndo").disabled=false; renderHist(); }
+function renderHist(){ const el=$("#histPop"); if(!el) return; $("#bHist").textContent="Verlauf ("+hist.length+") ▾";
+  el.innerHTML=hist.length?'<div style="padding:6px 10px;font-size:11.5px;color:var(--muted)">Klick = zum Stand <b>vor</b> diesem Schritt zurück</div>'+hist.map((h,i)=>({h,i})).reverse().map(({h,i})=>'<button class="it" data-hist="'+i+'">'+esc(h.label)+'<small>'+h.t.toLocaleTimeString("de-DE")+' · '+JSON.parse(h.s).presets.length+' Presets vorher</small></button>').join(""):'<div style="padding:10px;color:var(--muted);font-size:13px">Noch keine Schritte.</div>'; }
+function restoreTo(i){ const h=hist[i]; if(!h) return; hist.splice(i); const o=JSON.parse(h.s); S.presets=o.presets; S.focus=o.focus; S.nextId=o.nextId; $("#bUndo").disabled=!hist.length; renderHist(); toastHide(); renderAll(); save(); toast("Zurück zu: vor „"+h.label+"“"); }
+function undo(){ if(hist.length) restoreTo(hist.length-1); }
+function save(){ try{ localStorage.setItem("dearvr-werkstatt-v1",JSON.stringify({presets:S.presets,focus:S.focus,theme:S.theme,diff:S.diff,raw:S.raw,edit:S.edit,secOff:S.secOff,pvOff:S.pvOff,hideK:S.hideK,scale:S.scale,side:S.side,uiz:S.uiz,nextId:S.nextId})); }catch(e){} }
+function load(){ try{ const o=JSON.parse(localStorage.getItem("dearvr-werkstatt-v1")||"null"); if(o&&o.presets){ Object.assign(S,o); } }catch(e){} }
+let toastT; function toast(msg,undoable){ $("#toastTxt").textContent=msg; $("#toastUndo").style.display=undoable?"":"none"; $("#toast").classList.add("on"); clearTimeout(toastT); toastT=setTimeout(toastHide,undoable?7000:3500); }
+function toastHide(){ $("#toast").classList.remove("on"); }
+
+function mkPreset(name,params,src,notes){
+  const p={}; ORDER.forEach(k=>p[k]=(params&&params[k]!=null)?String(params[k]):DEFAULT_PARAMS[k]);
+  return {id:S.nextId++,name,params:p,src:src||"PRO 2",notes:notes||[],vis:true};
+}
+const byId = id=>S.presets.find(p=>p.id===+id);
+
+/* ===================================================================
+   Einlesen: JUCE-State, Reaper-.ini, vstpreset, aupreset, CSV, XLSX
+   =================================================================== */
+function parseState(bytes){
+  const i=findBytes(bytes,utf8("VC2!")); if(i<0) throw new Error("kein JUCE-State (VC2!) gefunden");
+  const n=new DataView(bytes.buffer,bytes.byteOffset+i+4,4).getUint32(0,true);
+  const xml=new TextDecoder().decode(bytes.subarray(i+8,i+8+n));
+  const m=xml.match(/<DEARVRPLUGINSTATE\s([\s\S]*?)\/>/); if(!m) throw new Error("kein DEARVRPLUGINSTATE");
+  const out=[]; const re=/(\w+)="([^"]*)"/g; let r; while((r=re.exec(m[1]))) out.push([r[1],r[2]]); return out;
+}
+function convert(attrs){
+  const notes=[], extra={}; const src=Object.fromEntries(attrs);
+  const isV1=("Polar" in src)||("ReverbDamping" in src)||("ReflectionDamping" in src);
+  const v2={};
+  for(const [k,v] of attrs){
+    if(k==="InputChannel"){ extra.InputChannel=v; if(num(v)!==0) notes.push("InputChannel="+fmt(v)+" gibt es in PRO 2 nicht (bleibt für v1-Export erhalten)"); continue; }
+    if(k==="VRLinkTrackName"){ extra.VRLinkTrackName=v; continue; }
+    v2[RENAME[k]||k]=v;
+  }
+  ORDER.forEach(k=>{ if(!(k in v2)) v2[k]=(k in DEF_NEW)?DEF_NEW[k]:DEFAULT_PARAMS[k]; });
+  if(isV1){
+    if(Math.abs(num(v2.AzimuthScale)-0.22556391358375549)<1e-6) v2.AzimuthScale=DEF_NEW.AzimuthScale;
+    if(Math.abs(num(v2.OutputMode)-0.02)<1e-6) v2.OutputMode=DEF_NEW.OutputMode;
+    else notes.push("Ausgabeformat "+(outLabel(v2.OutputMode)||fmt(v2.OutputMode))+": Dateiwert aus v1 übernommen – in PRO 2 prüfen");
+  }
+  return {params:v2,notes,isV1,extra};
+}
+function addFromAttrs(name,attrs,srcLabel){
+  const c=convert(attrs);
+  const p=mkPreset(name,c.params,c.isV1?"v1":(srcLabel||"PRO 2"),c.notes); p.v1extra=c.extra; S.presets.push(p);
+}
+function parseIni(text){
+  const secs={}; let cur=null;
+  text.split(/\r?\n/).forEach(l=>{ const m=l.match(/^\[(.+)\]\s*$/); if(m){cur=secs[m[1]]={};return;} const e=l.indexOf("="); if(cur&&e>0) cur[l.slice(0,e)]=l.slice(e+1).trim(); });
+  const out=[];
+  Object.keys(secs).filter(k=>/^Preset\d+$/.test(k)).sort((a,b)=>num(a.slice(6))-num(b.slice(6))).forEach(k=>{
+    const s=secs[k]; let hex=s.Data||""; Object.keys(s).filter(x=>/^Data_\d+$/.test(x)).sort((a,b)=>num(a.slice(5))-num(b.slice(5))).forEach(x=>hex+=s[x]);
+    hex=hex.replace(/\s+/g,""); const u=new Uint8Array(hex.length/2); for(let i=0;i<u.length;i++) u[i]=parseInt(hex.substr(i*2,2),16);
+    out.push({name:s.Name||k,bytes:u});
+  });
+  return out;
+}
+function parseAupreset(text){
+  const d=new DOMParser().parseFromString(text,"application/xml"); const dict=d.querySelector("plist > dict"); if(!dict) throw new Error("kein plist");
+  const kids=[...dict.children]; let state=null,name=null;
+  for(let i=0;i<kids.length-1;i++){ if(kids[i].tagName!=="key") continue; const k=kids[i].textContent; if(k==="jucePluginState") state=unb64(kids[i+1].textContent); if(k==="name") name=kids[i+1].textContent; }
+  if(!state) throw new Error("kein jucePluginState"); return {name,bytes:state};
+}
+function parseCSV(text){
+  text=text.replace(/^﻿/,""); const first=text.split(/\r?\n/)[0]||""; const delim=(first.split(";").length>=first.split(",").length)?";":",";
+  const rows=[]; let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++} else q=false } else cell+=c; }
+    else if(c==='"') q=true; else if(c===delim){row.push(cell);cell=""} else if(c==="\n"){row.push(cell);rows.push(row);row=[];cell=""} else if(c!=="\r") cell+=c; }
+  if(cell!==""||row.length){row.push(cell);rows.push(row)} return rows;
+}
+function importTable(rows,srcLabel){
+  const hi=rows.findIndex(r=>r.length&&/^(name|preset)$/i.test((r[0]||"").trim())); if(hi<0) throw new Error("Kopfzeile mit „Name“ nicht gefunden");
+  const head=rows[hi].map(h=>(h||"").trim()); const idx={}, didx={};
+  head.forEach((h,i)=>{ const m=h.match(/^([A-Za-z]+)(#raw)?\s*(\[.*\])?$/); if(!m) return; const k=ORDER.concat(Object.keys(RENAME),["InputChannel","VRLinkTrackName"]).find(o=>o.toLowerCase()===m[1].toLowerCase()); if(!k) return;
+    if(m[2]){ idx[k]=i; return; } if(m[3]||P[k]&&(P[k].t==="r"||P[k].t==="o")) didx[k]=i; else idx[k]=i; });
+  let n=0;
+  for(let r=hi+1;r<rows.length;r++){ const row=rows[r]; const nm=(row[0]||"").trim(); if(!nm||nm[0]==="#") continue;
+    const attrs=[]; const notes=[];
+    Object.keys(idx).forEach(k=>{ let v=(row[idx[k]]||"").toString().trim(); if(v==="") return; if(k==="VRLinkTrackName"){ attrs.push([k,v]); return; } v=v.replace(",","."); if(isNaN(parseFloat(v))){ notes.push(k+": „"+v+"“ ist keine Zahl (Standard genommen)"); return; } attrs.push([k,v]); });
+    const missing=ORDER.filter(k=>!(k in idx)&&!(k in didx)&&!Object.keys(RENAME).some(o=>RENAME[o]===k&&o in idx));
+    const c=convert(attrs); c.notes.push(...notes); if(missing.length&&missing.length<ORDER.length) c.notes.push(missing.length+" Parameter fehlten in der Tabelle (Standardwerte)");
+    const tmp={params:c.params}, put=o=>{ for(const kk in o) tmp.params[kk]=String(Number(Number(o[kk]).toFixed(9))); }, pol={};
+    Object.keys(didx).filter(k=>!(U[k]&&U[k].polar)).sort((a,b)=>(["X","Y","Z"].includes(a)?0:1)-(["X","Y","Z"].includes(b)?0:1)).forEach(k=>{
+      const v=(row[didx[k]]||"").toString().trim(); if(v==="") return;
+      if(P[k].t==="r"){ const r=roomByName(v); if(r!=null) put({[k]:r}); else if(!isNaN(parseFloat(v))) put({[k]:parseFloat(v.replace(",","."))}); else c.notes.push("Raum „"+v+"“ unbekannt"); return; }
+      if(P[k].t==="o"){ const r=OUT_LBL.find(o=>o.n.toLowerCase()===v.toLowerCase()); if(r) put({[k]:r.v}); else if(!isNaN(parseFloat(v.replace(",",".")))) put({[k]:parseFloat(v.replace(",","."))}); return; }
+      const d=parseDisp(v); if(d==null){ c.notes.push(k+": „"+v+"“ ist keine Zahl"); return; } put(rawFromDisp(tmp,k,d)); });
+    ["Azimuth","Elevation","Distance"].forEach(k=>{ if(k in idx){ const v=(row[idx[k]]||"").toString().trim().replace(",","."); if(v!==""&&!isNaN(parseFloat(v))) tmp.params[k]=v; } });
+    ["Azimuth","Elevation","Distance"].forEach(k=>{ if(k in didx){ const d=parseDisp(row[didx[k]]||""); if(d!=null) pol[U[k].polar]=d; } });
+    if(Object.keys(pol).length){ const cur=polarOf(tmp); const ch=Object.keys(pol).some(a=>Math.abs(pol[a]-cur[a])>(a==="d"?0.02:0.6)); if(ch) put(polarRaw({...cur,...pol})); }
+    const np=mkPreset(nm,tmp.params,c.isV1?"v1":(srcLabel||"Tabelle"),c.notes); np.v1extra=c.extra; S.presets.push(np); n++; }
+  return n;
+}
+
+/* --- ZIP (ohne Kompression) schreiben / lesen --- */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=CRC[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipStore(files){
+  const parts=[],cd=[]; let off=0;
+  files.forEach(f=>{ const nm=utf8(f.name),d=f.data,crc=crc32(d);
+    const lh=concat(u32le(0x04034b50),new Uint8Array([20,0,0,8,0,0,0,0,0x21,0]),u32le(crc),u32le(d.length),u32le(d.length),new Uint8Array([nm.length&255,nm.length>>8,0,0]),nm);
+    parts.push(lh,d);
+    cd.push(concat(u32le(0x02014b50),new Uint8Array([20,0,20,0,0,8,0,0,0,0,0x21,0]),u32le(crc),u32le(d.length),u32le(d.length),new Uint8Array([nm.length&255,nm.length>>8,0,0,0,0,0,0,0,0]),u32le(0),u32le(off),nm));
+    off+=lh.length+d.length; });
+  const cds=concat(...cd);
+  return concat(...parts,cds,u32le(0x06054b50),new Uint8Array([0,0,0,0,files.length&255,files.length>>8,files.length&255,files.length>>8]),u32le(cds.length),u32le(off),new Uint8Array([0,0]));
+}
+async function inflateRaw(u8){ const s=new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw")); return new Uint8Array(await new Response(s).arrayBuffer()); }
+async function zipRead(buf){
+  const u=new Uint8Array(buf),dv=new DataView(buf); let e=u.length-22; while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--; if(e<0) throw new Error("kein ZIP");
+  const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const out={};
+  for(let i=0;i<n;i++){ const method=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u.subarray(p+46,p+46+nl)); const ln=dv.getUint16(lo+26,true),le=dv.getUint16(lo+28,true); const raw=u.subarray(lo+30+ln+le,lo+30+ln+le+csz);
+    out[name]=method===0?raw:await inflateRaw(raw); p+=46+nl+el+cl; }
+  return out;
+}
+
+/* --- XLSX --- */
+const colName=i=>{let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+const xesc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function sheetXml(rows,styles,widths,freeze){
+  const isNum=v=>/^-?\d+(\.\d+)?([eE]-?\d+)?$/.test(v);
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+  if(freeze) x+='<sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="'+freeze+'" topLeftCell="B'+(freeze+1)+'" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>';
+  if(widths) x+='<cols>'+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join("")+'</cols>';
+  x+='<sheetData>';
+  rows.forEach((r,ri)=>{ x+='<row r="'+(ri+1)+'">'; r.forEach((v,ci)=>{ if(v===""||v==null) return; const ref=colName(ci)+(ri+1), st=styles(ri,ci);
+      if(typeof v==="number"||(ci>0&&st===0&&isNum(String(v)))) x+='<c r="'+ref+'"'+(st?' s="'+st+'"':'')+'><v>'+v+'</v></c>';
+      else x+='<c r="'+ref+'" t="inlineStr"'+(st?' s="'+st+'"':'')+'><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>'; });
+    x+='</row>'; });
+  return x+'</sheetData></worksheet>';
+}
+function buildXlsx(sheets){
+  const files=[
+   {name:"[Content_Types].xml",data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("")+'</Types>')},
+   {name:"_rels/.rels",data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')},
+   {name:"xl/workbook.xml",data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+xesc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join("")+'</sheets></workbook>')},
+   {name:"xl/_rels/workbook.xml.rels",data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join("")+'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>')},
+   {name:"xl/styles.xml",data:utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><i/><sz val="10"/><color rgb="FF595959"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF313131"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF1E3"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>')}
+  ];
+  sheets.forEach((s,i)=>files.push({name:"xl/worksheets/sheet"+(i+1)+".xml",data:utf8(sheetXml(s.rows,s.styles,s.widths,s.freeze))}));
+  return zipStore(files);
+}
+async function readXlsxRows(buf){
+  const z=await zipRead(buf); const td=new TextDecoder(); const dom=s=>new DOMParser().parseFromString(td.decode(s),"application/xml");
+  const shared=[]; if(z["xl/sharedStrings.xml"]) [...dom(z["xl/sharedStrings.xml"]).getElementsByTagName("si")].forEach(si=>shared.push([...si.getElementsByTagName("t")].map(t=>t.textContent).join("")));
+  const wbName=Object.keys(z).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0]; if(!wbName) throw new Error("kein Tabellenblatt");
+  const rows=[]; [...dom(z[wbName]).getElementsByTagName("row")].forEach(r=>{ const row=[]; [...r.getElementsByTagName("c")].forEach(c=>{
+      const ref=c.getAttribute("r")||""; const col=ref.replace(/\d+/g,""); let ci=0; for(const ch of col) ci=ci*26+(ch.charCodeAt(0)-64); ci--; const t=c.getAttribute("t"); let v="";
+      if(t==="s") v=shared[+c.getElementsByTagName("v")[0].textContent]; else if(t==="inlineStr") v=[...c.getElementsByTagName("t")].map(x=>x.textContent).join(""); else { const ve=c.getElementsByTagName("v")[0]; v=ve?ve.textContent:""; }
+      row[ci]=v; }); const ri=+r.getAttribute("r")-1; rows[ri]=Array.from(row,x=>x==null?"":x); });
+  return Array.from(rows,r=>r||[]);
+}
+
+/* --- Dateien importieren --- */
+async function importFiles(files){
+  files=[...files]; let added=0; const errs=[]; pushHist("Import");
+  for(const f of files){
+    const ext=(f.name.split(".").pop()||"").toLowerCase(); const base=f.name.replace(/\.[^.]+$/,"");
+    try{
+      if(ext==="ini"){ const list=parseIni(await f.text()); list.forEach(p=>{ try{ addFromAttrs(p.name,parseState(p.bytes)); added++; }catch(e){ errs.push(f.name+" / "+p.name+": "+e.message); } }); }
+      else if(ext==="vstpreset"){ addFromAttrs(base,parseState(new Uint8Array(await f.arrayBuffer()))); added++; }
+      else if(ext==="aupreset"){ const a=parseAupreset(await f.text()); addFromAttrs(a.name||base,parseState(a.bytes)); added++; }
+      else if(ext==="csv"||ext==="txt"){ added+=importTable(parseCSV(await f.text()),"Tabelle"); }
+      else if(ext==="xlsx"){ added+=importTable(await readXlsxRows(await f.arrayBuffer()),"Tabelle"); }
+    }catch(e){ errs.push(f.name+": "+e.message); }
+  }
+  if(!S.focus&&S.presets.length) S.focus=S.presets[0].id;
+  if(!added){ hist.pop(); $("#bUndo").disabled=!hist.length; renderHist(); }
+  renderAll(); save();
+  toast(added+" Preset(s) geladen"+(errs.length?" – "+errs.length+" Problem(e): "+errs[0]:""),added>0);
+}
+async function entriesToFiles(entries,plain){
+  const out=[...plain]; async function walk(en){ if(en.isFile){ await new Promise(r=>en.file(f=>{out.push(f);r()},r)); } else if(en.isDirectory){ const rd=en.createReader(); let b; do{ b=await new Promise(r=>rd.readEntries(r,()=>r([]))); for(const c of b) await walk(c); }while(b.length); } }
+  for(const en of entries) if(en) await walk(en);
+  return plain.length&&!entries.some(Boolean)?plain:(entries.some(Boolean)?out.slice(plain.length):out);
+}
+
+/* ===================================================================
+   Schreiben: vstpreset / aupreset (identisch zu dearvr2convert.py)
+   =================================================================== */
+const CLASS_ID="ABCDEF019182FAEB4445415244727032";
+function stateXml(p){ return '<?xml version="1.0" encoding="UTF-8"?> <DEARVRPLUGINSTATE '+ORDER.map(k=>k+'="'+p[k]+'"').join(" ")+'/>'; }
+function juceBlob(p){ const x=utf8(stateXml(p)); return concat(utf8("VC2!"),u32le(x.length),x,new Uint8Array([0])); }
+const TRAILER = concat(new Uint8Array(8),utf8("JUCEPrivateData"),new Uint8Array([0,1,1]),utf8("Bypass"),new Uint8Array([0,1,1,3,0]),i64le(0x1D),utf8("JUCEPrivateData"));
+const INFO = utf8('﻿<?xml version="1.0" encoding="utf-8"?>\r\n<MetaInfo>\r\n\t<Attribute id="MediaType" value="VstPreset" type="string" flags="writeProtected"/>\r\n\t<Attribute id="PlugInCategory" value="Spatial|Fx|Ambisonics" type="string" flags="writeProtected"/>\r\n\t<Attribute id="PlugInName" value="dearVR PRO 2" type="string" flags="writeProtected"/>\r\n\t<Attribute id="PlugInVendor" value="Dear Reality" type="string" flags="writeProtected"/>\r\n</MetaInfo>\r\n');
+function buildVst(p){
+  const comp=concat(juceBlob(p),TRAILER), co=48, cont=co+comp.length, info=cont, lo=info+INFO.length;
+  const ent=[["Comp",co,comp.length],["Cont",cont,0],["Info",info,INFO.length]];
+  const list=concat(utf8("List"),i32le(3),...ent.map(e=>concat(utf8(e[0]),i64le(e[1]),i64le(e[2]))));
+  return concat(utf8("VST3"),i32le(1),utf8(CLASS_ID),i64le(lo),comp,INFO,list);
+}
+const jhash=s=>{let h=0;for(const c of s)h=(Math.imul(h,31)+c.charCodeAt(0))>>>0;return h};
+const AU_KEYS = ORDER.filter(k=>!["OutputMode","xyPadView","xyPadZoom"].includes(k));
+function buildAu(p,name){
+  const d=new Uint8Array(12+AU_KEYS.length*8), dv=new DataView(d.buffer); dv.setUint32(0,0);dv.setUint32(4,0);dv.setUint32(8,AU_KEYS.length);
+  AU_KEYS.forEach((k,i)=>{ dv.setUint32(12+i*8,jhash(String(i))); dv.setFloat32(16+i*8,num(p[k])); });
+  return auPlist(d,juceBlob(p),name,1148350514);
+}
+function auPlist(d,state,name,subtype){
+  const wrap=(u8)=>b64(u8).replace(/(.{68})/g,"$1\n\t").replace(/\n\t$/,"");
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>data</key>\n\t<data>\n\t'+wrap(d)+'\n\t</data>\n\t<key>element-name</key>\n\t<dict>\n\t\t<key>1</key>\n\t\t<dict>\n\t\t\t<key>0</key>\n\t\t\t<string>Input</string>\n\t\t</dict>\n\t\t<key>2</key>\n\t\t<dict>\n\t\t\t<key>0</key>\n\t\t\t<string>Output</string>\n\t\t</dict>\n\t</dict>\n\t<key>jucePluginState</key>\n\t<data>\n\t'+wrap(state)+'\n\t</data>\n\t<key>manufacturer</key>\n\t<integer>1145389394</integer>\n\t<key>name</key>\n\t<string>'+xesc(name)+'</string>\n\t<key>subtype</key>\n\t<integer>'+subtype+'</integer>\n\t<key>type</key>\n\t<integer>1635083896</integer>\n\t<key>version</key>\n\t<integer>0</integer>\n</dict>\n</plist>\n';
+}
+
+/* --- dearVR PRO v1 (Plugin Alliance) --- */
+const V1_ORDER=["OutputMode","Polar","Azimuth","Elevation","Distance","X","Y","Z","DirectGain","AzimuthScale","DistanceScale","Occlusion","VirtualAcoustics","RoomSize","ReverbON","ReverbGain","ReverbDamping","ReflectionON","ReflectionGain","ReflectionDamping","RealTimeAuralization","TopWall","BottomWall","FrontWall","BackWall","LeftWall","RightWall","Bypass","BassBoost","PerformanceMode","InputChannel","MasterGain","LfeGain","Clarity","xyPadView","xyPadZoom"];
+const V1_SRC={Polar:"CoordinateSystem",ReverbDamping:"ReverbLowPass",ReflectionDamping:"ReflectionLowPass"};
+const be32=n=>{const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,false);return b};
+function toV1(pr){ const p=pr.params, x=pr.v1extra||{}, notes=[];
+  const list=V1_ORDER.map(k=>[k, k==="InputChannel"?(x.InputChannel!=null?x.InputChannel:"0"):p[V1_SRC[k]||k]]);
+  const om=list[0]; if(Math.abs(num(om[1])-0.024)<1e-6) om[1]="0.019999999552965164185";
+  if(num(p.ReverbHighPass)>0||num(p.ReflectionHighPass)>0) notes.push("Hochpass-Filter gibt es in v1 nicht");
+  if(Math.abs(num(p.StereoWidth)-1/3)>1e-3) notes.push("Stereo-Breite gibt es in v1 nicht");
+  return {list,notes}; }
+const xmlOf=(list,noDecl)=>(noDecl?'':'<?xml version="1.0" encoding="UTF-8"?> ')+'<DEARVRPLUGINSTATE '+list.map(a=>a[0]+'="'+xesc(a[1]).replace(/"/g,"&quot;")+'"').join(" ")+'/>';
+const blobOf=xml=>{ const x=utf8(xml); return concat(utf8("VC2!"),u32le(x.length),x,new Uint8Array([0])); };
+function buildVstV1(list,noDecl){
+  const chunk=concat(blobOf(xmlOf(list,noDecl)),TRAILER);
+  const pre=concat(utf8("VstW"),be32(8),be32(1),be32(0),utf8("CcnK"),be32(152+chunk.length),utf8("FBCh"),be32(2),utf8("DRDV"),be32(0x10000),be32(0),new Uint8Array(128),be32(chunk.length));
+  const comp=concat(pre,chunk), co=48, cto=co+comp.length, lo=cto+8;
+  const lst=concat(utf8("List"),i32le(2),utf8("Comp"),i64le(co),i64le(comp.length),utf8("Cont"),i64le(cto),i64le(8));
+  return concat(utf8("VST3"),i32le(1),utf8("56535444524456646561727672207072"),i64le(lo),comp,new Uint8Array(8),lst); }
+function buildFxpV1(list,name){
+  const chunk=blobOf(xmlOf(list)), nm=new Uint8Array(28); nm.set(utf8(name).subarray(0,27));
+  const body=concat(utf8("FPCh"),be32(1),utf8("DRDV"),be32(0x10000),be32(1),nm,be32(chunk.length),chunk);
+  return concat(utf8("CcnK"),be32(body.length),body); }
+function buildAuV1(list,name){
+  const keys=list.filter(a=>!["OutputMode","VRLinkTrackName","xyPadView","xyPadZoom"].includes(a[0]));
+  const d=new Uint8Array(12+keys.length*8), dv=new DataView(d.buffer); dv.setUint32(8,keys.length);
+  keys.forEach((a,i)=>{ dv.setUint32(12+i*8,jhash(String(i))); dv.setFloat32(16+i*8,num(a[1])); });
+  return auPlist(d,blobOf(xmlOf(list)),name,0x44524456); }
+
+/* ===================================================================
+   Tabellen-Export / Vorlage
+   =================================================================== */
+function uniqueNames(list){ const used=new Set(); return list.map(p=>{ let b=safeName(p.name),n=b,i=2; while(used.has(n.toLowerCase())) n=b+" ("+i++ +")"; used.add(n.toLowerCase()); return n; }); }
+function rangeHint(k){ const t=P[k].t; if(t==="b") return "0 = aus, 1 = an"; if(t==="z") return "0–4"; if(t==="r"&&!S.raw) return "Raumname"; if(t==="o"&&!S.raw) return "Formatname oder Dateiwert"; if(!S.raw&&U[k]) return U[k].rng; return "0–1"; }
+function colHead(k){ return (S.raw||!U[k])?k:k+" ["+U[k].u+"]"; }
+function colVal(p,k){ const v=p.params[k]; if(S.raw) return v;
+  if(P[k].t==="r"){ const n=roomName(v); return n?n.replace(" (abgeleitet)",""):v; }
+  if(P[k].t==="o") return outLabel(v)||v;
+  if(U[k]){ const d=dispOf(p,k); return d===-Infinity?"-inf":String(Number(d.toFixed(4))); } return v; }
+function secOf(k){ const s=SECTIONS.find(s=>s.keys.includes(k)); return s?s.en:""; }
+function tableRows(list,withMeta){
+  const RAWX=S.raw?[]:["Azimuth","Elevation","Distance"];
+  const head=["Name",...ORDER.map(colHead),...RAWX.map(k=>k+"#raw")]; const rows=[head];
+  if(withMeta){ rows.push(["# Bereich",...ORDER.map(secOf),...RAWX.map(()=>"intern")]); rows.push(["# Bedeutung / Bereich",...ORDER.map(k=>P[k].l+" ("+rangeHint(k)+")"),...RAWX.map(()=>"Dateiwert, nicht ändern (darf fehlen)")]); }
+  list.forEach(p=>rows.push([p.name,...ORDER.map(k=>colVal(p,k)),...RAWX.map(k=>p.params[k])])); return rows;
+}
+function xlsxFor(list,withMeta){
+  const rows=tableRows(list,withMeta);
+  const sheets=[{name:"Presets",rows,freeze:withMeta?3:1,widths:[34,...ORDER.map(()=>16)],styles:(r,c)=>r===0?1:(withMeta&&r<3?2:0)}];
+  const help=[["dearVR PRO 2 – Preset-Tabelle"],[""],["Eine Zeile = ein Preset. Spalte A ist der Name (wird zum Dateinamen)."],["Die Spaltenköpfe in Zeile 1 sind die Parameternamen des Plugins – nicht umbenennen. Die [Einheit] in Klammern gehört dazu."],["Zeilen, deren Name mit # beginnt, werden beim Import ignoriert (Beschreibungszeilen)."],["Werte so eintragen, wie das Plugin sie anzeigt: ° für Azimut/Elevation, m für Distanz, X/Y/Z und Wände, dB für alle Gains (-inf möglich), Hz für Damping, Raum als Name (z. B. Reflections Only)."],["Azimut/Elevation/Distanz und X/Y/Z beschreiben dieselbe Position: Werden Azimut/Elevation/Distanz geändert, rechnet der Import X/Y/Z daraus neu."],["Spalten ohne [Einheit] werden als Rohwerte 0–1 gelesen (so wie in der Plugin-Datei)."],["Schalter: 0 = aus, 1 = an. xyPadZoom 0–4."],["Fehlende Spalten oder leere Zellen bekommen beim Import die Standardwerte (Preset „Default“)."],["Auch PRO-v1-Spalten (Polar, ReverbDamping, ReflectionDamping, InputChannel) werden beim Import automatisch umgerechnet."],[""],["Zurück laden: in der Preset-Werkstatt „Presets laden → Dateien wählen…“ oder die Datei ins Fenster ziehen."],[""],["Bereiche im Plugin:"],...SECTIONS.map(s=>[s.en+": "+s.keys.join(", ")])];
+  sheets.push({name:"Hilfe",rows:help,widths:[130],styles:(r)=>r===0?1:0});
+  return buildXlsx(sheets);
+}
+function csvFor(list,withMeta,comma){
+  const rows=tableRows(list,withMeta); const q=v=>{ v=String(v); if(comma&&/^-?\d+\.\d+(e-?\d+)?$/.test(v)) v=v.replace(".",","); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  return "﻿"+rows.map(r=>r.map(q).join(";")).join("\r\n")+"\r\n";
+}
+function visiblePresets(){ return S.presets.filter(p=>p.vis); }
+function doExport(kind){
+  const vis=visiblePresets();
+  const tpl=[{name:"Beispiel (Standardwerte)",params:{...DEFAULT_PARAMS}},{name:"Mein Preset",params:{...DEFAULT_PARAMS}}];
+  if(kind==="tplx"){ download("dearVR-PRO2-Vorlage.xlsx",xlsxFor(tpl,true),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); return; }
+  if(kind==="tplc"){ download("dearVR-PRO2-Vorlage.csv",csvFor(tpl,true,$("#optComma").checked),"text/csv"); return; }
+  if(!vis.length){ toast("Keine Presets gehakt – links mindestens eins auswählen."); return; }
+  if(kind==="xlsx") download("dearVR-PRO2-Presets.xlsx",xlsxFor(vis,true),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  else if(kind==="csv") download("dearVR-PRO2-Presets.csv",csvFor(vis,true,$("#optComma").checked),"text/csv");
+  else { const tgt=(document.querySelector("input[name=tgt]:checked")||{}).value||"pro2"; const names=uniqueNames(vis); const files=[], warn=new Set();
+    const F=new Set($$(".fmt:checked").map(x=>x.value)); if(tgt==="pro2") F.delete("fxp");
+    if(!F.size){ toast(tgt==="pro2"?"Bitte VST3 oder AU anhaken (.fxp gibt es nur für PRO v1).":"Bitte mindestens einen Dateityp anhaken."); return; }
+    const multi=F.size>1;
+    vis.forEach((p,i)=>{ const n=names[i];
+      if(tgt==="pro2"){ if(F.has("vst3")) files.push({name:(multi?"VST3/":"")+n+".vstpreset",data:buildVst(p.params)}); if(F.has("au")) files.push({name:(multi?"AU/":"")+n+".aupreset",data:utf8(buildAu(p.params,n))}); }
+      else { const v=toV1(p); v.notes.forEach(x=>warn.add(x));
+        if(F.has("vst3")) files.push({name:(multi?"VST3/":"")+n+".vstpreset",data:buildVstV1(v.list)});
+        if(F.has("fxp")) files.push({name:(multi?"VST2 Reaper (.fxp)/":"")+n+".fxp",data:buildFxpV1(v.list,n)});
+        if(F.has("au")) files.push({name:(multi?"AU/":"")+n+".aupreset",data:utf8(buildAuV1(v.list,n))}); } });
+    if(files.length===1) download(files[0].name,files[0].data); else download((tgt==="pro2"?"dearVR-PRO2":"dearVR-PRO-v1")+"-Presets-"+[...F].join("+")+".zip",zipStore(files),"application/zip");
+    toast(vis.length+" Preset(s) exportiert"+(tgt==="pro2"?" · VST3+AU → ~/Library/Audio/Presets/Dear Reality/dearVR PRO 2/":" · VST3 → ~/Library/Audio/Presets/Plugin Alliance/dearVR pro/ · .fxp in Reaper über Preset-Menü → Import")+(warn.size?" · Hinweis: "+[...warn].join(", "):"")); }
+}
+
+/* ===================================================================
+   Plugin-Ansicht (Vektor-Nachbau aus Miro „Nachbau · dearVR PRO“)
+   =================================================================== */
+const CY="#50e8d8", MG="#e565e4", BOX="#045a62";
+const T=(x,y,w,h,s,fs,al,col,bold)=>{ const ax=al==="center"?x+w/2:al==="right"?x+w:x, an=al==="center"?"middle":al==="right"?"end":"start";
+  return '<text x="'+ax+'" y="'+(y+h/2)+'" font-size="'+fs+'" fill="'+(col||"#fff")+'" text-anchor="'+an+'" dominant-baseline="central"'+(bold?' font-weight="700"':'')+'>'+esc(s)+'</text>'; };
+const valBox=(x,y,w,h,s,fs)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+BOX+'"/>'+T(x,y,w,h,s,fs||13,"center",CY);
+function knobSvg(p,key,cx,cy,r,col,lab,box){
+  const v=clamp(num(p[key]),0,1), a=(-135+270*v)*Math.PI/180, ri=r-3, s=Math.sin(a), c=-Math.cos(a);
+  let o='<g data-ctl="knob" data-key="'+key+'" style="cursor:ns-resize"><circle cx="'+cx+'" cy="'+cy+'" r="'+(r+5)+'" fill="#1a1a1a"/><circle cx="'+cx+'" cy="'+cy+'" r="'+ri+'" fill="#2a2a2a" stroke="'+col+'" stroke-width="3"/>'
+    +'<line x1="'+(cx+s*ri*.3)+'" y1="'+(cy+c*ri*.3)+'" x2="'+(cx+s*ri*.85)+'" y2="'+(cy+c*ri*.85)+'" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></g>';
+  (lab||[]).forEach(l=>o+=T(l[0],l[1],l[2],l[3],l[4],l[5],"center","#fff"));
+  return o+valBox(box[0],box[1],box[2],box[3],box[4]!=null?box[4]:fmt2(p[key]),box[5]);
+}
+const fmt2=s=>{const n=num(s);return n.toFixed(2)};
+function togSvg(p,key,x,y,w,h){ const on=num(p[key])>=.5; return '<g data-ctl="tog" data-key="'+key+'" style="cursor:pointer"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="6" fill="'+(on?"#0b6e77":"#575757")+'"/><circle cx="'+(on?x+w-8:x+8)+'" cy="'+(y+h/2)+'" r="6" fill="#fff"/><rect x="'+(x-4)+'" y="'+(y-6)+'" width="'+(w+8)+'" height="'+(h+12)+'" fill="transparent"/></g>'; }
+function dotSvg(p,key,cx,cy,label,lx,lw){ const on=num(p[key])>=.5; return '<g data-ctl="tog" data-key="'+key+'" style="cursor:pointer"><circle cx="'+cx+'" cy="'+cy+'" r="6" fill="'+(on?CY:"#575757")+'"/>'+T(lx,cy-8,lw,16,label,11,"left","#fff")+'<rect x="'+(cx-8)+'" y="'+(cy-10)+'" width="'+(lw+24)+'" height="20" fill="transparent"/></g>'; }
+function pluginSVG(pr,vb){
+  const p=pr.params; let o=''; const D=k=>U[k]?dispStr(pr,k):fmt2(pr.params[k]);
+  // Rahmen & Panels
+  o+='<rect x="60" y="60" width="1535" height="718" fill="#000" stroke="#3a3a3a"/>';
+  [[71,75,654,660],[738,75,615,285],[738,367,615,369],[1364,75,219,660]].forEach(r=>o+='<rect x="'+r[0]+'" y="'+r[1]+'" width="'+r[2]+'" height="'+r[3]+'" fill="#252525" stroke="#3a3a3a"/>');
+  /* ---- POSITION ---- */
+  o+=T(88,76.8,187,68,"P O S I T I O N",24,"left")
+    +T(517,105.9,80,17,"CARTESIAN",12,"left")+togSvg(p,"CoordinateSystem",592,105,32,15)+T(630,97.4,47,34,"POLAR",12,"left");
+  // Azimuth Slider
+  { const v=clamp(normOf(pr,"Azimuth"),0,1);
+    o+=T(241.5,135.5,79,42,"AZIMUTH",15,"center")+valBox(371,141,60,28,D("Azimuth"),14)
+     +'<g data-ctl="hs" data-key="Azimuth" data-x0="174" data-w="418" style="cursor:ew-resize"><rect x="174" y="182" width="418" height="9" rx="4" fill="#3a3a3a"/><circle cx="'+(174+9+v*400)+'" cy="186.5" r="9" fill="#fff"/><rect x="168" y="172" width="430" height="30" fill="transparent"/></g>'; }
+  // Elevation Slider
+  { const v=clamp(normOf(pr,"Elevation"),0,1);
+    o+='<g data-ctl="vs" data-key="Elevation" data-y0="210" data-h="429" style="cursor:ns-resize"><rect x="148" y="210" width="9" height="429" rx="4" fill="#3a3a3a"/><circle cx="152.5" cy="'+(210+9+(1-v)*411)+'" r="9" fill="#fff"/><rect x="138" y="204" width="30" height="441" fill="transparent"/></g>'
+     +'<text font-size="13" font-weight="700" fill="#fff" text-anchor="middle">'+"ELEVATION".split("").map((ch,i)=>'<tspan x="110" y="'+(262+i*18)+'">'+ch+'</tspan>').join("")+'</text>'
+     +valBox(81,442,54,26,D("Elevation"),14); }
+  // XY-Pad
+  { // Maßstab aus dem Original abgelesen: Zoom 2 = 24 m Padbreite (12-m-Skala); jede Zoomstufe halbiert/verdoppelt
+    const zr=clamp(num(p.xyPadZoom),0,4), ppm=418/24*Math.pow(2,zr-2), cx0=383, cy0=427;
+    const m=k=>(num(p[k])-.5)*60, w=k=>num(p[k])*30;
+    const sx=cx0+clamp(m("X")*ppm,-205,205), sy=cy0-clamp(m("Z")*ppm,-219,219);
+    const xL=cx0-w("LeftWall")*ppm, xR=cx0+w("RightWall")*ppm, yF=cy0-w("FrontWall")*ppm, yB=cy0+w("BackWall")*ppm;
+    const on=num(p.ReflectionON)>=.5, wc=on?CY:"#5f8f93", op=on?1:.55;
+    o+='<defs><clipPath id="padclip"><rect x="174" y="204" width="418" height="420"/></clipPath></defs>';
+    o+='<g data-ctl="xy" data-ppm="'+ppm+'" style="cursor:crosshair"><rect x="174" y="204" width="418" height="446" fill="'+BOX+'"/>';
+    for(let i=0;i<9;i++) o+='<line x1="'+(215+i*41.9)+'" y1="204" x2="'+(215+i*41.9)+'" y2="650" stroke="#0b6e77" stroke-width="2"/>';
+    for(let i=0;i<10;i++) o+='<line x1="174" y1="'+(248+i*44.5)+'" x2="592" y2="'+(248+i*44.5)+'" stroke="#0b6e77" stroke-width="2"/>';
+    o+='<g clip-path="url(#padclip)" opacity="'+op+'"><rect x="'+xL+'" y="'+yF+'" width="'+(xR-xL)+'" height="'+(yB-yF)+'" fill="'+CY+'" fill-opacity=".07"/>'
+      +[[xL,204,xL,624],[xR,204,xR,624],[174,yF,592,yF],[174,yB,592,yB]].map(a=>'<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+a[2]+'" y2="'+a[3]+'" stroke="'+wc+'" stroke-width="2"/>').join("")
+      +[["L "+D("LeftWall"),xL+4,cy0-6,"start"],["R "+D("RightWall"),xR-4,cy0-6,"end"],["F "+D("FrontWall"),cx0,yF+14,"middle"],["B "+D("BackWall"),cx0,yB-6,"middle"]].map(t=>'<text x="'+t[1]+'" y="'+t[2]+'" font-size="11" fill="'+wc+'" text-anchor="'+t[3]+'">'+t[0]+' m</text>').join("")+'</g>';
+    const bar=12*ppm; o+='<line x1="'+(588-bar)+'" y1="612" x2="588" y2="612" stroke="'+CY+'" stroke-opacity=".6"/>'+'<text x="'+(588-bar/2)+'" y="606" font-size="11" fill="'+CY+'" fill-opacity=".8" text-anchor="middle">12 m</text>';
+    o+='<circle cx="'+cx0+'" cy="'+cy0+'" r="14" fill="'+BOX+'" stroke="'+CY+'"/><path d="M'+(cx0-5)+' '+(cy0-12)+' L'+cx0+' '+(cy0-19)+' L'+(cx0+5)+' '+(cy0-12)+'" fill="none" stroke="'+CY+'"/><circle cx="'+sx+'" cy="'+sy+'" r="7" fill="'+CY+'" stroke="#fff" stroke-width="1.5"/></g>'
+     +'<rect x="174" y="624" width="418" height="26" fill="#0b4f55"/>'+T(180,620,330,37,(num(p.xyPadView)>=.5?"ANSICHT 1":"X/Z")+"   X "+D("X")+"   Y "+D("Y")+"   Z "+D("Z"),13,"left",CY)+T(549,620,33,37,"− ○ +",13,"left"); }
+  // Distanz-Slider
+  { const v=clamp(num(p.Distance),0,1);
+    o+='<g data-ctl="hs" data-key="Distance" data-x0="174" data-w="418" style="cursor:ew-resize"><rect x="174" y="667" width="418" height="9" rx="4" fill="#3a3a3a"/><circle cx="'+(174+9+v*400)+'" cy="671.5" r="9" fill="#fff"/><rect x="168" y="657" width="430" height="30" fill="transparent"/></g>'
+     +T(233,684.5,88,42,"DISTANCE",15,"center")+valBox(382,690,51,26,D("Distance"),14); }
+  // Knöpfe rechts im Position-Panel
+  o+=knobSvg(p,"AzimuthScale",624,184,20,CY,[[648,133,58,31,"AZIMUTH",11],[655.5,146,43,31,"SCALE",11]],[652,176,51,24,D("AzimuthScale")])
+   +knobSvg(p,"Occlusion",660,259,20,CY,[[616.5,220.6,87,19,"OCCLUSION",13]],[632,292,56,24,D("Occlusion")])
+   +knobSvg(p,"Clarity",660,382,20,CY,[[627,333.6,66,37,"CLARITY",13]],[632,416,56,24,D("Clarity")])
+   +knobSvg(p,"DirectGain",660,532,39,MG,[[642.5,466.6,35,37,"GAIN",13]],[632,590,56,24,D("DirectGain")])
+   +knobSvg(p,"DistanceScale",613,671,20,CY,[[644.5,627.7,65,16,"DISTANCE",11],[655.5,633,43,31,"SCALE",11]],[652,665,51,24,D("DistanceScale")]);
+  /* ---- REVERB ---- */
+  o+=T(758.8,93.8,155,34,"R E V E R B",24,"left")+T(1213,93.4,28,34,"OFF",12,"left")+togSvg(p,"ReverbON",1250,103,32,15)+T(1291,101.9,21,17,"ON",12,"left")
+   +T(759,184.5,181,42,"VIRTUAL ACOUSTICS",15,"left");
+  { const rn=roomName(p.VirtualAcoustics); o+='<rect x="759" y="225" width="304" height="34" fill="'+BOX+'"/>'+T(759,225,304,34,"›  "+(rn?rn.replace(" (abgeleitet)",""):"Eigener Wert "+fmt(p.VirtualAcoustics)),15,"left",CY).replace('x="759"','x="767"'); }
+  { const v=clamp(num(p.RoomSize),0,1);
+    o+=T(758.8,300.9,33,17,"SIZE",12,"left")+'<g data-ctl="hs" data-key="RoomSize" data-x0="806" data-w="172" style="cursor:ew-resize"><rect x="806" y="302" width="172" height="9" rx="4" fill="#3a3a3a"/><circle cx="'+(806+9+v*154)+'" cy="306.5" r="9" fill="#fff"/><rect x="800" y="292" width="184" height="30" fill="transparent"/></g>'
+     +valBox(999,292,64,28,D("RoomSize"),14); }
+  o+=knobSvg(p,"ReverbLowPass",1145,238,39,CY,[[1110.5,177.6,69,19,"DAMPING",13]],[1117,292,56,24,D("ReverbLowPass")])
+   +knobSvg(p,"ReverbGain",1267,238,39,MG,[[1249.5,168.6,35,37,"GAIN",13]],[1239,292,56,24,D("ReverbGain")]);
+  /* ---- REFLECTIONS ---- */
+  o+=T(759.2,363.8,279,68,"R E F L E C T I O N S",24,"left")+T(1213,380.4,28,34,"OFF",12,"left")+togSvg(p,"ReflectionON",1250,390,32,15)+T(1291,388.9,21,17,"ON",12,"left")
+   +dotSvg(p,"RealTimeAuralization",768,437,"REALTIME AURALISATION",780,165);
+  [["LeftWall",838,523,"LEFT",551],["FrontWall",924,523,"FRONT",551],["RightWall",1010,523,"RIGHT",551],["TopWall",838,645,"TOP",673],["BackWall",924,645,"BACK",673],["BottomWall",1010,645,"BOTTOM",673]].forEach(w=>{
+    o+=knobSvg(p,w[0],w[1],w[2],20,CY,[[w[1]-30,w[2]-38,60,16,w[3],12]],[w[1]-28,w[4],56,24,D(w[0]),12]); });
+  o+=knobSvg(p,"ReflectionLowPass",1145,538,39,CY,[[1110.5,477.6,69,19,"DAMPING",13]],[1117,592,56,24,D("ReflectionLowPass")])
+   +knobSvg(p,"ReflectionGain",1267,538,39,MG,[[1249.5,468.6,35,37,"GAIN",13]],[1239,592,56,24,D("ReflectionGain")]);
+  /* ---- MASTER ---- */
+  o+='<rect x="1391" y="96" width="165" height="30" fill="#000" stroke="#9f9f9f"/>'+T(1391,96,165,30,"DEARVR  PRO",14,"center","#fff",true)
+   +T(1434.5,131,77,14,"POWERED BY",10,"center","#9f9f9f")+T(1407.5,142.2,131,31,"SENNHEISER AMBEO",11,"center")
+   +dotSvg(p,"Bypass",1402,219,"BYPASS",1419,60)+dotSvg(p,"BassBoost",1402,247,"BASS BOOST",1419,90)+dotSvg(p,"PerformanceMode",1402,274,"PERFORMANCE MODE",1419,140)
+   +'<line x1="1374" y1="289" x2="1574" y2="289" stroke="#3a3a3a" stroke-width="2"/>'+T(1402,288.6,142,37,"SPATIAL CONNECT",13,"center")+T(1421.5,318.2,103,31,"HEAD TRACKING",11,"center");
+  { const v=clamp(num(p.StereoWidth),0,1);
+    o+=T(1407.5,372.8,131,40,"STEREO WIDTH",14,"center")+T(1389,410.7,19,16,"L",11,"left")+T(1557,410.7,19,16,"R",11,"left")
+     +'<g data-ctl="hs" data-key="StereoWidth" data-x0="1402" data-w="144" style="cursor:ew-resize"><rect x="1402" y="414" width="144" height="8" fill="#3a3a3a"/><circle cx="'+(1402+9+v*126)+'" cy="418" r="6" fill="#fff"/><rect x="1396" y="404" width="156" height="28" fill="transparent"/></g>'; }
+  o+=T(1403,442.8,140,40,"OUTPUT FORMAT",14,"center")+'<rect x="1385" y="478" width="182" height="26" fill="'+BOX+'"/>'+T(1385,478,182,26,"›  "+(outLabel(p.OutputMode)||"Dateiwert "+fmt(p.OutputMode)).replace(" · v1-Wert",""),13,"center",CY);
+  o+=knobSvg(p,"MasterGain",1439,617,36,MG,[[1409,524.6,64,37,"MASTER",13],[1423.5,541.6,35,37,"GAIN",13]],[1413,686,54,24,D("MasterGain")])
+   +knobSvg(p,"LfeGain",1531,641,20,MG,[[1515.5,601.6,31,19,"LFE",13]],[1509,686,54,24,D("LfeGain")]);
+  const v=vb||[60,60,1535,718];
+  return '<svg class="plug" viewBox="'+v.join(" ")+'" xmlns="http://www.w3.org/2000/svg" font-family="Roboto,\'Noto Sans\',sans-serif">'+o+'</svg>';
+}
+
+/* ===================================================================
+   Oberfläche
+   =================================================================== */
+function badge(p){ const c=p.src==="v1"?"v1":p.src==="Werk"?"werk":""; return '<span class="bd '+c+'" title="'+esc((p.src==="v1"?"aus dearVR PRO v1 nach PRO 2 umgerechnet\n":"")+(p.notes.join("\n")||"Quelle: "+p.src))+'">'+(p.src==="v1"?"v1":esc(p.src))+'</span>'; }
+function renderSidebar(){
+  const q=S.q.toLowerCase(); const list=S.presets.filter(p=>!q||p.name.toLowerCase().includes(q));
+  $("#plist").innerHTML=list.map(p=>'<div class="pi'+(p.id===S.focus?" f":"")+'" data-id="'+p.id+'"><input type="checkbox" class="vis" '+(p.vis?"checked":"")+' title="Anzeigen"><span class="pn" title="Klick = Fokus (Plugin-Ansicht), Doppelklick = umbenennen">'+esc(p.name)+'</span>'+badge(p)+'<button data-act="dup" title="Duplizieren">⧉</button><button data-act="del" title="Löschen">✕</button></div>').join("")
+    ||'<div style="color:var(--muted);font-size:13px;padding:6px">'+(S.presets.length?"Keine Treffer.":"Noch nichts geladen.")+'</div>';
+  $("#secT").innerHTML=SECTIONS.map(s=>'<label><input type="checkbox" data-sec="'+s.id+'" '+(S.secOff[s.id]?"":"checked")+'>'+s.en+'</label>').join("")+'<label><input type="checkbox" data-sec="full" '+(S.secOff.full?"":"checked")+'>GESAMT</label>';
+}
+function cellHtml(p,k){
+  const def=P[k], v=p.params[k], id=p.id;
+  if(def.t==="b") return '<td class="chk" data-k="'+k+'"><input type="checkbox" data-id="'+id+'" data-k="'+k+'" '+(num(v)>=.5?"checked":"")+'></td>';
+  if(def.t==="z") return '<td data-k="'+k+'"><select class="cell" data-id="'+id+'" data-k="'+k+'">'+[0,1,2,3,4].map(z=>'<option value="'+z+'"'+(Math.round(num(v))===z?" selected":"")+'>'+z+'</option>').join("")+'</select></td>';
+  if(def.t==="r"||def.t==="o") return '<td data-k="'+k+'">'+selectHtml(p,k)+'</td>';
+  return '<td data-k="'+k+'"><input class="cell" inputmode="decimal" data-id="'+id+'" data-k="'+k+'" value="'+esc(cellVal(p,k))+'" title="Dateiwert '+esc(v)+'"></td>';
+}
+function cellVal(p,k){ return (S.raw||!U[k])?fmt(p.params[k]):dispStr(p,k); }
+function selectHtml(p,k){ const v=p.params[k], id=p.id;
+  if(P[k].t==="r"){ const rn=roomName(v); return '<select class="cell" data-id="'+id+'" data-k="'+k+'">'+(rn?"":'<option value="'+esc(v)+'" selected>Eigen: '+esc(fmt(v))+'</option>')+ROOMS.map(r=>'<option value="'+r.v+'"'+(rn===r.n?" selected":"")+'>'+esc(r.n.replace(" (abgeleitet)","*"))+'</option>').join("")+'</select>'; }
+  const ol=outLabel(v); return '<select class="cell" data-id="'+id+'" data-k="'+k+'">'+(ol?"":'<option value="'+esc(v)+'" selected>Dateiwert '+esc(fmt(v))+'</option>')+OUT_LBL.map(o=>'<option value="'+o.v+'"'+(ol===o.n?" selected":"")+'>'+esc(o.n)+'</option>').join("")+'</select>'; }
+function scaleCtl(id){ const v=S.scale[id]||100, off=(S.pvOff||{})[id]; return '<button class="chip" data-pvtog="'+id+'" style="border:0;cursor:pointer" title="Plugin-Bild dieses Abschnitts ein-/ausklappen">'+(off?"▸ Bild zeigen":"▾ Bild ausblenden")+'</button>'+(off?"":'<label class="chip" title="Größe des Plugin-Bilds in diesem Abschnitt" style="display:inline-flex;gap:6px;align-items:center">Bildgröße <input type="range" min="40" max="220" step="10" value="'+v+'" data-scale="'+id+'" style="width:90px;accent-color:var(--accent)"><span class="mono">'+v+' %</span></label>'); }
+function sectionCard(sec,vis){
+  const f=byId(S.focus)||vis[0];
+  const head='<tr><th class="rowh"><span class="mono" style="font-size:11px;color:var(--cardmuted)">PARAMETER</span></th>'+vis.map(p=>'<th class="pc'+(p.id===S.focus?" focus":"")+'"><input class="nm" data-id="'+p.id+'" data-nm value="'+esc(p.name)+'"><div class="acts"><button data-act="focus" data-id="'+p.id+'" class="'+(p.id===S.focus?"on":"")+'" title="Fokus: dieses Preset in der Plugin-Ansicht zeigen">◉</button><button data-act="dup" data-id="'+p.id+'" title="Duplizieren">⧉</button><button data-act="del" data-id="'+p.id+'" title="Löschen">✕</button>'+badge(p)+'</div></th>').join("")+'</tr>';
+  const rows=sec.keys.filter(k=>!(S.hideK||{})[k]).map(k=>{ const d=P[k]; return '<tr data-row="'+k+'"><td class="rowh"><div class="lab">'+esc(d.l)+'<span class="sp2"><button class="spread" data-act="spread" data-k="'+k+'" title="Wert des Fokus-Presets auf alle gezeigten Presets übertragen">⇉</button></span></div><div class="key">'+k+((!S.raw&&U[k])?" · "+esc(U[k].u)+(U[k].guess?' <span title="'+esc(U[k].guess)+'" style="color:var(--brand)">(Annahme)</span>':""):(d.h?" · "+esc(d.h):""))+'</div></td>'+vis.map(p=>cellHtml(p,k)).join("")+'</tr>'; }).join("");
+  return '<section class="card" data-sec="'+sec.id+'"><div class="brand">'+sec.en+'</div><h3>'+esc(sec.de)+'</h3><div class="chips">'+scaleCtl(sec.id)+'<span class="chip">'+sec.keys.length+' Parameter</span><span class="chip">'+vis.length+' Preset'+(vis.length===1?"":"s")+'</span></div>'
+   +'<div class="card-body"><div class="tbl-wrap"><table class="t"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table></div><div class="pv'+((S.pvOff||{})[sec.id]?" off":"")+'" data-vb="'+sec.vb.join(",")+'" style="--pvw:'+Math.round(Math.min(460,Math.max(300,sec.vb[2]*0.62))*(S.scale[sec.id]||100)/100)+'px"></div></div></section>';
+}
+function renderMain(){
+  const vis=visiblePresets(); const m=$("#main");
+  if(!S.presets.length){ m.innerHTML='<div class="empty"><h2>Noch keine Presets</h2><p>Zieh Reaper-<span class="mono">.ini</span>-Listen, <span class="mono">.vstpreset</span>, <span class="mono">.aupreset</span>, CSV oder Excel hierher – oder:</p><p><button class="btn pri" id="eFiles">Dateien wählen</button> <button class="btn" id="eFolder">Ordner wählen</button> <button class="btn" id="eFactory">Werkspresets PRO 2 laden</button></p></div>'; return; }
+  if(!vis.length){ m.innerHTML='<div class="empty"><h2>Nichts gehakt</h2><p>Links Presets per Häkchen auswählen, um sie zu zeigen.</p></div>'; return; }
+  const f=byId(S.focus)||vis[0]; if(!byId(S.focus)) S.focus=f.id;
+  let h='';
+  if(f.notes.length) h+='<div class="pnotes"><b>Hinweise zu „'+esc(f.name)+'“:</b> '+f.notes.map(esc).join(" · ")+'</div>';
+  if(!S.secOff.full) h+='<section class="card" data-sec="full"><div class="brand">DEAR REALITY · NACHBAU AUS MIRO</div><h3>Plugin-Ansicht: <span id="fname">'+esc(f.name)+'</span></h3><div class="chips">'+scaleCtl("full")+'<span class="chip">Regler ziehen, Schalter klicken, XY-Pad ziehen = Wert ändern · Shift = fein</span><span class="chip" id="modeChip"></span></div><div class="card-body"><div class="pv full'+((S.pvOff||{}).full?" off":"")+'" data-vb="60,60,1535,700" style="max-width:'+Math.round(1100*(S.scale.full||100)/100)+'px"></div></div></section>';
+  SECTIONS.forEach(s=>{ if(!S.secOff[s.id]) h+=sectionCard(s,vis); });
+  m.innerHTML=h; refreshSvgs();
+}
+function refreshSvgs(){
+  const f=byId(S.focus); if(!f) return; const mc=$("#modeChip"); if(mc) mc.textContent=({focus:"wirkt auf: nur Fokus",abs:"wirkt auf: alle "+visiblePresets().length+" gezeigten (gleicher Wert)",rel:"wirkt auf: alle "+visiblePresets().length+" gezeigten (relativ)"})[S.edit||"focus"];
+  $$(".pv").forEach(el=>{ const vb=el.dataset.vb.split(",").map(Number); el.innerHTML=pluginSVG(f,vb)+'<div class="cap">Vorschau: <b>'+esc(f.name)+'</b> · Ausschnitt aus dem Plugin</div>'; });
+  const fn=$("#fname"); if(fn) fn.textContent=f.name;
+}
+function updateDiff(){
+  const f=byId(S.focus);
+  $$("#main td[data-k]").forEach(td=>td.classList.remove("diff"));
+  if(!S.diff||!f) return;
+  $$("#main input[data-id][data-k], #main select[data-id][data-k]").forEach(el=>{ const p=byId(el.dataset.id); if(!p||p.id===f.id) return; if(Math.abs(num(p.params[el.dataset.k])-num(f.params[el.dataset.k]))>1e-6) el.closest("td").classList.add("diff"); });
+}
+function renderAll(){ renderSidebar(); renderMain(); updateDiff(); }
+
+/* --- Änderungen --- */
+let editPushed=false;
+function applyRaw(p,obj){ let ch=false;
+  for(const k in obj){ const t=P[k].t; let n=num(obj[k]); if(t==="b") n=n>=.5?1:0; else if(t==="z") n=clamp(Math.round(n),0,4); else if(t==="n") n=clamp(n,0,1);
+    const s=(t==="b"||t==="z")?String(n):(Math.abs(n-num(p.params[k]))<1e-12?p.params[k]:String(Number(n.toFixed(9))));
+    if(s!==p.params[k]){ p.params[k]=s; ch=true; } }
+  if(ch) refreshCells(p); return ch; }
+function refreshCells(p){ $$('#main [data-id="'+p.id+'"][data-k]').forEach(el=>{ const k=el.dataset.k;
+  if(el.type==="checkbox") el.checked=num(p.params[k])>=.5;
+  else if(el.tagName==="SELECT"){ if(P[k].t==="z") el.value=String(Math.round(num(p.params[k]))); else el.outerHTML=selectHtml(p,k); }
+  else if(document.activeElement!==el){ el.value=cellVal(p,k); el.title="Dateiwert "+p.params[k]; } }); }
+function setParam(id,k,val){ const p=byId(id); if(!p) return; if(applyRaw(p,{[k]:val})){ if(p.id===S.focus) refreshSvgs(); updateDiff(); save(); } }
+/* Tabelleneingabe – wirkt je nach „Regler wirken auf“ auch auf alle gezeigten Presets */
+function cellEdit(p,k,t){ if(!p) return; const mode=S.edit||"focus";
+  const tg=mode==="focus"?[p]:[p,...visiblePresets().filter(x=>x.id!==p.id)];
+  const disp=t.matches("input.cell")&&!S.raw&&U[k];
+  if(t.type==="checkbox"||t.tagName==="SELECT"||(mode!=="rel")){
+    const val=t.type==="checkbox"?(t.checked?1:0):t.value;
+    if(disp){ const d=parseDisp(val); if(d==null){ refreshCells(p); toast("„"+val+"“ ist keine Zahl"); return; } tg.forEach(x=>applyRaw(x,rawFromDisp(x,k,d))); }
+    else tg.forEach(x=>applyRaw(x,{[k]:val}));
+  } else {
+    if(disp){ const d=parseDisp(t.value); if(d==null){ refreshCells(p); toast("„"+t.value+"“ ist keine Zahl"); return; }
+      const old=dispOf(p,k), delta=(d===-Infinity||old===-Infinity)?null:d-old;
+      tg.forEach(x=>{ if(delta==null){ if(x===p) applyRaw(x,rawFromDisp(x,k,d)); return; } const o=dispOf(x,k); applyRaw(x,rawFromDisp(x,k,(o===-Infinity?(U[k].fromD?-96:0):o)+delta)); }); }
+    else { const delta=num(t.value)-num(p.params[k]); tg.forEach(x=>applyRaw(x,{[k]:num(x.params[k])+delta})); }
+  }
+  refreshCells(p); refreshSvgs(); updateDiff(); save();
+  if(tg.length>1) toast("„"+P[k].l+"“ auf "+tg.length+" Presets angewendet ("+(mode==="rel"&&t.type!=="checkbox"&&t.tagName!=="SELECT"?"relativ":"gleicher Wert")+")",true); }
+function setDisplay(id,k,str){ const p=byId(id); if(!p) return; const d=parseDisp(str); if(d==null){ refreshCells(p); toast("„"+str+"“ ist keine Zahl"); return; }
+  if(applyRaw(p,rawFromDisp(p,k,d))){ if(p.id===S.focus) refreshSvgs(); updateDiff(); save(); } else refreshCells(p); }
+function dupPreset(id){ const p=byId(id); if(!p) return; pushHist("Duplizieren"); const c=mkPreset(p.name+" Kopie",p.params,p.src,[...p.notes]); c.v1extra={...(p.v1extra||{})}; const i=S.presets.indexOf(p); S.presets.splice(i+1,0,c); S.focus=c.id; renderAll(); save(); toast("„"+c.name+"“ angelegt",true); }
+function delPreset(id){ const p=byId(id); if(!p) return; pushHist("Löschen"); S.presets=S.presets.filter(x=>x.id!==p.id); if(S.focus===p.id) S.focus=(visiblePresets()[0]||S.presets[0]||{}).id||null; renderAll(); save(); toast("„"+p.name+"“ gelöscht",true); }
+function renamePreset(id,name){ const p=byId(id); if(!p||p.name===name||!name.trim()) return; pushHist("Umbenennen"); p.name=name.trim(); renderSidebar(); refreshSvgs(); $$('th.pc input.nm[data-id="'+id+'"]').forEach(e=>e.value=p.name); save(); }
+
+/* --- Ereignisse --- */
+document.addEventListener("click",e=>{
+  const mb=e.target.closest("[data-menu]"); if(mb){ const m=$("#"+mb.dataset.menu); const was=m.classList.contains("open"); $$(".menu").forEach(x=>x.classList.remove("open")); if(!was) m.classList.add("open"); return; }
+  if(!e.target.closest(".menu")) $$(".menu").forEach(x=>x.classList.remove("open"));
+  const ex=e.target.closest("[data-exp]"); if(ex){ $$(".menu").forEach(x=>x.classList.remove("open")); doExport(ex.dataset.exp); return; }
+  const a=e.target.closest("[data-act]"); if(a){ const id=a.dataset.id||(a.closest(".pi")||{dataset:{}}).dataset.id;
+    if(a.dataset.act==="dup") dupPreset(id); else if(a.dataset.act==="del") delPreset(id);
+    else if(a.dataset.act==="focus"){ S.focus=+id; renderSidebar(); $$("th.pc").forEach(th=>th.classList.toggle("focus",th.querySelector("input.nm").dataset.id===id)); $$('[data-act=focus]').forEach(b=>b.classList.toggle("on",b.dataset.id===id)); refreshSvgs(); updateDiff(); save(); }
+    else if(a.dataset.act==="spread"){ const f=byId(S.focus); if(!f) return; pushHist("Wert für alle"); visiblePresets().forEach(p=>{ if(p.id!==f.id){ p.params[a.dataset.k]=f.params[a.dataset.k]; } }); renderMain(); updateDiff(); save(); toast("„"+P[a.dataset.k].l+"“ von „"+f.name+"“ auf "+(visiblePresets().length-1)+" andere übertragen",true); }
+    return; }
+  const pn=e.target.closest(".pi .pn"); if(pn){ S.focus=+pn.closest(".pi").dataset.id; renderSidebar(); refreshSvgs(); $$("th.pc").forEach(th=>th.classList.toggle("focus",th.querySelector("input.nm").dataset.id==S.focus)); updateDiff(); save(); }
+});
+document.addEventListener("dblclick",e=>{ const pn=e.target.closest(".pi .pn"); if(!pn) return; const id=pn.closest(".pi").dataset.id, p=byId(id); const inp=document.createElement("input"); inp.className="rn"; inp.value=p.name; pn.replaceWith(inp); inp.focus(); inp.select(); const done=ok=>{ if(ok) renamePreset(id,inp.value); renderSidebar(); }; inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") done(true); if(ev.key==="Escape") done(false); }); inp.addEventListener("blur",()=>done(true)); });
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.matches(".pi .vis")){ byId(t.closest(".pi").dataset.id).vis=t.checked; renderMain(); updateDiff(); save(); return; }
+  if(t.matches("input.nm[data-nm]")){ renamePreset(t.dataset.id,t.value); return; }
+  if(t.matches("[data-sec]")){ S.secOff[t.dataset.sec]=!t.checked; renderMain(); updateDiff(); save(); return; }
+  if(t.dataset&&t.dataset.k&&t.dataset.id){ if(!editPushed) pushHist("Wert"); const k=t.dataset.k;
+    cellEdit(byId(t.dataset.id),k,t); }
+});
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&!/INPUT|SELECT/.test((document.activeElement||{}).tagName||"")){ e.preventDefault(); undo(); } if(e.key==="Enter"&&e.target.matches&&e.target.matches("input.cell")) e.target.blur(); });
+$("#q").addEventListener("input",e=>{ S.q=e.target.value; renderSidebar(); });
+$("#selAll").onclick=()=>{ pushHist("Alle"); S.presets.forEach(p=>p.vis=true); renderAll(); save(); };
+$("#selNone").onclick=()=>{ pushHist("Keine"); S.presets.forEach(p=>p.vis=false); renderAll(); save(); };
+$("#selFiltered").onclick=()=>{ const q=S.q.toLowerCase(); pushHist("Nur Treffer"); S.presets.forEach(p=>p.vis=!q||p.name.toLowerCase().includes(q)); renderAll(); save(); };
+$("#optDiff").onchange=e=>{ S.diff=e.target.checked; updateDiff(); save(); };
+$("#optRaw").onchange=e=>{ S.raw=e.target.checked; renderMain(); updateDiff(); save(); };
+$("#editMode").onchange=e=>{ S.edit=e.target.value; refreshSvgs(); save(); };
+$("#theme").onchange=e=>{ S.theme=e.target.value; document.documentElement.dataset.theme=S.theme; save(); };
+$("#bUndo").onclick=undo; $("#toastUndo").onclick=undo;
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-hist]"); if(b){ $$(".menu").forEach(x=>x.classList.remove("open")); restoreTo(+b.dataset.hist); } });
+document.addEventListener("input",e=>{ const r=e.target.closest("[data-scale]"); if(!r) return; const id=r.dataset.scale, v=+r.value; S.scale[id]=v; r.nextElementSibling.textContent=v+" %";
+  const pv=r.closest(".card").querySelector(".pv"); if(id==="full") pv.style.maxWidth=Math.round(1100*v/100)+"px"; else { const sec=SECTIONS.find(s=>s.id===id); pv.style.setProperty("--pvw",Math.round(Math.min(460,Math.max(300,sec.vb[2]*0.62))*v/100)+"px"); } save(); });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pvtog]"); if(!b) return; S.pvOff=S.pvOff||{}; S.pvOff[b.dataset.pvtog]=!S.pvOff[b.dataset.pvtog]; renderMain(); updateDiff(); save(); });
+/* Häkchen ziehen: über mehrere Zeilen an-/abwählen */
+let paint=null;
+document.addEventListener("pointerdown",e=>{ const cb=e.target.closest(".pi .vis"); if(!cb) return; e.preventDefault();
+  const p=byId(cb.closest(".pi").dataset.id); pushHist("Häkchen"); paint={val:!p.vis,ch:false}; p.vis=paint.val; cb.checked=paint.val; paint.ch=true; });
+document.addEventListener("pointermove",e=>{ if(!paint) return; const el=document.elementFromPoint(e.clientX,e.clientY); const row=el&&el.closest&&el.closest(".pi"); if(!row) return;
+  const p=byId(row.dataset.id); if(p&&p.vis!==paint.val){ p.vis=paint.val; row.querySelector(".vis").checked=paint.val; } });
+document.addEventListener("pointerup",()=>{ if(!paint) return; paint=null; renderMain(); updateDiff(); save(); });
+document.addEventListener("click",e=>{ if(e.target.closest(".pi .vis")) e.preventDefault(); },true);
+$("#plist").style.userSelect="none"; $("#plist").style.touchAction="none";
+function renderPar(){ const h=S.hideK||{}, n=Object.values(h).filter(Boolean).length; $("#bPar").textContent="Parameter"+(n?" ("+n+" aus)":"")+" ▾";
+  $("#parPop").innerHTML='<div style="display:flex;gap:6px;padding:6px 10px"><button class="btn sm" data-parall="1">Alle zeigen</button><button class="btn sm" data-parall="0">Alle aus</button></div>'
+   +SECTIONS.map(sec=>'<div class="mono" style="padding:8px 10px 2px;font-size:10.5px;letter-spacing:1px;color:var(--muted)">'+sec.en+'</div>'+sec.keys.map(k=>'<label class="it" style="padding:3px 10px"><input type="checkbox" data-park="'+k+'" '+(h[k]?"":"checked")+'> '+esc(P[k].l)+'</label>').join("")).join(""); }
+document.addEventListener("change",e=>{ const c=e.target.closest("[data-park]"); if(!c) return; S.hideK=S.hideK||{}; S.hideK[c.dataset.park]=!c.checked; renderPar(); renderMain(); updateDiff(); save(); });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-parall]"); if(!b) return; S.hideK={}; if(b.dataset.parall==="0") ORDER.forEach(k=>S.hideK[k]=true); renderPar(); renderMain(); updateDiff(); save(); });
+renderPar();
+$("#clearAll").onclick=()=>{ if(!S.presets.length) return; pushHist("Alle entfernen ("+S.presets.length+")"); const n=S.presets.length; S.presets=[]; S.focus=null; renderAll(); save(); toast(n+" Presets entfernt",true); };
+const pickFiles=()=>{ $$(".menu").forEach(x=>x.classList.remove("open")); $("#fileIn").click(); }, pickDir=()=>{ $$(".menu").forEach(x=>x.classList.remove("open")); $("#dirIn").click(); };
+$("#bFiles").onclick=pickFiles; $("#bFolder").onclick=pickDir;
+$("#fileIn").onchange=e=>{ importFiles(e.target.files); e.target.value=""; };
+$("#dirIn").onchange=e=>{ importFiles([...e.target.files].filter(f=>/\.(ini|vstpreset|aupreset|csv|xlsx)$/i.test(f.name))); e.target.value=""; };
+function loadFactory(){ $$(".menu").forEach(x=>x.classList.remove("open")); pushHist("Werkspresets"); FACTORY.names.forEach(n=>S.presets.push(mkPreset(n,FACT[n],"Werk"))); if(!S.focus) S.focus=S.presets[0].id; renderAll(); save(); toast(FACTORY.names.length+" Werkspresets geladen",true); }
+$("#bFactory").onclick=loadFactory;
+$("#bNew").onclick=()=>{ $$(".menu").forEach(x=>x.classList.remove("open")); pushHist("Neu"); const p=mkPreset("Neues Preset",DEFAULT_PARAMS,"PRO 2"); S.presets.push(p); S.focus=p.id; renderAll(); save(); };
+document.addEventListener("click",e=>{ const id=e.target.id; if(id==="eFiles") pickFiles(); if(id==="eFolder") pickDir(); if(id==="eFactory") loadFactory(); });
+let dragDepth=0;
+window.addEventListener("dragenter",e=>{ e.preventDefault(); dragDepth++; $("#wrap").classList.add("drop-on"); });
+window.addEventListener("dragleave",e=>{ dragDepth=Math.max(0,dragDepth-1); if(!dragDepth) $("#wrap").classList.remove("drop-on"); });
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("drop",async e=>{ e.preventDefault(); dragDepth=0; $("#wrap").classList.remove("drop-on");
+  const items=[...(e.dataTransfer.items||[])]; const entries=items.map(i=>i.webkitGetAsEntry?i.webkitGetAsEntry():null); const plain=[...e.dataTransfer.files];   // synchron einsammeln, bevor await läuft
+  const files=entries.some(Boolean)?await entriesToFiles(entries,[]):plain;
+  importFiles(files.filter(f=>/\.(ini|vstpreset|aupreset|csv|xlsx|txt)$/i.test(f.name))); });
+
+/* --- Ziehen im Plugin-Bild --- */
+let drag=null;
+document.addEventListener("pointerdown",e=>{
+  const el=e.target.closest("#main [data-ctl]"); if(!el) return; const svg=el.closest("svg"); const f=byId(S.focus); if(!f) return; e.preventDefault();
+  const key=el.dataset.key, kind=el.dataset.ctl; const inv=svg.getScreenCTM().inverse(); const tg=targets();
+  if(kind==="tog"){ pushHist("Schalter"); const nv=num(f.params[key])>=.5?0:1; tg.forEach(p=>applyRaw(p,{[key]:nv})); afterEdit(); return; }
+  pushHist("Regler"); editPushed=true;
+  const keys=kind==="xy"?["X","Z"]:[key]; const start={}; tg.forEach(p=>{ start[p.id]={}; keys.forEach(k=>start[p.id][k]=normOf(p,k)); });
+  drag={kind,key,keys,inv,svg,y0:e.clientY,v0:normOf(f,key),el,tg,start};
+  dragMove(e);
+});
+function targets(){ const f=byId(S.focus); if(!f) return []; if((S.edit||"focus")==="focus") return [f]; return [f,...visiblePresets().filter(p=>p.id!==f.id)]; }
+function afterEdit(){ refreshSvgs(); updateDiff(); save(); }
+function applyNorms(newF){ const d=drag, f=byId(S.focus); const rel=S.edit==="rel";
+  d.tg.forEach(p=>{ const o={}; d.keys.forEach(k=>{ if(newF[k]==null) return; const n=rel?d.start[p.id][k]+(newF[k]-d.start[f.id][k]):newF[k]; Object.assign(o,normToRaw({params:{...p.params,...o}},k,n)); }); applyRaw(p,o); });
+  afterEdit(); }
+function toSvg(e){ const pt=new DOMPoint(e.clientX,e.clientY).matrixTransform(drag.inv); return pt; }
+function dragMove(e){
+  if(!drag) return; const d=drag;
+  if(d.kind==="knob") applyNorms({[d.key]:clamp(d.v0+(d.y0-e.clientY)/(e.shiftKey?900:160),0,1)});
+  else if(d.kind==="hs"){ const x0=+d.el.dataset.x0,w=+d.el.dataset.w,pt=toSvg(e); applyNorms({[d.key]:clamp((pt.x-x0-9)/(w-18),0,1)}); }
+  else if(d.kind==="vs"){ const y0=+d.el.dataset.y0,h=+d.el.dataset.h,pt=toSvg(e); applyNorms({[d.key]:clamp(1-(pt.y-y0-9)/(h-18),0,1)}); }
+  else if(d.kind==="xy"){ const q=+d.el.dataset.ppm,pt=toSvg(e); applyNorms({X:clamp(.5+(pt.x-383)/q/60,0,1),Z:clamp(.5+(427-pt.y)/q/60,0,1)}); }
+}
+document.addEventListener("pointermove",dragMove);
+document.addEventListener("pointerup",()=>{ drag=null; editPushed=false; });
+document.addEventListener("pointercancel",()=>{ drag=null; editPushed=false; });
+window.addEventListener("beforeunload",save);
+
+/* Start */
+load(); document.documentElement.dataset.theme=S.theme||"ref"; $("#theme").value=S.theme||"ref"; $("#optDiff").checked=!!S.diff; $("#optRaw").checked=!!S.raw; $("#editMode").value=S.edit||"focus";
+if(S.presets.length&&!byId(S.focus)) S.focus=S.presets[0].id;
+renderAll(); renderHist(); $("#wrap").classList.toggle("noside",S.side===false);
+document.body.style.zoom=S.uiz||1; $("#uiz").value=String(S.uiz||1); $("#uiz").onchange=e=>{ S.uiz=+e.target.value; document.body.style.zoom=S.uiz; save(); };
+$("#bSide").onclick=()=>{ S.side=S.side===false; $("#wrap").classList.toggle("noside",S.side===false); save(); };
+window.__werkstatt={S,polarOf,dispStr,rawFromDisp,toV1,buildVstV1,buildFxpV1,buildAuV1,setDisplay,parseState,convert,buildVst,buildAu,importFiles,doExport,xlsxFor,csvFor,readXlsxRows,parseCSV,importTable,zipRead,ORDER,FACT};
+</script>
+</body>
+</html>
