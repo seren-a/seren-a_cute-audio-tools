@@ -19,8 +19,10 @@ bleibt, wo sie ist.
 ## Konzept
 
 - **Eine Bridge, viele Remotes:** die WebSocket-OSC-Bridge aus
-  [midi-osc-matrix-monitor](../midi-osc-matrix-monitor/) wird wiederverwendet
-  (Browser ↔ WebSocket ↔ UDP-OSC). Pro Ziel-Gerät nur ein Port/Mapping.
+  [midi-osc-matrix-monitor](../midi-osc-matrix-monitor/) ist jetzt als eigenständiges,
+  bidirektionales Modul extrahiert: [`bridge/bridge.js`](bridge/bridge.js) –
+  HTTP für Remote-Seiten + WebSocket (eigener Handshake) + OSC über UDP in beide
+  Richtungen, ohne npm-Abhängigkeiten (Node.js ≥ 16). Pro Ziel-Gerät nur ein Port/Mapping.
 - **Learn-Modus:** erst lauschen (wie im Matrix Monitor), dann gefundene
   Adressen per Klick auf ein Bedienelement binden – Mapping als JSON
   speichern, kein Handgeschriebel.
@@ -29,9 +31,25 @@ bleibt, wo sie ist.
 - **Themes:** cutiepro-Palette, hell/dunkel/Auto wie im Matrix Monitor.
 - **Offline-Demo:** jede Remote-Seite läuft ohne Bridge mit einer Demo-Queue.
 
+## Bridge benutzen
+
+```bash
+# HTTP 9090 · OSC rein UDP 9001 · OSC raus 127.0.0.1:8000 (z. B. REAPER)
+node bridge/bridge.js 9090 9001 127.0.0.1 8000
+
+# umgekehrt: OSC-Feedback einer App ansehen (Learn-Modus)
+# REAPER/TotalMix schicken auf UDP 9001, die Seite hört mit
+node bridge/bridge.js 9090 9001
+```
+
+Als Modul: `const { createBridge, oscEncode } = require("./bridge/bridge.js")`.
+Browser-Seiten senden entweder rohe OSC-Pakete (Binary-Frame) oder komfortables
+JSON `{"address":"/track/1/volume","args":[0.75]}` (Text-Frame, Bridge encodiert).
+Test: `node bridge/bridge-test.js` (prüft alle drei Richtungen).
+
 ## Roadmap
 
-1. Bridge als eigenständiges, wiederverwendbares Modul extrahieren
+1. ~~Bridge als eigenständiges, wiederverwendbares Modul extrahieren~~ ✓
 2. `reaper-remote` als erste vollwertige Remote (Transport + Mixer + Paging)
 3. Learn-Modus und Layout-JSON-Editor
 4. Weitere Ziele (TotalMix FX, DM7, OBS, Max/RNBO)
