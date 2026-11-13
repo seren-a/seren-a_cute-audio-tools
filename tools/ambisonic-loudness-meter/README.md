@@ -132,6 +132,12 @@ Kalibrierungs-Slider, Umschalter „Alle Kanäle“ (BS.1770 auf allen
 Kanälen statt nur W), Reset-Knopf, Momentary-/Short-Term-Balken mit
 Peak-Hold und ein Panel mit allen Torresin-Parametern.
 
+## Übergabe
+
+Für die Weiterarbeit (z. B. in VSCode oder mit einem KI-Agent):
+ siehe [HANDOVER.md](HANDOVER.md) – Projektstand, Befehle, Referenzwerte,
+ offene Punkte.
+
 ## Quellen
 
 - Torresin, S. et al. (2020): *Indoor soundscape assessment: A principal
