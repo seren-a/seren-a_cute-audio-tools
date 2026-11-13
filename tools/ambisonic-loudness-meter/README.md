@@ -86,20 +86,51 @@ Geprüft u. a.: Stereo-1-kHz-Referenz (−23 dBFS ⇒ −23 LUFS), A-Bewertung
 (−19,1 dB bei 100 Hz), Zwicker-Referenz (60 dB SPL/1 kHz ⇒ 4 sone),
 Richtungsvarianz der Loudness, Perzentil-Logik.
 
-## Roadmap: AU/VST3-Plugin
+## AU/VST3-Plugin (`plugin/`)
 
-Der Python-Kern ist bewusst plugin-tauglich strukturiert (Block-basierte
-Filter, keine Abhängigkeit von Dateien). Geplanter Weg:
+JUCE-Plugin (C++17) mit allen Parametern der Studie und BS.1770-5/EBU-R128.
+Der DSP-Kern (`src/MeterDSP.h`) ist bewusst **JUCE-frei** (reines C++17,
+eigener kompakter FFT) – dadurch überall kompilier- und testbar.
 
-1. **JUCE**-Projekt (C++), Portierung von K-Filter, A-/C-Bewertung und
-   Zwicker-Loudness aus dem Python-Referenzcode (Validierung gegen die
-   pytest-Referenzwerte).
-2. Prozessor für bis zu 16 Kanäle ((order+1)²), Parameter: Ordnung,
-   Layout, Kalibrierung.
-3. GUI: BS.1770-Meter (Integrated/ST/M/LRA/TP) + Torrescape-Panel
-   (N10, L_A10−L_A90, S, FS, R, L_C−L_A) + Richtungs-Karte.
-4. Build: VST3 + AU (macOS) aus einer Codebasis (JUCE), CI-Build-Skript
-   unter `scripts/`.
+```
+plugin/
+├── CMakeLists.txt              # JUCE 8, Formate: AU + VST3 + Standalone
+├── bauen.sh                    # macOS: AU+VST3, Linux: VST3 (klont JUCE automatisch)
+├── src/
+│   ├── MeterDSP.h              # DSP-Kern (norm-exakt + dokumentierte Naeherungen)
+│   ├── PluginProcessor.h/.cpp # Ambisonics-Bus (FOA bis 4. Ordnung), W-/Alle-Kanal-Modus
+│   └── PluginEditor.h/.cpp     # cutiepro-GUI: 12 Themes, Meter, Soundscape-Panel
+└── tests/test_meter_dsp.cpp    # C++-Referenztests (gleiche Werte wie pytest)
+```
+
+**Exakt nach Norm:** K-Filter (BS.1770-48-kHz-Koeffizienten bzw. RBJ-Design
+für andere Raten), Gated Integrated/Momentary/Short-Term, LRA, True Peak
+(4× Interpolation), A-/C-Bewertung (IEC 61672, exakte Bilinear-Polabbildung),
+L_A10/L_A90 mit Gating.
+**Dokumentierte Naeherungen:** Zwicker-Lautheit (20 Bark-Bänder, Hann-Fenster,
+Schwellenwerte je Band), Sharpness (gewichtetes erstes Moment),
+Fluctuation Strength (Lautheitsmodulation), Roughness (Hüllkurvenmodulation).
+Referenz-Implementierung bleibt das Python-Modul (mosqito).
+
+### Bauen
+
+```bash
+cd plugin
+./bauen.sh          # klont JUCE 8.0.8 bei Bedarf, baut Release
+```
+
+macOS: `build/ambisonic_loudness_meter.artcomponent` (AU) und
+`.vst3` nach `~/Library/Audio/Plug-Ins/` kopieren. Linux: VST3 (AU benötigt
+macOS).
+
+### GUI
+
+Im Look des [midi-osc-matrix-monitor](../midi-osc-matrix-monitor/):
+alle 12 cutiepro-Themes (matrix, pink, aqua, mint, sage, peach, rose, mix,
+rosa, lilac, peachh, pistazie), Theme-Auswahl in der Kopfzeile,
+Kalibrierungs-Slider, Umschalter „Alle Kanäle“ (BS.1770 auf allen
+Kanälen statt nur W), Reset-Knopf, Momentary-/Short-Term-Balken mit
+Peak-Hold und ein Panel mit allen Torresin-Parametern.
 
 ## Quellen
 
