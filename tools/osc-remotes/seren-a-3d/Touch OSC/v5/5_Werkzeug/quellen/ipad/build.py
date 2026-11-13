@@ -169,7 +169,8 @@ def hfader(name, frame, color):
 
 
 def detail():
-    x, y, w, h = DET
+    _, _, w, h = DET           # v8.16: eigene Gruppe „det_g“, damit Room „groß“ das Feld ausblenden kann
+    x = y = 0
     k = [box((x, y, w, h), PANEL, name="th_panel", radius=18),
          lbl(None, (x, y + 10, w, 26), "✧ ausgewählt ✧", 16, LAV, AlignH.CENTER),
          box((x + w / 2 - 44, y + 46, 88, 88), PINK, name="det_chip", shape=Shape.CIRCLE),
@@ -189,7 +190,9 @@ def detail():
           hfader("yaw_fader", (x + 18, y + 496, w - 36, 32), CYAN),
           lbl("pitch_lbl", (x + 18, y + 534, w - 36, 18), "rotator pitch", 13, CYAN),
           hfader("pitch_fader", (x + 18, y + 554, w - 36, 32), CYAN)]
-    return k
+    g = t.group(name="det_g", frame=F(*DET), color=BG, background=False, outline=False)
+    g.add(*k)
+    return [g]
 
 
 def square_bg(name, frame, labels):

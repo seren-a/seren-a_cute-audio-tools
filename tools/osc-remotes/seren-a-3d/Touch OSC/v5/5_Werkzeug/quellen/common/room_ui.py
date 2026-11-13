@@ -35,9 +35,9 @@ def zoom(box, lbl, pill="#2e1659", txt="#fff0fb"):
     """Zoom buttons for the top view; must sit ABOVE the XY drag area (add after it)."""
     k = []
     off = (-80, -80, 10, 10)
-    for name, cap in (("rz_minus", "−"), ("rz_fit", "Raum"), ("rz_plus", "+")):
+    for name, cap in (("rz_big", "groß"), ("rz_minus", "−"), ("rz_fit", "Raum"), ("rz_plus", "+")):
         b = box(off, pill, name=name + "_bg", radius=10)
-        l = lbl(name + "_lbl", off, cap, 18 if cap != "Raum" else 14, txt, t.AlignH.CENTER)
+        l = lbl(name + "_lbl", off, cap, 18 if cap in ("−", "+") else 14, txt, t.AlignH.CENTER)
         btn = t.button(name=name, frame=off, color="#ffffff00", background=False, outline=False,
                        button_type=t.ButtonType.MOMENTARY, script=BTN)
         for c in (b, l, btn):

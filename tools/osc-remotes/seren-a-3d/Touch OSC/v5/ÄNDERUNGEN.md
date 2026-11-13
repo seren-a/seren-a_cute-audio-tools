@@ -2,6 +2,7 @@
 
 | Version | Datum | Wichtigste Neuerung | Außerdem |
 | --- | --- | --- | --- |
+| **v8.17** | 13.11.26 | **Room „groß“ (iPad, Monitor 5:4, Monitor HD)**: neue Taste „groß“ neben − Raum + in der Room-Ansicht. Der Raum füllt dann den ganzen Bildschirm, Spurliste und Detailfeld sind weg (iPad: auch die 32er-Kacheln). „klein“ bringt alles zurück. Mit Horizont liegt die Seitenansicht in voller Breite darunter | iPad- und Monitor-Oberflächen neu laden |
 | **v8.16** | 13.11.26 | **Monitor in Full HD (1920 × 1080)**: neue Oberfläche `IEM-Monitor_HD` für den großen Bildschirm. Alle Ansichten (16, 32v, 32h, 4×8, 64), Horizont, Raum und Config wie beim 5:4-Monitor, nur mit dem breiten Platz: die Liste ist breiter, bei 32v zwei breite Spalten, bei 32h und 4×8 laufen die Felder über die ganze Breite | neue Datei `Monitor_HD/IEM-Monitor_HD.tosc`; der 5:4-Monitor bleibt unverändert |
 | **v8.15** | 10.11.26 | **iPad und Monitor starten mit deiner Voreinstellung**: Ansicht (Modus, 32er/Layout, Horizont) und die ganze Config werden in Reaper gespeichert und beim Öffnen geladen | getrennt für iPad und Monitor; Gruppen und Spurfilter waren schon gespeichert |
 | v8.14 | 10.11.26 | **Gruppen (Reaper)**: in der Config bis zu 12 Gruppen zum An-/Abhaken – A–D zum selbst Zuordnen (+A…+D, dann Spuren antippen) und Reaper-Ordner ohne dearVR/Hall; an = nur deren Spuren | gespeichert im Projekt; `Reaper_3D.lua` v8.14 + iPad/Monitor neu |

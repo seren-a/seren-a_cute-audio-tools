@@ -11,6 +11,7 @@ local RM = { GRID = 16 }
 -- Zoom wie in dearVR PRO 2: sichtbarer Bereich ± so viele Meter um den Hörer; 0 = ganzer Raum
 RM.ZOOMS = { 3, 6, 12, 18, 24, 30 }
 RM.zoom = 0
+RM.big = false           -- v8.16: Taste „groß“: Raum füllt den Bildschirm (Liste/Details weg)
 RM.fitRange = 6
 function RM.zoomStep(dir)          -- dir +1 = näher heran (kleinerer Bereich), -1 = weiter weg
   local cur = (RM.zoom > 0) and RM.zoom or RM.fitRange
@@ -148,7 +149,7 @@ local function drawView(ui, pre, area, mp, walls, th, labels)
   ui.frame(pre .. '_nose', lx - 4 + (labels.noseX or 0), ly - 4 + (labels.noseY or 0), 8, 8); ui.col(pre .. '_nose', th.accent, 1)
   ui.text(pre .. '_scale', string.format('Raster %s m', (st < 1) and '0,5' or tostring(math.floor(st))))
   ui.frame(pre .. '_scale', area.x + 8, area.y + area.h - 22, 200, 18)
-  ui.frame(pre .. '_title', area.x + 8, area.y + 4, area.w - (pre == 'rt' and 200 or 16), 22)
+  ui.frame(pre .. '_title', area.x + 8, area.y + 4, area.w - (pre == 'rt' and 300 or 16), 22)
   return st
 end
 
@@ -168,10 +169,11 @@ function RM.draw(ui, topArea, sideArea, room, name, shared, others, objs, th)
   drawView(ui, 'rt', topArea, tm, wl, th, { noseY = -14 })
   -- zoom: − [Raum / 6 m] +, oben rechts in der Draufsicht
   local zx, zy = topArea.x + topArea.w - 180, topArea.y + 4
-  for _, c in ipairs({ { 'rz_minus', zx, 44 }, { 'rz_fit', zx + 48, 84 }, { 'rz_plus', zx + 136, 44 } }) do
+  for _, c in ipairs({ { 'rz_big', zx - 96, 88 }, { 'rz_minus', zx, 44 }, { 'rz_fit', zx + 48, 84 }, { 'rz_plus', zx + 136, 44 } }) do
     ui.frame(c[1], c[2], zy, c[3], 34); ui.frame(c[1] .. '_bg', c[2], zy, c[3], 34); ui.frame(c[1] .. '_lbl', c[2], zy, c[3], 34)
     ui.col(c[1] .. '_bg', (c[1] == 'rz_fit' and RM.zoom == 0) and th.accent or th.pill, 1)
   end
+  ui.text('rz_big_lbl', RM.big and 'klein' or 'groß')
   ui.text('rz_fit_lbl', RM.zoom > 0 and (string.format('± %d m', RM.zoom)) or 'Raum')
   local title
   if room then
@@ -209,10 +211,11 @@ function RM.names(withSide)
   end
   return out
 end
-RM.ZOOM_CTL = { 'rz_minus', 'rz_minus_bg', 'rz_minus_lbl', 'rz_fit', 'rz_fit_bg', 'rz_fit_lbl', 'rz_plus', 'rz_plus_bg', 'rz_plus_lbl' }
+RM.ZOOM_CTL = { 'rz_big', 'rz_big_bg', 'rz_big_lbl', 'rz_minus', 'rz_minus_bg', 'rz_minus_lbl', 'rz_fit', 'rz_fit_bg', 'rz_fit_lbl', 'rz_plus', 'rz_plus_bg', 'rz_plus_lbl' }
 function RM.button(name)          -- true if it was a zoom button
   if name == 'rz_minus' then RM.zoomStep(-1) elseif name == 'rz_plus' then RM.zoomStep(1)
-  elseif name == 'rz_fit' then RM.zoomFit() else return false end
+  elseif name == 'rz_fit' then RM.zoomFit()
+  elseif name == 'rz_big' then RM.big = not RM.big else return false end
   return true
 end
 function RM.gridNames(pre)

@@ -52,6 +52,7 @@ TotalMix 7001/9001 (OSC 1).
   - `iPad_IEM-Space` – IEM-Space (Modi space · multi · panner · room)
   - `Monitor_5zu4` – IEM-Monitor (Modi space · multi · panner · room; Ansichten 16/32v/32h/64)
   - `Monitor_HD` – derselbe Monitor in Full HD (1920 × 1080), für den großen Bildschirm (v8.16)
+  - Room-Ansicht (iPad, Monitor, Monitor HD): Taste „groß“ lässt den Raum den ganzen Bildschirm füllen, „klein“ bringt Liste und Details zurück (v8.17)
   - `Handy_Twister-View` – Twister_View hoch und quer
 - `2_Nuendo-Cubase` – Kopie der MIDI-Remote-Skripte (serena/TouchOSC3D, MFTView, E16DAWLink)
 - `3_Reaper` – Reaper_3D.lua (3D), Reaper_Twister.lua (Twister), Reaper_E16_Twister.lua (MultiEQ, Omni-/DirectionalCompressor, Hall, Sends/Ziele auf Twister Bank 4 + E16 alle Seiten), Reaper_E16_Einstellungen.lua, Reaper_E16_Ziele_zuweisen.lua, OXI/ (OXI One Puzzle)

@@ -412,6 +412,7 @@ local ROOM_UI = {
   text = function(n, s) setText(n, s) end,
 }
 local roomTM, roomSM, roomIn = nil, nil, {}
+local function bigRoom() return mode == 'room' and RM.big end   -- v8.16: Room füllt den Bildschirm
 local function renderRoom(tf, pf)
   local on = (mode == 'room')
   for _, n in ipairs(RM.names(true)) do setVisible(n, false) end
@@ -437,6 +438,7 @@ end
 local function renderDots()
   local tf, pf = C('top_area'), C('pano_area')
   tf, pf = tf and tf.frame, pf and pf.frame
+  if bigRoom() and tf and pf then tf, pf = Rectangle(16, 168, 1334, 600), Rectangle(16, 784, 1334, 224) end
   renderRoom(tf, pf)
   for k = 1, N do
     local on = present(k)
@@ -540,7 +542,7 @@ local function render()
   buildSlots()
   for i = 1, N do
     local k = slotK[i]
-    for _, sfx in ipairs(SLOT_PARTS) do setVisible(sfx[1] .. i .. sfx[2], k ~= nil) end
+    for _, sfx in ipairs(SLOT_PARTS) do setVisible(sfx[1] .. i .. sfx[2], k ~= nil and not (sfx[1] == 'r' and bigRoom())) end
     if k then
       local o = obj[k]
       local on = present(k)
@@ -644,7 +646,8 @@ local function render()
   setText('col_btn_lbl', LOOK.colors == 'daw' and 'spurfarben' or 'tosc farben')
   setVisible('cfg_overlay', cfgOpen)
   setVisible('bg_top', mode ~= 'mp' and mode ~= 'room'); setVisible('bg_pano', mode ~= 'mp' and mode ~= 'room' and not n32)
-  setVisible('tiles32', n32); setVisible('pano_xy', not n32)
+  setVisible('tiles32', n32 and not bigRoom()); setVisible('pano_xy', not n32)
+  setVisible('det_g', not bigRoom())
   setColor('n32_btn_bg', n32 and { 0.37, 0.95, 1 } or { 0.18, 0.08, 0.35 }, 1)
   setVisible('bg_top_mp', mode == 'mp'); setVisible('bg_pano_mp', mode == 'mp')
   setVisible('mon_overlay', logOpen)

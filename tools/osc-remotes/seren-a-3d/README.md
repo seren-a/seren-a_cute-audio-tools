@@ -1,6 +1,6 @@
 # seren.a – Übersicht über alle Skripte und Oberflächen
 
-**Stand: 13.11.26, 13:00 · aktuelle Version v8.16**
+**Stand: 13.11.26, 13:30 · aktuelle Version v8.17**
 Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was wohin gehört, steht oben, die Update-Liste darunter. Die ausführlichen Anleitungen sind unten verlinkt.
 
 ---
@@ -8,7 +8,7 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 > **Einzelne Werkzeuge als eigene Branches:** Puzzle, E16 und Twister (Reaper, Nuendo) in [seren-a-reaper-scripts](https://github.com/seren-a/seren-a-reaper-scripts#branches-seren-a-3d), die Moss-Erweiterung der OXI (Reaper, Bitwig) in [`oxi-mk2-moss-extended`](https://github.com/seren-a/seren-a_cute-audio-tools/tree/oxi-mk2-moss-extended). Dieser Ordner ist das Gesamtpaket.
 
 
-## 1. Was gehört wohin (Stand v8.16)
+## 1. Was gehört wohin (Stand v8.17)
 
 ### Reaper – Aktionsliste (ReaScript laden)
 
@@ -45,9 +45,9 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datei | Gerät | Version im Layout |
 | --- | --- | --- |
-| `iPad_IEM-Space/IEM-Space.tosc` | iPad | v8.15 · 10.11.26 |
-| `Monitor_5zu4/IEM-Monitor.tosc` | Monitor 5:4 | v8.15 · 10.11.26 |
-| `Monitor_HD/IEM-Monitor_HD.tosc` | Monitor Full HD 1920 × 1080 | v8.16 · 13.11.26 |
+| `iPad_IEM-Space/IEM-Space.tosc` | iPad | v8.17 · 13.11.26 |
+| `Monitor_5zu4/IEM-Monitor.tosc` | Monitor 5:4 | v8.17 · 13.11.26 |
+| `Monitor_HD/IEM-Monitor_HD.tosc` | Monitor Full HD 1920 × 1080 | v8.17 · 13.11.26 |
 | `Handy_Objekt-Uebersicht/Objekt-Uebersicht.tosc` | Handy quer | v8.4 · 07.11.26 |
 | `Handy_Pan/…` (6 Varianten) | Handy | v6.1 |
 | `Handy_Twister-View/Twister_View(_quer).tosc` | Handy | v6.1 |
@@ -70,6 +70,7 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datum, Uhrzeit | Version | Was | Neu einspielen |
 | --- | --- | --- | --- |
+| 13.11.26, 13:30 | **v8.17** | Room „groß“ auf iPad, Monitor 5:4 und Monitor HD: Raum füllt den ganzen Bildschirm | iPad-, Monitor- und Monitor-HD-Oberfläche neu öffnen |
 | 13.11.26, 13:00 | **v8.16** | Monitor in Full HD (1920 × 1080): neue Oberfläche `IEM-Monitor_HD`, alle Ansichten wie beim 5:4-Monitor | `Monitor_HD/IEM-Monitor_HD.tosc` auf den Bildschirm laden (Reaper-Skript bleibt) |
 | 10.11.26, 17:20 | **v8.15** | iPad + Monitor starten mit der zuletzt eingestellten Ansicht/Config (in Reaper gespeichert) | `Reaper_3D.lua` neu starten · iPad + Monitor neu öffnen |
 | 10.11.26, 14:40 | v8.14 | Gruppen in iPad/Monitor (Reaper): A–D selbst zuordnen + Reaper-Ordner, an = nur deren Spuren | `Reaper_3D.lua` neu starten · iPad + Monitor neu öffnen |

@@ -336,17 +336,22 @@ end
 --------------------------------------------------------------------------
 -- Geometrie
 --------------------------------------------------------------------------
-local function CAfull() local a = GEO[layout].ca; return { x = a[1], y = a[2], w = a[3], h = a[4] } end
+local function bigRoom() return mode == 'room' and RM.big end   -- v8.16: Room-Ansicht füllt den ganzen Bildschirm
+local function CAfull()
+  if bigRoom() then return { x = 8, y = 62, w = SW - 16, h = SH - 70 } end
+  local a = GEO[layout].ca; return { x = a[1], y = a[2], w = a[3], h = a[4] }
+end
 -- mit Horizont wird der Kreis kleiner und sitzt über dem Horizont-Band
 local function CA()
   local f = CAfull()
   if not panoOn then return f end
+  if bigRoom() then return { x = f.x, y = f.y, w = f.w, h = f.h * (1 - PH) - 6 } end
   local s = f.h * (1 - PH) - 6
   return { x = f.x + (f.w - s) / 2, y = f.y, w = s, h = s }
 end
 local function PO()             -- Horizont-Band; in der 64er-Ansicht zwischen den Eckfeldern
   local a = CAfull(); local h = a.h * PH
-  if layout == '64' then return { x = a.x + a.w / 12, y = a.y + a.h - h, w = a.w * 5 / 6, h = h } end
+  if layout == '64' and not bigRoom() then return { x = a.x + a.w / 12, y = a.y + a.h - h, w = a.w * 5 / 6, h = h } end
   return { x = a.x, y = a.y + a.h - h, w = a.w, h = h }
 end
 local function topR(f) return f.w / 2 - 14 end
@@ -629,7 +634,7 @@ local function renderInfo()
       local k = slotK[i]
       if k and moved[k] and (not mv or moved[k] > mv.t) then mv = { k = k, t = moved[k] } end
     end
-    local show = layout == '64' and mv and now - mv.t < INFO_MS and present(mv.k) and not cfgOpen and not logOpen
+    local show = layout == '64' and not bigRoom() and mv and now - mv.t < INFO_MS and present(mv.k) and not cfgOpen and not logOpen
     setVisible('blk' .. b .. '_info', show and true or false)
     if show then
       local gx, gy, gw, gh = cellRect((b - 1) * 16 + 1)
@@ -661,6 +666,7 @@ end
 
 local function renderCells()
   local th = theme()
+  if bigRoom() then for i = 1, MAXO do setVisible('c' .. i, false) end return end
   local cu = cur[mode]
   buildSlots()
   for i = 1, MAXO do
@@ -765,6 +771,8 @@ local function render()
   setColor('pano' .. gi .. '_fill', th.panel, CFG64.panoAlpha)
   setText('pano' .. gi .. '_title', mode == 'mp' and 'rückansicht · X × Z' or 'horizont · azimut × elevation')
   setVisible('pano_xy', panoOn and not logOpen and not cfgOpen)
+  local ca, po = CA(), PO()                    -- Zieh-/Tipp-Flächen folgen der Ansicht (Room „groß“)
+  setFrame('top_xy', ca.x, ca.y, ca.w, ca.h); setFrame('pano_xy', po.x, po.y, po.w, po.h)
   setVisible('mon_overlay', logOpen)
   setVisible('cfg_overlay', cfgOpen)
   renderCells()
