@@ -1,5 +1,5 @@
 --[[ =========================================================================
-  seren.a ✧ IEM monitor ✧ · Root-Skript (TouchOSC 2, 1280 x 1024, 5:4-Monitor)
+  seren.a ✧ IEM monitor ✧ · Root-Skript (TouchOSC 2, 1280 x 1024 = 5:4-Monitor; HD-Fassung 1920 x 1080)
   -------------------------------------------------------------------------
   Draufsicht + Spurliste, ohne Auswahlknöpfe und ohne großes Detailfeld.
   Ansichten (oben):  16 · 32v (Liste zweispaltig) · 32h (Reihen oben/unten) · 64 (Felder in den Ecken)
@@ -16,6 +16,10 @@
   Verbindung: MIDI 1 = TouchOSC Bridge. Gegenstelle: serena_TouchOSC3D.js (Nuendo, 32 Spuren)
   oder reaper_seren3D.lua (Reaper, 64 Spuren). Protokoll: PROTOKOLL.md.
 ========================================================================= ]]
+
+local HD = false           --@@HD@@  (build.py --hd setzt true: Full HD 1920 x 1080 statt 5:4)
+local SW, SH = 1920, 1080
+if not HD then SW, SH = 1280, 1024 end
 
 local CFG = {
   midiConn = 1, nMidi = 10,
@@ -47,6 +51,13 @@ local GEO = {
   ['32r'] = { ca = { 330, 62, 620, 620 }, n = 32, pano = 4 },   -- v8.13: Ansicht oben, 32 Spuren in 4 Reihen à 8 unten
   ['64']  = { ca = { 160, 62, 960, 960 }, n = 64, pano = 3 },
 }
+if HD then      -- v8.16: Full HD, die Ansicht bleibt quadratisch, die Liste bekommt die Breite
+  GEO['16']  = { ca = { 8, 64, 1000, 1000 }, n = 16, pano = 1 }
+  GEO['32v'] = { ca = { 8, 64, 1000, 1000 }, n = 32, pano = 1 }
+  GEO['32h'] = { ca = { 565, 174, 790, 790 }, n = 32, pano = 2 }
+  GEO['32r'] = { ca = { 615, 62, 690, 690 }, n = 32, pano = 4 }
+  GEO['64']  = { ca = { 460, 64, 1000, 1000 }, n = 64, pano = 3 }
+end
 
 local PH = 0.34          -- Horizont-Band unten (muss zu build.py passen)
 local obj, me = {}, {}
@@ -335,7 +346,7 @@ local function CA()
 end
 local function PO()             -- Horizont-Band; in der 64er-Ansicht zwischen den Eckfeldern
   local a = CAfull(); local h = a.h * PH
-  if layout == '64' then return { x = 240, y = a.y + a.h - h, w = 800, h = h } end
+  if layout == '64' then return { x = a.x + a.w / 12, y = a.y + a.h - h, w = a.w * 5 / 6, h = h } end
   return { x = a.x, y = a.y + a.h - h, w = a.w, h = h }
 end
 local function topR(f) return f.w / 2 - 14 end
@@ -392,23 +403,37 @@ end
 --------------------------------------------------------------------------
 local DOT = { ['16'] = 30, ['32v'] = 26, ['32h'] = 26, ['32r'] = 24, ['64'] = 20 }
 local function cellRect(k)
-  if layout == '16' then return 944, 64 + (k - 1) * 60, 328, 56, 'row' end
-  if layout == '32v' then
+  if HD then
+    if layout == '16' then return 1016, 64 + (k - 1) * 62, 896, 58, 'row' end
+    if layout == '32v' then
+      local col, r = floor((k - 1) / 16), (k - 1) % 16
+      return 1016 + col * 450, 64 + r * 62, 446, 58, 'row'
+    end
+    if layout == '32h' then
+      local row, i = floor((k - 1) / 16), (k - 1) % 16
+      return i * 120 + 1, (row == 0) and 60 or 968, 118, 108, 'tile'
+    end
+    if layout == '32r' then
+      local row, i = floor((k - 1) / 8), (k - 1) % 8
+      return 4 + i * 239, 758 + row * 80, 235, 76, 'grid'
+    end
+  elseif layout == '16' then return 944, 64 + (k - 1) * 60, 328, 56, 'row' end
+  if not HD and layout == '32v' then
     local col, r = floor((k - 1) / 16), (k - 1) % 16
     return 944 + col * 166, 64 + r * 60, 162, 56, 'narrow'
   end
-  if layout == '32h' then
+  if not HD and layout == '32h' then
     local row, i = floor((k - 1) / 16), (k - 1) % 16
     return i * 80 + 1, (row == 0) and 60 or 914, 78, 108, 'tile'
   end
-  if layout == '32r' then                       -- 4 Reihen à 8 unter der Ansicht
+  if not HD and layout == '32r' then            -- 4 Reihen à 8 unter der Ansicht
     local row, i = floor((k - 1) / 8), (k - 1) % 8
     return 4 + i * 159, 690 + row * 83, 155, 79, 'grid'
   end
   local gw, gh = CFG64.gridSize * 1280, CFG64.gridSize * 964
   local blk, i = floor((k - 1) / 16), (k - 1) % 16
-  local bx = (blk % 2 == 0) and 4 or (1280 - 4 - gw)
-  local by = (blk < 2) and 62 or (1024 - 4 - gh)
+  local bx = (blk % 2 == 0) and 4 or (SW - 4 - gw)
+  local by = (blk < 2) and 62 or (SH - 4 - gh)
   local cw, ch = gw / 4, gh / 4
   return bx + (i % 4) * cw, by + floor(i / 4) * ch, cw - 2, ch - 2, 'grid'
 end

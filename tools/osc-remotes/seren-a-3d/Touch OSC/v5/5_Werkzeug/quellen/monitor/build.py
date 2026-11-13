@@ -16,13 +16,16 @@ import config_ui  # noqa: E402
 import sphere_ui  # noqa: E402
 import room_ui  # noqa: E402
 
-W, H = 1280, 1024
+HD = "--hd" in sys.argv          # v8.16: Full HD 1920 x 1080 (sonst 5:4, 1280 x 1024)
+W, H = (1920, 1080) if HD else (1280, 1024)
 MAXO = 64
 BG, PANEL, PANEL2 = "#0a0414", "#241046", "#2e1458"
 PINK, PINK_D, PINK_DD = "#ff6ec7", "#7a2f86", "#4a1d5e"
 CYAN = "#5ef2ff"
 LAV, TXT, DIM = "#c9a7ff", "#fff0fb", "#b79bd6"
 CA = {1: (8, 64, 924, 924), 2: (240, 142, 800, 800), 3: (160, 62, 960, 960), 4: (330, 62, 620, 620)}
+if HD:       # muss zu GEO in monitor_root.lua passen
+    CA = {1: (8, 64, 1000, 1000), 2: (565, 174, 790, 790), 3: (460, 64, 1000, 1000), 4: (615, 62, 690, 690)}
 PH = 0.34          # horizon band: this part of the area, at the bottom (must match monitor_root.lua)
 
 
@@ -30,7 +33,7 @@ def po(i):
     """Horizon band; in the 64 view it stays between the corner fields."""
     x, y, w, h = CA[i]
     ph = h * PH
-    return (240, y + h - ph, 800, ph) if i == 3 else (x, y + h - ph, w, ph)
+    return (x + w / 12, y + h - ph, w * 5 / 6, ph) if i == 3 else (x, y + h - ph, w, ph)
 
 
 def area(i, small=False):
@@ -99,10 +102,11 @@ def header():
     k += pill("col_btn", (890, 10, 112, 42), "tosc farben", 14)
     k += pill("cfg_btn", (1006, 10, 46, 42), "⚙", 20)
     k += pill("log_btn", (1056, 10, 50, 42), "log", 14)
-    k.append(lbl("src_lbl", (1112, 4, 164, 22), "keine DAW", 13, CYAN, AlignH.CENTER))
-    k.append(lbl("range_lbl", (1146, 30, 96, 26), "1–16", 13, TXT, AlignH.CENTER))
-    k += [tap("bank_prev", (1110, 28, 40, 30)), lbl(None, (1110, 28, 40, 30), "◀", 16, PINK, AlignH.CENTER),
-          tap("bank_next", (1236, 28, 40, 30)), lbl(None, (1236, 28, 40, 30), "▶", 16, PINK, AlignH.CENTER)]
+    d = W - 1280          # HD: the bank group sits at the right edge
+    k.append(lbl("src_lbl", (1112 + d, 4, 164, 22), "keine DAW", 13, CYAN, AlignH.CENTER))
+    k.append(lbl("range_lbl", (1146 + d, 30, 96, 26), "1–16", 13, TXT, AlignH.CENTER))
+    k += [tap("bank_prev", (1110 + d, 28, 40, 30)), lbl(None, (1110 + d, 28, 40, 30), "◀", 16, PINK, AlignH.CENTER),
+          tap("bank_next", (1236 + d, 28, 40, 30)), lbl(None, (1236 + d, 28, 40, 30), "▶", 16, PINK, AlignH.CENTER)]
     return k
 
 
@@ -191,10 +195,14 @@ def dot(k, size=30):
 def build():
     doc = t.Document.new(frame=(0, 0, W, H), color=BG, background=True, outline=False)
     root = doc.root
-    root.name = "seren.a IEM monitor"
+    root.name = "seren.a IEM monitor HD" if HD else "seren.a IEM monitor"
     common = HERE.parent / "common"
+    rootlua = (HERE / "monitor_root.lua").read_text()
+    if HD:
+        assert rootlua.count("local HD = false") == 1
+        rootlua = rootlua.replace("local HD = false", "local HD = true")
     root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
-        "\n" + (HERE / "monitor_root.lua").read_text()
+        "\n" + rootlua
     k = header()
     for i in (1, 2, 3, 4):
         k += [circle(i), circle(i, True)]
@@ -242,5 +250,5 @@ if __name__ == "__main__":
     doc = build()
     for issue in doc.validate():
         print("ISSUE:", issue)
-    doc.save(out / "seren-a_IEM-Monitor.tosc")
+    doc.save(out / ("seren-a_IEM-Monitor_HD.tosc" if HD else "seren-a_IEM-Monitor.tosc"))
     print("saved", sum(1 for _ in doc.walk()), "controls")

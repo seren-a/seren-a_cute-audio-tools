@@ -2,7 +2,7 @@
 
 | Version | Datum | Wichtigste Neuerung | Außerdem |
 | --- | --- | --- | --- |
-| **v8.11.1** | 11.11.26 | **Reaper-Konsole bleibt leer**: `Reaper_E16_Twister.lua` meldet nichts mehr beim Start oder Ebenenwechsel, nur noch Warnungen. Ein Haken in `Reaper_E16_Einstellungen.lua` (Reaper-Konsole) schaltet die Meldungen wieder ein | gleiches Skript, Einstellungsfenster neu starten |
+| **v8.16** | 13.11.26 | **Monitor in Full HD (1920 × 1080)**: neue Oberfläche `IEM-Monitor_HD` für den großen Bildschirm. Alle Ansichten (16, 32v, 32h, 4×8, 64), Horizont, Raum und Config wie beim 5:4-Monitor, nur mit dem breiten Platz: die Liste ist breiter, bei 32v zwei breite Spalten, bei 32h und 4×8 laufen die Felder über die ganze Breite | neue Datei `Monitor_HD/IEM-Monitor_HD.tosc`; der 5:4-Monitor bleibt unverändert |
 | **v8.15** | 10.11.26 | **iPad und Monitor starten mit deiner Voreinstellung**: Ansicht (Modus, 32er/Layout, Horizont) und die ganze Config werden in Reaper gespeichert und beim Öffnen geladen | getrennt für iPad und Monitor; Gruppen und Spurfilter waren schon gespeichert |
 | v8.14 | 10.11.26 | **Gruppen (Reaper)**: in der Config bis zu 12 Gruppen zum An-/Abhaken – A–D zum selbst Zuordnen (+A…+D, dann Spuren antippen) und Reaper-Ordner ohne dearVR/Hall; an = nur deren Spuren | gespeichert im Projekt; `Reaper_3D.lua` v8.14 + iPad/Monitor neu |
 | v8.13 | 10.11.26 | **32 Spuren auf einmal**: iPad Taste „32“ – Spuren 17–32 als Kacheln in 2 Reihen à 8 unten (statt Panorama), Punkte 1–32 in der Draufsicht; Monitor neue Ansicht „4×8“ – Ansicht oben, 32 Spuren in 4 Reihen à 8 unten | iPad: Bank vor/zurück springt im 32er-Modus 32 Spuren weit; Objekte 17–32 per SysEx (auch Ziehen) |
@@ -10,6 +10,7 @@
 | v8.12.2 | 09.11.26 | Marker-Zeile: Regionen ohne Farbe dezent gelb (statt blau), Cycle = wird dunkler wie Mute | LIESMICH_OXI: Moss-Verweis wieder richtig |
 | v8.12.1 | 09.11.26 | **Fix Marker-Zeile**: Farben wieder sichtbar; Loop = volle Helligkeit, Cycle an = blinkt wie Mute | – |
 | v8.12 | 09.11.26 | **Puzzle: Marker-Zeile zeigt den Loop** – hell, bei Cycle an im E16-Takt mit Weiß; Abspielposition mittel, Rest schwach | Fix: aktueller Marker stimmte bei Lane-Filter nicht; Spurliste prüfen (Konsole) im Fenster |
+| **v8.11.1** | 11.11.26 | **Reaper-Konsole bleibt leer**: `Reaper_E16_Twister.lua` meldet nichts mehr beim Start oder Ebenenwechsel, nur noch Warnungen. Ein Haken in `Reaper_E16_Einstellungen.lua` (Reaper-Konsole) schaltet die Meldungen wieder ein | gleiches Skript, Einstellungsfenster neu starten |
 | **v8.11** | 09.11.26 | **MultiEQ nur von der gewählten Spur, ohne Master** (zwei EQs auf der Spur = beide); **Fader-Grenze** 0 / +6 / +12 dB / aus, getrennt für normale Spuren (+ Master), Gruppen und Spuren mit Receives | Master auf Encoder 16 jetzt bis zur Grenze statt fest 0 dB |
 | v8.10 | 09.11.26 | **MultiEQ A/B nur von der gewählten Spur** (sonst Master/Monitoring) – nicht mehr von zwei verschiedenen Spuren | altes Verhalten im E16-Fenster wählbar |
 | v8.9.1 | 08.11.26 | Solo-LED blinkt im selben Takt wie Mute | – |
