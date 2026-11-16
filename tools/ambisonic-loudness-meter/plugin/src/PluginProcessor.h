@@ -17,12 +17,18 @@ struct MeterSnapshot {
     double lra = 0.0;
     double truePeakDbtp = -HUGE_VAL;
     double wOnlyLufs = -HUGE_VAL;
+    // Soundscape (Torresin et al. 2020) auf W
+    double lAeq = -HUGE_VAL, lCeq = -HUGE_VAL, lA10 = -HUGE_VAL, lA90 = -HUGE_VAL;
+    double n10 = 0, n50 = 0, n90 = 0;
+    double sharpnessAcum = 0, roughnessAsper = 0, fluctStrengthVacil = 0;
     int order = 1;
     int nSpeakers = 0;
     std::array<double, 24> perSpeakerLufs{};
     std::array<double, 24> speakerAz{};
     std::array<double, 24> speakerEl{};
 };
+
+class PsyWorkerThread;
 
 class AmbisonicLoudnessMeterProcessor
     : public juce::AudioProcessor,
@@ -54,7 +60,9 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorParameter* getOrderParameter() const { return orderParam; }
+    juce::AudioProcessorParameter* getSplOffsetParameter() const { return splOffsetParam; }
     MeterSnapshot snapshot() const;
+    void computePsychoNow(bool force = false);  // fuer Worker-Thread / Tests
 
 private:
     void parameterValueChanged(int parameterIndex, float newValue) override;
@@ -62,6 +70,7 @@ private:
     void applyOrder(int order);
 
     juce::AudioParameterChoice* orderParam = nullptr;
+    juce::AudioParameterFloat* splOffsetParam = nullptr;
     std::atomic<int> pendingOrder{-1};
     std::atomic<int> currentOrder{1};
 
@@ -71,6 +80,8 @@ private:
     double sampleRate_ = 48000.0;
     int blockSize_ = 512;
     std::vector<std::vector<double>> channelData;  // Scratch fuer processBlock
+    juce::Thread* psyWorker = nullptr;              // rechnet Psychoakustik im Hintergrund
+    size_t lastPsyLen_ = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmbisonicLoudnessMeterProcessor)
 };

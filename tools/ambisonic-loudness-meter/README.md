@@ -110,23 +110,28 @@ entlang der Zeitachse), Richtungsvarianz der Loudness, Perzentil-Logik.
 
 Echtzeit-Meter als Plugin (`plugin/`, siehe `plugin/README.md`):
 BS.1770-5 (Integrated/Short-Term/Momentary/LRA/True Peak/W-only) plus
-Richtungs-Loudness-Karte nach Energy-Decoding (max-rE). Bis zu 16 Kanäle
-((order+1)²), Parameter HOA Order 1–3, Ausgang = Durchgang.
+Richtungs-Loudness-Karte nach Energy-Decoding (max-rE) — und die komplette
+Soundscape-Psychoakustik (Torresin et al. 2020) auf der Omni-Komponente W:
+L_Aeq, L_C−L_A, L_A10−L_A90, N10/N50/N90 (Zwicker, ISO 532-1), Sharpness
+(DIN 45692), Roughness (Daniel-Weber), Fluctuation Strength. Bis zu 16
+Kanäle ((order+1)²), Parameter HOA Order 1–3 und SPL-Kalibrierung
+(dBFS→dB SPL, Default 94), Ausgang = Durchgang. Die Psychoakustik rechnet
+auf einem Hintergrund-Thread (5-s-Fenster, ~1 s Takt).
 
-Der DSP-Kern (`plugin/src/dsp/AmbisonicDsp.h`) ist JUCE-unabhängig und wird
-ohne JUCE gegen dieselben Normreferenzen getestet wie der Python-Kern
-(`DspTests.cpp`, 31 Checks); `PluginSmokeTest.cpp` schickt Audio headless
-durch den Prozessor. Cross-Check C++ vs. Python: Abweichungen < 0.01 LU.
+Der DSP-Kern (`plugin/src/dsp/`) ist JUCE-unabhängig: `AmbisonicDsp.h`
+(BS.1770/HOA) und `Psychoacoustics.h` (Portierung von mosqito: ISO 532-1
+zeitvariabel, DIN 45692, Daniel-Weber; Tabellen in `PsychoTables.h`).
+Validierung ohne JUCE: `DspTests.cpp` (31 Checks gegen die pytest-Referenzwerte)
+und `PsyTests.cpp` (30 Checks gegen mosqito-Referenzwerte, Signale/Referenzen
+via `plugin/tests/gen_psy_ref.py` erzeugen). `PluginSmokeTest.cpp` schickt
+Audio headless durch den Prozessor. Cross-Check C++ vs. Python: < 0.01 LU;
+N/S/FS matchen mosqito auf alle Nachkommastellen, R innerhalb ~8 %.
 
 Build (holt JUCE automatisch, baut VST3 + AU auf macOS):
 
 ```
 scripts/build-ambisonic-plugin.sh
 ```
-
-Die psychoakustischen Soundscape-Metriken (N10/N90, Sharpness, Roughness,
-Fluctuation Strength) bleiben im Python-Kern (mosqito) – eine Echtzeit-
-Portierung ins Plugin ist als nächster Schritt vorgesehen.
 
 ## Quellen
 

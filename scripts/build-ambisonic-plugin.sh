@@ -19,6 +19,14 @@ mkdir -p "$BUILD"
     "$PLUGIN/src/dsp/DspTests.cpp" -o "$BUILD/dsp_tests"
 "$BUILD/dsp_tests"
 
+# Psychoakustik-Tests gegen mosqito-Referenzen, falls vorhanden
+if [ -n "${PSY_REF_DIR:-}" ] && [ -f "$PSY_REF_DIR/psy_signals.bin" ]; then
+    echo "== 1b) Psychoakustik-Tests gegen mosqito-Referenzen =="
+    "$CXX" -std=c++17 -O2 -Wall -I"$PLUGIN/src/dsp" \
+        "$PLUGIN/src/dsp/PsyTests.cpp" -o "$BUILD/psy_tests"
+    "$BUILD/psy_tests" "$PSY_REF_DIR/psy_signals.bin" "$PSY_REF_DIR/psy_ref.txt"
+fi
+
 if [ ! -f "$JUCE_DIR/CMakeLists.txt" ]; then
     echo "== 2) JUCE holen nach $JUCE_DIR =="
     git clone --depth 1 https://github.com/juce-framework/JUCE.git "$JUCE_DIR"

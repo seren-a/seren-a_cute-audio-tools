@@ -70,6 +70,15 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(dsp_tests PRIVATE -O2 -Wall)
 endif()
 
+# Psychoakustik-Tests gegen mosqito-Referenzwerte (Signale/Referenzen werden
+# mit tests/gen_psy_ref.py erzeugt; Target nur manuell bauen):
+add_executable(psy_tests EXCLUDE_FROM_ALL src/dsp/PsyTests.cpp)
+target_include_directories(psy_tests PRIVATE src/dsp)
+target_compile_features(psy_tests PRIVATE cxx_std_17)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(psy_tests PRIVATE -O2 -Wall)
+endif()
+
 # End-to-End-Smoke-Test des Processors (headless, ohne Editor):
 juce_add_console_app(plugin_smoke_test)
 target_sources(plugin_smoke_test PRIVATE

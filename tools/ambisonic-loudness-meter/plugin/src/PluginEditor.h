@@ -38,8 +38,11 @@ private:
 
     AmbisonicLoudnessMeterProcessor& proc;
     juce::ComboBox orderBox;
-    juce::Label orderLabel, integratedLbl, stLbl, mLbl, lraLbl, tpLbl, wOnlyLbl;
+    juce::Slider splSlider;
+    juce::Label orderLabel, splLabel, integratedLbl, stLbl, mLbl, lraLbl, tpLbl, wOnlyLbl;
     juce::Label integratedVal, stVal, mVal, lraVal, tpVal, wOnlyVal;
+    juce::Label laeqLbl, lcaLbl, laVarLbl, nLbl, sharpLbl, roughLbl, fsLbl;
+    juce::Label laeqVal, lcaVal, laVarVal, nVal, sharpVal, roughVal, fsVal;
     DirectionMeter dirMeter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmbisonicLoudnessMeterEditor)

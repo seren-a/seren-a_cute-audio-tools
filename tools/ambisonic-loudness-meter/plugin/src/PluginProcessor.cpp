@@ -3,6 +3,22 @@
 
 #include <cstring>
 
+namespace {
+class PsyWorker : public juce::Thread {
+public:
+    explicit PsyWorker(AmbisonicLoudnessMeterProcessor& p) : juce::Thread("psy-worker"), proc(p) {}
+    void run() override {
+        while (!threadShouldExit()) {
+            wait(500);
+            if (threadShouldExit()) break;
+            proc.computePsychoNow();
+        }
+    }
+private:
+    AmbisonicLoudnessMeterProcessor& proc;
+};
+}  // namespace
+
 AmbisonicLoudnessMeterProcessor::AmbisonicLoudnessMeterProcessor()
     : juce::AudioProcessor(
           BusesProperties()
@@ -14,10 +30,23 @@ AmbisonicLoudnessMeterProcessor::AmbisonicLoudnessMeterProcessor()
     orderParam = p;
     addParameter(p);
     p->addListener(this);
+    auto* s = new juce::AudioParameterFloat(
+        juce::ParameterID{"splOffset", 1}, "SPL Calibration (dBFS->dB SPL)",
+        juce::NormalisableRange<float>(60.0f, 120.0f, 0.1f), 94.0f);
+    splOffsetParam = s;
+    addParameter(s);
+    s->addListener(this);
+    psyWorker = new PsyWorker(*this);
+    psyWorker->startThread();
 }
 
 AmbisonicLoudnessMeterProcessor::~AmbisonicLoudnessMeterProcessor() {
+    if (psyWorker != nullptr) {
+        psyWorker->stopThread(2000);
+        delete psyWorker;
+    }
     if (orderParam != nullptr) orderParam->removeListener(this);
+    if (splOffsetParam != nullptr) splOffsetParam->removeListener(this);
 }
 
 bool AmbisonicLoudnessMeterProcessor::isBusesLayoutSupported(
@@ -30,15 +59,38 @@ bool AmbisonicLoudnessMeterProcessor::isBusesLayoutSupported(
            mainIn.size() >= 1 && mainIn.size() <= 16;
 }
 
-void AmbisonicLoudnessMeterProcessor::parameterValueChanged(int, float newValue) {
-    int order = juce::jlimit(1, 3, (int)std::lround(newValue) + 1);
-    pendingOrder.store(order);
+void AmbisonicLoudnessMeterProcessor::parameterValueChanged(int parameterIndex, float) {
+    if (parameterIndex == 0 && orderParam != nullptr)
+        pendingOrder.store(orderParam->getIndex() + 1);
+}
+
+void AmbisonicLoudnessMeterProcessor::computePsychoNow(bool force) {
+    const juce::SpinLock::ScopedLockType lock(meterLock);
+    meter.setSplOffsetDb(splOffsetParam != nullptr ? splOffsetParam->get() : 94.0f);
+    // nur neu rechnen, wenn seit der letzten Berechnung mind. 1 s neues Audio kam
+    const size_t bufSize = meter.psyBufferSize();
+    if (meter.psyDirty() && (force || bufSize >= lastPsyLen_ + (size_t)sampleRate_)) {
+        lastPsyLen_ = bufSize;
+        meter.computePsycho();
+        auto r = meter.result();
+        snap.lAeq = r.lAeq;
+        snap.lCeq = r.lCeq;
+        snap.lA10 = r.lA10;
+        snap.lA90 = r.lA90;
+        snap.n10 = r.n10;
+        snap.n50 = r.n50;
+        snap.n90 = r.n90;
+        snap.sharpnessAcum = r.sharpnessAcum;
+        snap.roughnessAsper = r.roughnessAsper;
+        snap.fluctStrengthVacil = r.fluctStrengthVacil;
+    }
 }
 
 void AmbisonicLoudnessMeterProcessor::parameterGestureChanged(int, bool) {}
 
 void AmbisonicLoudnessMeterProcessor::applyOrder(int order) {
     const juce::SpinLock::ScopedLockType lock(meterLock);
+    meter.setSplOffsetDb(splOffsetParam != nullptr ? splOffsetParam->get() : 94.0f);
     meter.prepare(sampleRate_, order);
     meter.reset();
     currentOrder.store(order);
@@ -90,6 +142,16 @@ void AmbisonicLoudnessMeterProcessor::processBlock(juce::AudioBuffer<float>& buf
         snap.lra = r.lra;
         snap.truePeakDbtp = r.truePeakDbtp;
         snap.wOnlyLufs = r.wOnlyLufs;
+        snap.lAeq = r.lAeq;
+        snap.lCeq = r.lCeq;
+        snap.lA10 = r.lA10;
+        snap.lA90 = r.lA90;
+        snap.n10 = r.n10;
+        snap.n50 = r.n50;
+        snap.n90 = r.n90;
+        snap.sharpnessAcum = r.sharpnessAcum;
+        snap.roughnessAsper = r.roughnessAsper;
+        snap.fluctStrengthVacil = r.fluctStrengthVacil;
         snap.order = r.order;
         snap.nSpeakers = (int)r.perSpeakerLufs.size();
         for (int s = 0; s < snap.nSpeakers && s < 24; ++s) {

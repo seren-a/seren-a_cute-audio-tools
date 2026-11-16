@@ -17,11 +17,23 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <vector>
+
+#include "Psychoacoustics.h"
+
+#ifndef ALD_KPI_DEFINED
+#define ALD_KPI_DEFINED
+namespace ald {
+constexpr double kPi = 3.14159265358979323846;
+}
+#endif
 
 namespace ald {
 
+#ifndef ALD_KPI_DEFINED
 constexpr double kPi = 3.14159265358979323846;
+#endif
 
 // ---------------------------------------------------------------------------
 // Biquad + Bilinear-Transformation eines analogen Biquad-Abschnitts
@@ -504,6 +516,15 @@ struct AmbisonicResult {
     double lra = 0;
     double truePeakDbtp = -HUGE_VAL;
     double wOnlyLufs = -HUGE_VAL;
+    // Soundscape (Torresin et al. 2020) auf der Omni-Komponente W
+    double lAeq = -HUGE_VAL;        // dB(A), splOffsetDb-Kalibrierung
+    double lCeq = -HUGE_VAL;        // dB(C)
+    double lA10 = -HUGE_VAL;        // dB(A), 125-ms-Bloecke
+    double lA90 = -HUGE_VAL;
+    double n10 = 0, n50 = 0, n90 = 0;   // sone (Zwicker, ISO 532-1)
+    double sharpnessAcum = 0;           // DIN 45692
+    double roughnessAsper = 0;          // Daniel-Weber
+    double fluctStrengthVacil = 0;      // Zwicker/Fastl-Naeherung
     std::vector<double> perSpeakerLufs;
     std::vector<std::pair<double, double>> layout;
 };
@@ -524,6 +545,16 @@ public:
         for (auto& m : spkMeters_) m.prepare(fs, 1, {1.0});  // Gain separat appliziert
         tp_.prepare(fs, 4);
         work_.assign(nCh_, 0.0);
+        aWeight_ = Weighting::create(fs, true);
+        cWeight_ = Weighting::create(fs, false);
+        blockN125_ = (size_t)llround(fs * 0.125);
+        blockBuf_.assign(2, std::vector<double>(blockN125_, 0.0));
+        blockSumsq_[0] = blockSumsq_[1] = 0.0;
+        blockPos_ = 0;
+        laBlocks_.clear();
+        lcBlocks_.clear();
+        psyBuf_.clear();
+        psyDirty_ = false;
     }
 
     void reset() {
@@ -531,6 +562,23 @@ public:
         wMeter_.reset();
         for (auto& m : spkMeters_) m.reset();
         tp_.reset();
+        aWeight_.reset();
+        cWeight_.reset();
+        blockSumsq_[0] = blockSumsq_[1] = 0.0;
+        blockPos_ = 0;
+        laBlocks_.clear();
+        lcBlocks_.clear();
+        psyBuf_.clear();
+        psyDirty_ = false;
+        psyResult_ = PsychoResult{};
+    }
+
+    void setSplOffsetDb(double v) { splOffsetDb_ = v; }
+    bool psyDirty() const { return psyDirty_; }
+    void clearPsyDirty() { psyDirty_ = false; }
+    size_t psyBufferSize() const {
+        std::lock_guard<std::mutex> lk(psyMutex_);
+        return psyBuf_.size();
     }
 
     // b: nCh Zeiger auf je n Samples (B-Format, ACN/SN3D)
@@ -551,6 +599,35 @@ public:
         for (size_t i = 0; i < n; ++i) work_[i] = wScale * b[0][i];
         const double* wPtr = work_.data();
         wMeter_.process(&wPtr, n);
+
+        // A/C-Pegel + 125-ms-Bloecke + Psychoakustik-Puffer auf W
+        const size_t psyCap = (size_t)(5.0 * fs_);  // 5 s Ringpuffer
+        for (size_t i = 0; i < n; ++i) {
+            double wa = aWeight_.process(work_[i]);
+            double wc = cWeight_.process(work_[i]);
+            if (blockPos_ < blockN125_) {
+                blockBuf_[0][blockPos_] = wa;
+                blockBuf_[1][blockPos_] = wc;
+            }
+            blockSumsq_[0] += wa * wa;
+            blockSumsq_[1] += wc * wc;
+            ++blockPos_;
+            if (blockPos_ >= blockN125_) {
+                blockPos_ = 0;
+                laBlocks_.push_back(10.0 * std::log10(std::max(blockSumsq_[0] / blockN125_, 1e-15)));
+                lcBlocks_.push_back(10.0 * std::log10(std::max(blockSumsq_[1] / blockN125_, 1e-15)));
+                if (laBlocks_.size() > 800) { laBlocks_.erase(laBlocks_.begin()); lcBlocks_.erase(lcBlocks_.begin()); }
+                blockSumsq_[0] = blockSumsq_[1] = 0.0;
+            }
+            {
+                std::lock_guard<std::mutex> lk(psyMutex_);
+                psyBuf_.push_back(work_[i]);
+                // trimmen nur in grossen Bloecken (erase waere sonst O(n) pro Sample)
+                if (psyBuf_.size() >= psyCap + (size_t)fs_)
+                    psyBuf_.erase(psyBuf_.begin(), psyBuf_.begin() + (psyBuf_.size() - psyCap));
+                psyDirty_ = true;
+            }
+        }
 
         // pro virtuellem Lautsprecher (mit G-Gewicht)
         for (size_t s = 0; s < spk.size(); ++s) {
@@ -574,11 +651,48 @@ public:
         r.lra = meter_.loudnessRange();
         r.truePeakDbtp = tp_.dbtp();
         r.wOnlyLufs = wMeter_.integrated();
+        // Soundscape-Pegel (dBFS + splOffsetDb_ = dB SPL)
+        if (!laBlocks_.empty()) {
+            double sum = 0;
+            for (double v : laBlocks_) sum += std::pow(10.0, v / 10.0);
+            r.lAeq = 10.0 * std::log10(sum / laBlocks_.size()) + splOffsetDb_;
+            double sumC = 0;
+            for (double v : lcBlocks_) sumC += std::pow(10.0, v / 10.0);
+            r.lCeq = 10.0 * std::log10(sumC / lcBlocks_.size()) + splOffsetDb_;
+            std::vector<double> la = laBlocks_, lc = lcBlocks_;
+            std::sort(la.begin(), la.end());
+            r.lA10 = la[(size_t)(0.90 * (la.size() - 1))] + splOffsetDb_;
+            r.lA90 = la[(size_t)(0.10 * (la.size() - 1))] + splOffsetDb_;
+            (void)lc;
+        }
+        r.n10 = psyResult_.N10;
+        r.n50 = psyResult_.N50;
+        r.n90 = psyResult_.N90;
+        r.sharpnessAcum = psyResult_.S_acum;
+        r.roughnessAsper = psyResult_.R_asper;
+        r.fluctStrengthVacil = psyResult_.FS_vacil;
         r.layout = layout_;
         r.perSpeakerLufs.resize(layout_.size());
         for (size_t s = 0; s < layout_.size(); ++s)
             r.perSpeakerLufs[s] = spkMeters_[s].integrated();
         return r;
+    }
+
+    // Psychoakustik (Zwicker/Sharpness/Roughness/FS) auf dem W-Puffer neu berechnen.
+    // Teuer (~100 ms fuer 10 s) -> NICHT auf dem Audiothread aufrufen.
+    void computePsycho() {
+        std::vector<double> buf;
+        {
+            std::lock_guard<std::mutex> lk(psyMutex_);
+            buf = psyBuf_;
+        }
+        if (buf.size() < fs_) return;  // mind. 1 s
+        // dBFS -> Pa: 0 dBFS RMS = splOffsetDb_ dB SPL
+        const double scale = 2e-5 * std::pow(10.0, splOffsetDb_ / 20.0);
+        std::vector<double> p(buf.size());
+        for (size_t i = 0; i < buf.size(); ++i) p[i] = buf[i] * scale;
+        psyResult_ = psychoacoustics(p.data(), p.size(), fs_);
+        psyDirty_ = false;
     }
 
     const Bs1770Meter& meter() const { return meter_; }
@@ -587,12 +701,22 @@ private:
     double fs_ = 48000;
     int order_ = 1;
     int nCh_ = 4;
+    double splOffsetDb_ = 94.0;
     std::vector<std::pair<double, double>> layout_;
     std::vector<double> gains_;
     Bs1770Meter meter_, wMeter_;
     std::vector<Bs1770Meter> spkMeters_;
     TruePeak tp_;
     std::vector<double> work_;
+    Weighting aWeight_, cWeight_;
+    size_t blockN125_ = 0, blockPos_ = 0;
+    std::vector<std::vector<double>> blockBuf_;
+    double blockSumsq_[2] = {0, 0};
+    std::vector<double> laBlocks_, lcBlocks_;
+    std::vector<double> psyBuf_;
+    mutable std::mutex psyMutex_;
+    bool psyDirty_ = false;
+    PsychoResult psyResult_{};
 };
 
 }  // namespace ald

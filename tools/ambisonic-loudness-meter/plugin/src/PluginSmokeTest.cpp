@@ -44,10 +44,15 @@ int main() {
         proc.processBlock(buf, midi);
     }
 
+    // Psychoakustik (laeuft im Plugin auf Worker-Thread; hier direkt forciert)
+    proc.computePsychoNow(true);
     auto s = proc.snapshot();
     std::printf("order=%d nSpk=%d integrated=%.3f maxST=%.3f maxM=%.3f LRA=%.3f TP=%.3f wOnly=%.3f\n",
                 s.order, s.nSpeakers, s.integratedLufs, s.maxShortTermLufs, s.maxMomentaryLufs,
                 s.lra, s.truePeakDbtp, s.wOnlyLufs);
+    std::printf("soundscape: L_Aeq=%.1f L_C-L_A=%.1f L_A10-L_A90=%.1f N10=%.2f N90=%.2f S=%.2f R=%.2f FS=%.2f\n",
+                s.lAeq, s.lCeq - s.lAeq, s.lA10 - s.lA90, s.n10, s.n90,
+                s.sharpnessAcum, s.roughnessAsper, s.fluctStrengthVacil);
 
     CHECK(s.order == 1);
     CHECK(s.nSpeakers == 11);
@@ -58,6 +63,12 @@ int main() {
     CHECK(s.wOnlyLufs > -17.0 && s.wOnlyLufs < -13.0);
     CHECK(std::isfinite(s.truePeakDbtp) && s.truePeakDbtp < 0.0);
     CHECK(s.maxMomentaryLufs >= s.integratedLufs - 1.0);
+    // Soundscape-Plausibilitaet: 1-kHz-artiges Omni-Signal bei 94 dB SPL cal
+    CHECK(std::isfinite(s.lAeq) && s.lAeq > 60.0 && s.lAeq < 100.0);
+    CHECK(std::isfinite(s.n10) && s.n10 > 0.0);
+    CHECK(std::isfinite(s.sharpnessAcum) && s.sharpnessAcum > 0.0);
+    CHECK(std::isfinite(s.roughnessAsper) && s.roughnessAsper >= 0.0);
+    CHECK(std::isfinite(s.fluctStrengthVacil) && s.fluctStrengthVacil >= 0.0);
 
     // Order wechseln (Parameter auf 2 -> 9 Kanäle) und weiterlaufen lassen
     if (auto* p = dynamic_cast<juce::AudioParameterChoice*>(proc.getOrderParameter()))
