@@ -15,9 +15,9 @@ endif()
 add_subdirectory("${JUCE_DIR}" "${CMAKE_BINARY_DIR}/JUCE" EXCLUDE_FROM_ALL)
 
 if(APPLE)
-    set(PLUGIN_FORMATS AU VST3)
+    set(PLUGIN_FORMATS AU VST3 Standalone)
 else()
-    set(PLUGIN_FORMATS VST3)
+    set(PLUGIN_FORMATS VST3 Standalone)
 endif()
 
 juce_add_plugin(ambisonic-loudness-meter
