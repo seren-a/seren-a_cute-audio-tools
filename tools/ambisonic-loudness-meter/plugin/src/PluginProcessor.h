@@ -28,6 +28,39 @@ struct MeterSnapshot {
     std::array<double, 24> speakerEl{};
 };
 
+// Read-only Output-Parameter (Category analysisMeter -> VST3 kIsReadOnly),
+// damit Hosts (z. B. REAPER per ReaScript) die Metriken auslesen koennen.
+class MeterOutputParameter : public juce::AudioProcessorParameter {
+public:
+    MeterOutputParameter(juce::String name, juce::String unit, double lo, double hi)
+        : juce::AudioProcessorParameter(1),
+          name_(std::move(name)), unit_(std::move(unit)), lo_(lo), hi_(hi) {}
+
+    juce::String getName(int) const override { return name_; }
+    juce::String getLabel() const override { return unit_; }
+    Category getCategory() const override { return analysisMeter; }
+    bool isAutomatable() const override { return false; }
+    float getValue() const override { return v01.load(); }
+    void setValue(float) override {}  // read-only
+    float getDefaultValue() const override { return 0.0f; }
+    int getNumSteps() const override { return 0x7fffffff; }
+    juce::String getText(float v, int) const override {
+        return juce::String(toDouble(v), 2) + " " + unit_;
+    }
+    float getValueForText(const juce::String&) const override { return 0.0f; }
+
+    void setFromDouble(double v) {
+        if (!std::isfinite(v)) v = lo_;
+        v01.store((float)juce::jlimit(0.0, 1.0, (v - lo_) / (hi_ - lo_)));
+    }
+    double toDouble(float v) const { return lo_ + (double)v * (hi_ - lo_); }
+
+private:
+    juce::String name_, unit_;
+    double lo_, hi_;
+    std::atomic<float> v01 { 0.0f };
+};
+
 class PsyWorkerThread;
 
 class AmbisonicLoudnessMeterProcessor
@@ -73,6 +106,8 @@ private:
     juce::AudioParameterFloat* splOffsetParam = nullptr;
     std::atomic<int> pendingOrder{-1};
     std::atomic<int> currentOrder{1};
+    MeterOutputParameter* meterParams[16] = {};  // read-only, owned by addParameter
+    void pushMeterParams(const MeterSnapshot& s);
 
     ald::AmbisonicMeter meter;
     mutable juce::SpinLock meterLock;

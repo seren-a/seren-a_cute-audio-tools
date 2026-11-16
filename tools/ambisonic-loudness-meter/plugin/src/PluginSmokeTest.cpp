@@ -38,6 +38,10 @@ int main() {
     fiveOne.inputBuses.add(juce::AudioChannelSet::create5point1());
     fiveOne.outputBuses.add(juce::AudioChannelSet::create5point1());
     CHECK(proc.isBusesLayoutSupported(fiveOne));
+    // 2 Eingangs-Parameter + 16 read-only Output-Parameter (analysisMeter)
+    CHECK(proc.getNumParameters() == 18);
+    CHECK(proc.getParameters()[2]->getCategory() == juce::AudioProcessorParameter::analysisMeter);
+    CHECK(!proc.getParameters()[2]->isAutomatable());
     proc.prepareToPlay(48000.0, 512);
 
     // 20 s: W-Kanal (ACN 0) mit -23 dBFS 1 kHz, Rest 0 -> omni-Signal

@@ -133,6 +133,31 @@ Build (holt JUCE automatisch, baut VST3 + AU auf macOS):
 bash scripts/build-ambisonic-plugin.sh  # oder: chmod +x scripts/build-ambisonic-plugin.sh
 ```
 
+## REAPER-Workflow: alles in eine zentrale CSV
+
+Das Plugin legt alle 16 Metriken als **read-only Output-Parameter** an
+(sichtbar in REAPER unter FX > Param). Damit lassen sich Projekte
+automatisiert analysieren:
+
+1. **Projekt scannen:** `scripts/reaper_collect.lua` in REAPER laden
+   (Actions > ReaScript > Load). Das Script liest alle Meter-Instanzen aus,
+   schreibt `analysis/fx_snapshot.csv` + `analysis/items.csv` ins
+   Projektverzeichnis und hängt eine Zeile pro Instanz an die zentrale CSV
+   (`AMBISONIC_ANALYSIS_CSV` oder
+   `~/Library/Application Support/REAPER/ambisonic-analysis/results.csv`).
+   Mit `POLL_SECONDS = 30` im Script startet es Playback automatisch und
+   pollt 30 s lang (damit Integrated/LRA sich füllen).
+2. **Dateien offline analysieren:**
+   ```
+   python3 scripts/batch_analyze.py --items-csv MeinProjekt/analysis/items.csv
+   # oder: --dir /pfad/zu/wavs   /   einzelne WAVs als Argumente
+   ```
+   hängt pro Datei eine Zeile (`source=file`) an dieselbe zentrale CSV.
+
+Beide Quellen landen im selben Schema — REAPER-Plug-in-Messungen
+(`source=reaper-fx`) und Offline-Dateianalyse (`source=file`) in einer
+Tabelle.
+
 ## Quellen
 
 - Torresin, S. et al. (2020): *Indoor soundscape assessment: A principal

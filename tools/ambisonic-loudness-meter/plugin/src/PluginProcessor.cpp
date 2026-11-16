@@ -36,8 +36,53 @@ AmbisonicLoudnessMeterProcessor::AmbisonicLoudnessMeterProcessor()
     splOffsetParam = s;
     addParameter(s);
     s->addListener(this);
+
+    // 16 read-only Output-Parameter (Namen = CSV-Spalten, siehe scripts/)
+    struct MPDef { const char* name; const char* unit; double lo, hi; };
+    static constexpr MPDef kMP[16] = {
+        {"integrated_lufs", "LUFS", -120.0, 0.0},
+        {"max_shortterm_lufs", "LUFS", -120.0, 0.0},
+        {"max_momentary_lufs", "LUFS", -120.0, 0.0},
+        {"lra_lu", "LU", 0.0, 60.0},
+        {"true_peak_dbtp", "dBTP", -60.0, 12.0},
+        {"w_only_lufs", "LUFS", -120.0, 0.0},
+        {"l_aeq_db", "dB(A)", 20.0, 140.0},
+        {"l_c_minus_l_a_db", "dB", -40.0, 40.0},
+        {"l_a10_minus_l_a90_db", "dB", 0.0, 60.0},
+        {"n10_sone", "sone", 0.0, 120.0},
+        {"n50_sone", "sone", 0.0, 120.0},
+        {"n90_sone", "sone", 0.0, 120.0},
+        {"n10_minus_n90_sone", "sone", 0.0, 120.0},
+        {"sharpness_acum", "acum", 0.0, 6.0},
+        {"roughness_asper", "asper", 0.0, 3.0},
+        {"fluctuation_strength_vacil", "vacil", 0.0, 1.0},
+    };
+    for (int i = 0; i < 16; ++i) {
+        meterParams[i] = new MeterOutputParameter(kMP[i].name, kMP[i].unit, kMP[i].lo, kMP[i].hi);
+        addParameter(meterParams[i]);
+    }
+
     psyWorker = new PsyWorker(*this);
     psyWorker->startThread();
+}
+
+void AmbisonicLoudnessMeterProcessor::pushMeterParams(const MeterSnapshot& s) {
+    meterParams[0]->setFromDouble(s.integratedLufs);
+    meterParams[1]->setFromDouble(s.maxShortTermLufs);
+    meterParams[2]->setFromDouble(s.maxMomentaryLufs);
+    meterParams[3]->setFromDouble(s.lra);
+    meterParams[4]->setFromDouble(s.truePeakDbtp);
+    meterParams[5]->setFromDouble(s.wOnlyLufs);
+    meterParams[6]->setFromDouble(s.lAeq);
+    meterParams[7]->setFromDouble(std::isfinite(s.lCeq) && std::isfinite(s.lAeq) ? s.lCeq - s.lAeq : -40.0);
+    meterParams[8]->setFromDouble(std::isfinite(s.lA10) && std::isfinite(s.lA90) ? s.lA10 - s.lA90 : 0.0);
+    meterParams[9]->setFromDouble(s.n10);
+    meterParams[10]->setFromDouble(s.n50);
+    meterParams[11]->setFromDouble(s.n90);
+    meterParams[12]->setFromDouble(s.n10 - s.n90);
+    meterParams[13]->setFromDouble(s.sharpnessAcum);
+    meterParams[14]->setFromDouble(s.roughnessAsper);
+    meterParams[15]->setFromDouble(s.fluctStrengthVacil);
 }
 
 AmbisonicLoudnessMeterProcessor::~AmbisonicLoudnessMeterProcessor() {
@@ -84,6 +129,7 @@ void AmbisonicLoudnessMeterProcessor::computePsychoNow(bool force) {
         snap.sharpnessAcum = r.sharpnessAcum;
         snap.roughnessAsper = r.roughnessAsper;
         snap.fluctStrengthVacil = r.fluctStrengthVacil;
+        pushMeterParams(snap);
     }
 }
 
@@ -160,6 +206,7 @@ void AmbisonicLoudnessMeterProcessor::processBlock(juce::AudioBuffer<float>& buf
             snap.speakerAz[(size_t)s] = r.layout[(size_t)s].first;
             snap.speakerEl[(size_t)s] = r.layout[(size_t)s].second;
         }
+        pushMeterParams(snap);
     }
 
     // Meter-Plugin: Ausgang = Eingang (Through)
