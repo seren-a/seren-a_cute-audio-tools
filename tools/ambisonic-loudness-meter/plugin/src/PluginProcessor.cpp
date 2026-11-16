@@ -54,8 +54,9 @@ bool AmbisonicLoudnessMeterProcessor::isBusesLayoutSupported(
     auto mainIn = layouts.getMainInputChannelSet();
     auto mainOut = layouts.getMainOutputChannelSet();
     if (mainIn.isDisabled() || mainOut.isDisabled()) return false;
-    // diskrete Kanaele, bis zu 16 ((3+1)^2)
-    return mainIn == mainOut && mainIn.isDiscreteLayout() &&
+    // bis zu 16 Kanaele ((3+1)^2); Layout egal (diskret ODER 4.0/5.1/... --
+    // die HOA-Kanaele liegen auf den ersten nCh Bus-Kanaelen)
+    return mainIn.size() == mainOut.size() &&
            mainIn.size() >= 1 && mainIn.size() <= 16;
 }
 
@@ -118,7 +119,7 @@ void AmbisonicLoudnessMeterProcessor::processBlock(juce::AudioBuffer<float>& buf
 
     const int nCh = (int)channelData.size();
     const int numSamples = buffer.getNumSamples();
-    const int avail = juce::jmin(nCh, getTotalNumInputChannels());
+    const int avail = std::min({nCh, getTotalNumInputChannels(), buffer.getNumChannels()});
 
     for (int c = 0; c < nCh; ++c) {
         auto& dst = channelData[(size_t)c];

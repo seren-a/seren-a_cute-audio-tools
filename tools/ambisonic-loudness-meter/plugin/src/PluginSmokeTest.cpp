@@ -28,6 +28,16 @@ int main() {
         std::printf("FAIL: setBusesLayout(4ch)\n");
         return 1;
     }
+    // Nicht-diskrete Layouts (Quad 4.0 etc., wie normale Mehrkanal-Spuren in
+    // Logic/REAPER) muessen akzeptiert werden, sonst routet der Host kein Audio.
+    juce::AudioProcessor::BusesLayout quad;
+    quad.inputBuses.add(juce::AudioChannelSet::quadraphonic());
+    quad.outputBuses.add(juce::AudioChannelSet::quadraphonic());
+    CHECK(proc.isBusesLayoutSupported(quad));
+    juce::AudioProcessor::BusesLayout fiveOne;
+    fiveOne.inputBuses.add(juce::AudioChannelSet::create5point1());
+    fiveOne.outputBuses.add(juce::AudioChannelSet::create5point1());
+    CHECK(proc.isBusesLayoutSupported(fiveOne));
     proc.prepareToPlay(48000.0, 512);
 
     // 20 s: W-Kanal (ACN 0) mit -23 dBFS 1 kHz, Rest 0 -> omni-Signal
