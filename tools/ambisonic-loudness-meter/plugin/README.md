@@ -20,7 +20,7 @@ Der DSP-Kern (`src/dsp/`) ist JUCE-unabhängig (nur C++17):
 
 ```bash
 # ab Repo-Wurzel: baut DSP-Tests + Plugin (holt JUCE automatisch)
-scripts/build-ambisonic-plugin.sh
+bash scripts/build-ambisonic-plugin.sh  # oder: chmod +x scripts/build-ambisonic-plugin.sh
 ```
 
 oder manuell:

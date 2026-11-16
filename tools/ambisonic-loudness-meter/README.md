@@ -130,7 +130,7 @@ N/S/FS matchen mosqito auf alle Nachkommastellen, R innerhalb ~8 %.
 Build (holt JUCE automatisch, baut VST3 + AU auf macOS):
 
 ```
-scripts/build-ambisonic-plugin.sh
+bash scripts/build-ambisonic-plugin.sh  # oder: chmod +x scripts/build-ambisonic-plugin.sh
 ```
 
 ## Quellen
