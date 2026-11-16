@@ -1,8 +1,9 @@
-// PluginEditor.h -- GUI: BS.1770-Meter (Integrated/ST/M/LRA/TP/W-only) +
-// Richtungs-Loudness-Karte der virtuellen Lautsprecher.
+// PluginEditor.h -- GUI: BS.1770-Meter + Soundscape-Panel (jede Metrik eigene
+// Anzeige, siehe Torresin et al. 2020) + Richtungs-Loudness-Karte.
 
 #pragma once
 
+#include <array>
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "PluginProcessor.h"
@@ -39,11 +40,14 @@ private:
     AmbisonicLoudnessMeterProcessor& proc;
     juce::ComboBox orderBox;
     juce::Slider splSlider;
-    juce::Label orderLabel, splLabel, integratedLbl, stLbl, mLbl, lraLbl, tpLbl, wOnlyLbl;
-    juce::Label integratedVal, stVal, mVal, lraVal, tpVal, wOnlyVal;
-    juce::Label laeqLbl, lcaLbl, laVarLbl, nLbl, sharpLbl, roughLbl, fsLbl;
-    juce::Label laeqVal, lcaVal, laVarVal, nVal, sharpVal, roughVal, fsVal;
+    juce::Label orderLabel, splLabel;
+
+    // 16 Anzeige-Zellen: 6x BS.1770 + 10x Soundscape (Torresin-Tabelle)
+    static constexpr int kNumCells = 16;
+    std::array<juce::Label, kNumCells> cellName;
+    std::array<juce::Label, kNumCells> cellVal;
     DirectionMeter dirMeter;
+    juce::TooltipWindow tipWindow { this, 700 };  // Mouseover-Erklaerungen
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmbisonicLoudnessMeterEditor)
 };

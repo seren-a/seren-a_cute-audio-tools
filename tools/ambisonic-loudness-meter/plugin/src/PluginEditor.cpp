@@ -8,6 +8,10 @@ static juce::String fmtDb(double v, const char* unit) {
     if (!std::isfinite(v)) return "--";
     return juce::String(v, 1) + " " + unit;
 }
+static juce::String fmtVal(double v, const char* unit, int digits = 2) {
+    if (!std::isfinite(v)) return "--";
+    return juce::String(v, digits) + " " + unit;
+}
 
 // ---------------------------------------------------------------------------
 
@@ -55,6 +59,36 @@ void DirectionMeter::paint(juce::Graphics& g) {
 
 // ---------------------------------------------------------------------------
 
+static const char* kCellNames[] = {
+    "Integrated", "Max Short-Term (3s)", "Max Momentary (400ms)", "LRA",
+    "True Peak", "W-only (0. Ord.)",
+    "L_Aeq", "L_C - L_A", "L_A10 - L_A90",
+    "N10", "N50", "N90", "N10 - N90",
+    "Sharpness S", "Roughness R", "Fluct. FS"
+};
+static_assert(std::size(kCellNames) == 16);
+
+// Mouseover-Texte (Index wie kCellNames)
+static const char* kCellTips[] = {
+    "Integrated Loudness (ITU-R BS.1770-5): K-bewertete Gesamtlautheit, 400-ms-Bloecke mit 75% Ueberlappung, absolutes (-70 LUFS) und relatives (-10 LU) Gating. Einheit LUFS, bezogen auf digital full scale.",
+    "Max Short-Term (3 s): lautestes 3-Sekunden-Fenster (BS.1770-5), ungefenstert.",
+    "Max Momentary (400 ms): lautestes 400-ms-Fenster (BS.1770-5).",
+    "Loudness Range LRA (EBU Tech 3342): Abstand zwischen 10%- und 95%-Perzentil der Short-Term-Loudness (3 s) in LU. Gross bei stark schwankenden Szenen (z. B. Sirene).",
+    "True Peak (dBTP): Spitzenpegel nach 4x-Oversampling (BS.1770-5), genauer als der Sample-Peak.",
+    "Loudness des W-Kanals allein (0. Ordnung, skaliert mit 2*sqrt(pi)) in LUFS - Direktschaetzung ohne Decoding auf virtuelle Lautsprecher.",
+    "Gesamtlautheit L_Aeq in dB(A) (A-Bewertung nach IEC 61672). Absoluter dB-SPL-Wert haengt von der SPL-Kalibrierung ab (Slider oben); ohne bekannte Aufnahme-Kalibrierung nur relativ vergleichen.",
+    "Spektrale Differenz L_C - L_A in dB: positiv = basslastig/dumpf, negativ = hoehenreich/scharf. Torresin et al. (2020), Spektrum-Praediktor.",
+    "Variabilitaet L_A10 - L_A90 in dB: Differenz der statistischen Pegel (125-ms-Bloecke, A-bewertet). Torresin: Content korreliert positiv mit L_A10 - L_A90.",
+    "Lautheits-Perzentil N10 in sone (ISO 532-1 Zwicker, zeitvariabel): Lautheit der lautesten 10% der Zeit. Torresin: Comfort korreliert negativ mit N10. Berechnet auf W ueber gleitendes 5-s-Fenster.",
+    "Median-Lautheit N50 in sone (ISO 532-1 Zwicker, zeitvariabel), 50%-Perzentil.",
+    "Lautheits-Perzentil N90 in sone: Grundlautheit, die 90% der Zeit ueberschritten wird.",
+    "Lautheits-Variabilitaet N10 - N90 in sone: Perzentildifferenz der zeitvariablen Lautheit - wie stark die Szene 'atmet'.",
+    "Sharpness S in acum (DIN 45692): spektrale Schaerfe, vor allem 2-5 kHz. Torresin: Familiarity korreliert negativ mit S.",
+    "Roughness R in asper (Daniel-Weber, mosqito): Rauigkeit durch Amplitudenmodulation 20-300 Hz, Maximum bei ~70 Hz.",
+    "Fluctuation Strength FS in vacil (Zwicker/Fastl): Schwankungsstaerke der Lautheit, Maximum bei ~4 Hz Modulation - 'Wummern' vs. 'Zischen'."
+};
+static_assert(std::size(kCellTips) == 16);
+
 AmbisonicLoudnessMeterEditor::AmbisonicLoudnessMeterEditor(AmbisonicLoudnessMeterProcessor& p)
     : juce::AudioProcessorEditor(&p), proc(p) {
     auto* orderParam = dynamic_cast<juce::AudioParameterChoice*>(proc.getOrderParameter());
@@ -82,30 +116,28 @@ AmbisonicLoudnessMeterEditor::AmbisonicLoudnessMeterEditor(AmbisonicLoudnessMete
     addAndMakeVisible(splSlider);
     if (splParam != nullptr) splParam->addListener(this);
 
-    auto makeRow = [this](juce::Label& name, juce::Label& val, const juce::String& text) {
-        name.setText(text, juce::dontSendNotification);
-        name.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-        val.setColour(juce::Label::textColourId, juce::Colour(0xff80ffc0));
-        val.setFont(juce::Font(juce::FontOptions{14.0f}));
-        addAndMakeVisible(name);
-        addAndMakeVisible(val);
-    };
-    makeRow(integratedLbl, integratedVal, "Integrated:");
-    makeRow(stLbl, stVal, "Max Short-Term (3s):");
-    makeRow(mLbl, mVal, "Max Momentary (400ms):");
-    makeRow(lraLbl, lraVal, "LRA:");
-    makeRow(tpLbl, tpVal, "True Peak:");
-    makeRow(wOnlyLbl, wOnlyVal, "W-only (0. Ord.):");
-    makeRow(laeqLbl, laeqVal, "L_Aeq (W):");
-    makeRow(lcaLbl, lcaVal, "L_C - L_A:");
-    makeRow(laVarLbl, laVarVal, "L_A10 - L_A90:");
-    makeRow(nLbl, nVal, "N10 / N90 (W):");
-    makeRow(sharpLbl, sharpVal, "Sharpness S:");
-    makeRow(roughLbl, roughVal, "Roughness R:");
-    makeRow(fsLbl, fsVal, "Fluct. FS:");
+    orderBox.setTooltip("HOA-Ordnung des B-Formats (ACN/SN3D): 1 = 4 Kanaele, 2 = 9, 3 = 16. "
+                        "Die ersten nCh Bus-Kanaele werden als B-Format interpretiert.");
+    orderLabel.setTooltip(orderBox.getTooltip());
+    splSlider.setTooltip("SPL-Kalibrierung: dB SPL, die 0 dBFS entsprechen. Default 94 dB = 1 Pa "
+                         "(Mess-Recorder-Konvention). Nur wenn die Aufnahme kalibriert ist, sind die "
+                         "dB-SPL-Werte absolut; sonst nur relativ vergleichen.");
+    splLabel.setTooltip(splSlider.getTooltip());
+
+    for (int i = 0; i < kNumCells; ++i) {
+        cellName[(size_t)i].setText(kCellNames[i], juce::dontSendNotification);
+        cellName[(size_t)i].setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+        cellName[(size_t)i].setFont(juce::Font(juce::FontOptions{10.0f}));
+        cellVal[(size_t)i].setColour(juce::Label::textColourId, juce::Colour(0xff80ffc0));
+        cellVal[(size_t)i].setFont(juce::Font(juce::FontOptions{14.0f}));
+        cellName[(size_t)i].setTooltip(kCellTips[i]);
+        cellVal[(size_t)i].setTooltip(kCellTips[i]);
+        addAndMakeVisible(cellName[(size_t)i]);
+        addAndMakeVisible(cellVal[(size_t)i]);
+    }
 
     addAndMakeVisible(dirMeter);
-    setSize(640, 460);
+    setSize(760, 560);
     startTimerHz(10);
     updateLabels();
 }
@@ -134,25 +166,27 @@ void AmbisonicLoudnessMeterEditor::parameterGestureChanged(int, bool) {}
 
 void AmbisonicLoudnessMeterEditor::updateLabels() {
     auto s = proc.snapshot();
-    integratedVal.setText(fmtLufs(s.integratedLufs), juce::dontSendNotification);
-    stVal.setText(fmtLufs(s.maxShortTermLufs), juce::dontSendNotification);
-    mVal.setText(fmtLufs(s.maxMomentaryLufs), juce::dontSendNotification);
-    lraVal.setText(std::isfinite(s.lra) ? juce::String(s.lra, 1) + " LU" : "--",
-                   juce::dontSendNotification);
-    tpVal.setText(fmtDb(s.truePeakDbtp, "dBTP"), juce::dontSendNotification);
-    wOnlyVal.setText(fmtLufs(s.wOnlyLufs), juce::dontSendNotification);
-    laeqVal.setText(fmtDb(s.lAeq, "dB(A)"), juce::dontSendNotification);
-    lcaVal.setText(std::isfinite(s.lCeq) && std::isfinite(s.lAeq)
-                       ? juce::String(s.lCeq - s.lAeq, 1) + " dB" : "--",
-                   juce::dontSendNotification);
-    laVarVal.setText(std::isfinite(s.lA10) && std::isfinite(s.lA90)
-                         ? juce::String(s.lA10 - s.lA90, 1) + " dB" : "--",
-                     juce::dontSendNotification);
-    nVal.setText(juce::String(s.n10, 2) + " / " + juce::String(s.n90, 2) + " sone",
-                 juce::dontSendNotification);
-    sharpVal.setText(juce::String(s.sharpnessAcum, 2) + " acum", juce::dontSendNotification);
-    roughVal.setText(juce::String(s.roughnessAsper, 2) + " asper", juce::dontSendNotification);
-    fsVal.setText(juce::String(s.fluctStrengthVacil, 2) + " vacil", juce::dontSendNotification);
+    cellVal[0].setText(fmtLufs(s.integratedLufs), juce::dontSendNotification);
+    cellVal[1].setText(fmtLufs(s.maxShortTermLufs), juce::dontSendNotification);
+    cellVal[2].setText(fmtLufs(s.maxMomentaryLufs), juce::dontSendNotification);
+    cellVal[3].setText(std::isfinite(s.lra) ? juce::String(s.lra, 1) + " LU" : "--",
+                       juce::dontSendNotification);
+    cellVal[4].setText(fmtDb(s.truePeakDbtp, "dBTP"), juce::dontSendNotification);
+    cellVal[5].setText(fmtLufs(s.wOnlyLufs), juce::dontSendNotification);
+    cellVal[6].setText(fmtDb(s.lAeq, "dB(A)"), juce::dontSendNotification);
+    cellVal[7].setText(std::isfinite(s.lCeq) && std::isfinite(s.lAeq)
+                           ? juce::String(s.lCeq - s.lAeq, 1) + " dB" : "--",
+                       juce::dontSendNotification);
+    cellVal[8].setText(std::isfinite(s.lA10) && std::isfinite(s.lA90)
+                           ? juce::String(s.lA10 - s.lA90, 1) + " dB" : "--",
+                       juce::dontSendNotification);
+    cellVal[9].setText(fmtVal(s.n10, "sone"), juce::dontSendNotification);
+    cellVal[10].setText(fmtVal(s.n50, "sone"), juce::dontSendNotification);
+    cellVal[11].setText(fmtVal(s.n90, "sone"), juce::dontSendNotification);
+    cellVal[12].setText(fmtVal(s.n10 - s.n90, "sone"), juce::dontSendNotification);
+    cellVal[13].setText(fmtVal(s.sharpnessAcum, "acum"), juce::dontSendNotification);
+    cellVal[14].setText(fmtVal(s.roughnessAsper, "asper"), juce::dontSendNotification);
+    cellVal[15].setText(fmtVal(s.fluctStrengthVacil, "vacil"), juce::dontSendNotification);
     dirMeter.setSnapshot(s);
 }
 
@@ -162,7 +196,7 @@ void AmbisonicLoudnessMeterEditor::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour(0xff14141a));
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(juce::FontOptions{16.0f, juce::Font::bold}));
-    g.drawText("Ambisonic Loudness Meter (BS.1770-5 / EBU R 128)",
+    g.drawText("Ambisonic Loudness Meter (BS.1770-5 / EBU R 128 + Torresin 2020)",
                8, 6, getWidth() - 16, 20, juce::Justification::left, false);
 }
 
@@ -173,47 +207,21 @@ void AmbisonicLoudnessMeterEditor::resized() {
     orderLabel.setBounds(top.removeFromLeft(70));
     orderBox.setBounds(top.removeFromLeft(100));
     splLabel.setBounds(top.removeFromLeft(90));
-    splSlider.setBounds(top.removeFromLeft(120));
+    splSlider.setBounds(top.removeFromLeft(160));
 
-    auto row = area.removeFromTop(22);
-    integratedLbl.setBounds(row.removeFromLeft(150));
-    integratedVal.setBounds(row.removeFromLeft(100));
-    stLbl.setBounds(row.removeFromLeft(150));
-    stVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    mLbl.setBounds(row.removeFromLeft(150));
-    mVal.setBounds(row.removeFromLeft(100));
-    lraLbl.setBounds(row.removeFromLeft(150));
-    lraVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    tpLbl.setBounds(row.removeFromLeft(150));
-    tpVal.setBounds(row.removeFromLeft(100));
-    wOnlyLbl.setBounds(row.removeFromLeft(150));
-    wOnlyVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    laeqLbl.setBounds(row.removeFromLeft(150));
-    laeqVal.setBounds(row.removeFromLeft(100));
-    lcaLbl.setBounds(row.removeFromLeft(150));
-    lcaVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    laVarLbl.setBounds(row.removeFromLeft(150));
-    laVarVal.setBounds(row.removeFromLeft(100));
-    nLbl.setBounds(row.removeFromLeft(150));
-    nVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    sharpLbl.setBounds(row.removeFromLeft(150));
-    sharpVal.setBounds(row.removeFromLeft(100));
-    roughLbl.setBounds(row.removeFromLeft(150));
-    roughVal.setBounds(row.removeFromLeft(100));
-
-    row = area.removeFromTop(22);
-    fsLbl.setBounds(row.removeFromLeft(150));
-    fsVal.setBounds(row.removeFromLeft(100));
+    // 4x4-Raster, jede Metrik eigene Zelle (Name klein grau, Wert gross gruen)
+    constexpr int cols = 4;
+    constexpr int rows = (kNumCells + cols - 1) / cols;
+    constexpr float cellH = 46.0f;
+    auto grid = area.removeFromTop(cellH * rows);
+    const float cw = grid.getWidth() / cols;
+    for (int i = 0; i < kNumCells; ++i) {
+        juce::Rectangle<float> cell(grid.getX() + (i % cols) * cw,
+                                    grid.getY() + (i / cols) * cellH, cw, cellH);
+        cell.reduce(3.0f, 2.0f);
+        cellName[(size_t)i].setBounds(cell.removeFromTop(14.0f).toNearestInt());
+        cellVal[(size_t)i].setBounds(cell.toNearestInt());
+    }
 
     dirMeter.setBounds(area);
 }
