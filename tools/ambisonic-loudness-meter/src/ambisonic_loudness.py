@@ -95,15 +95,22 @@ def channel_gain(azimuth_deg: float, elevation_deg: float) -> float:
 # ---------------------------------------------------------------------------
 
 def _block_loudness(powers: np.ndarray) -> float:
-    """Gated Loudness in LUFS aus Kanal-Mittelleistungen pro Block."""
+    """Gated Loudness in LUFS aus Kanal-Mittelleistungen pro Block.
+
+    Zweistufiges Gating nach BS.1770-5: absolutes Gate bei -70 LUFS,
+    relatives Gate 10 LU unter der ungegateten Lautheit.
+    """
     if powers.size == 0 or not np.any(powers > 0):
         return -float("inf")
     z = powers.sum(axis=0)
     lufs = -0.691 + 10.0 * np.log10(np.maximum(z, 1e-15))
-    rel_thresh = lufs.max() - 10.0
-    keep = (lufs > -70.0) & (lufs > rel_thresh)
+    abs_keep = lufs > -70.0
+    if not np.any(abs_keep):
+        return -float("inf")
+    ungated = -0.691 + 10.0 * np.log10(z[abs_keep].mean())
+    keep = abs_keep & (lufs > ungated - 10.0)
     if not np.any(keep):
-        keep = z > 0
+        keep = abs_keep
     return -0.691 + 10.0 * np.log10(z[keep].mean())
 
 
@@ -161,26 +168,35 @@ def momentary_series(x: np.ndarray, fs: int, gains=None, hop_ms: int = 100):
 
 
 def loudness_range(short_term: np.ndarray) -> float:
-    """LRA nach EBU Tech 3342 aus Short-Term-Verlauf."""
-    st = short_term[short_term > -70.0]
+    """LRA nach EBU Tech 3342 aus Short-Term-Verlauf (in LUFS).
+
+    Gating: absolute Schwelle -70 LUFS, relative Schwelle 20 LU unter
+    dem (absolut gegateten) Mittel; LRA = P95 - P10 der verbleibenden
+    Short-Term-Werte.
+    """
+    st = np.asarray(short_term, dtype=float)
+    st = st[st > -70.0]
     if st.size == 0:
         return 0.0
-    mean = _block_loudness(np.array([st]))
-    keep = st > (mean - 20.0)
-    if keep.sum() == 0:
+    z = 10.0 ** ((st + 0.691) / 10.0)  # LUFS -> Leistung
+    rel_thresh = z.mean() * 10.0 ** (-20.0 / 10.0)
+    keep = z > rel_thresh
+    if not np.any(keep):
         return 0.0
-    st = np.sort(st[keep])
-    n = st.size
-    lo = st[max(0, int(np.floor(0.10 * n)) - 1)]
-    hi = st[min(n - 1, int(np.ceil(0.95 * n)) - 1)]
-    return float(hi - lo)
+    st = st[keep]
+    return float(np.percentile(st, 95) - np.percentile(st, 10))
 
 
 def true_peak_dbtp(x: np.ndarray, fs: int, oversample: int = 4) -> float:
-    """True Peak in dBTP (4x Oversampling, BS.1770 Annex 2)."""
+    """True Peak in dBTP (4x Oversampling, BS.1770 Annex 2).
+
+    x: (n_ch, n_samples) oder (n_samples,); entlang der Zeitachse wird
+    ueberabgetastet, das Maximum ueber alle Kanaele gebildet.
+    """
+    x = np.atleast_2d(np.asarray(x, dtype=float))
     if resample_poly is None:
         return 20.0 * np.log10(np.abs(x).max() + 1e-15)
-    y = resample_poly(x, oversample, 1)
+    y = resample_poly(x, oversample, 1, axis=-1)
     peak = np.abs(y).max()
     return float(20.0 * np.log10(peak + 1e-15))
 
@@ -235,8 +251,6 @@ def encode_plane_wave(signal: np.ndarray, azimuth_deg: float, elevation_deg: flo
 def default_layout(order: int):
     """Virtuelle Lautsprecher: Horizont-Ring + optionaler Layer oben/unten."""
     layout = [(az, 0.0) for az in range(-150, 180, 30)]
-    if order >= 1:
-        pass
     if order >= 2:
         layout += [(0.0, 45.0), (90.0, 45.0), (180.0, 45.0), (-90.0, 45.0)]
         layout += [(0.0, -45.0), (90.0, -45.0), (180.0, -45.0), (-90.0, -45.0)]
@@ -309,7 +323,7 @@ def measure_ambisonics(b: np.ndarray, fs: int, layout=None,
         "max_short_term_lufs": float(st.max()) if st.size else -np.inf,
         "max_momentary_lufs": float(mt.max()) if mt.size else -np.inf,
         "lra": loudness_range(st),
-        "true_peak_dbtp": true_peak_dbtp(b, fs),
+        "true_peak_dbtp": true_peak_dbtp(spk, fs),
         "w_only_lufs": w_lufs,
         "short_term_series": st,
         "momentary_series": mt,
@@ -318,7 +332,7 @@ def measure_ambisonics(b: np.ndarray, fs: int, layout=None,
                 "azimuth": az,
                 "elevation": el,
                 "gain_g": channel_gain(az, el),
-                "lufs": integrated_lufs(np.vstack([k_filter(spk[i], fs)]), fs, [gains[i]]),
+                "lufs": integrated_lufs(spk[i][None, :], fs, [gains[i]]),
             }
             for i, (az, el) in enumerate(layout)
         ],

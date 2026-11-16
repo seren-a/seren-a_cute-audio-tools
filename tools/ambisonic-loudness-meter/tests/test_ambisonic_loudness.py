@@ -102,8 +102,44 @@ def test_lra_constant_signal():
     assert loudness_range(st) == pytest.approx(0.0, abs=0.1)
 
 
+def test_lra_two_levels():
+    """Wechsel zwischen -30 und -10 LUFS muss LRA ~20 LU liefern (nicht 0)."""
+    st = np.tile(np.array([-30.0, -10.0]), 10)
+    lra = loudness_range(st)
+    assert lra == pytest.approx(20.0, abs=2.0)
+
+
+def test_integrated_relative_gating():
+    """Leiser Nachhall (-60 dBFS) darf das Integrated nicht herunterziehen."""
+    loud = sine(-23.0, 10.0)
+    quiet = sine(-60.0, 10.0)
+    x = np.vstack([np.concatenate([loud, quiet])] * 2)
+    lufs = integrated_lufs(x, FS)
+    assert lufs == pytest.approx(-23.0, abs=0.5)
+
+
 def test_true_peak():
     s = sine(-3.0, 1.0)
     tp = true_peak_dbtp(s[None, :], FS)
     assert tp > -3.0
     assert tp < -2.5
+
+
+def test_true_peak_multichannel_axis():
+    """True Peak bei (n_ch, n_samples) muss entlang der Zeitachse resamplen."""
+    s = sine(-3.0, 1.0)
+    x = np.vstack([np.zeros_like(s), s])  # Kanal 0 leer, Kanal 1 Sinus
+    tp = true_peak_dbtp(x, FS)
+    assert tp > -3.0
+    assert tp < -2.5
+
+
+def test_measure_ambisonics_lra_am():
+    """AM-moduliertes B-Format-Signal muss endliche, positive LRA liefern."""
+    t = np.arange(int(FS * 20)) / FS
+    am = sine(-23.0, 20.0) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.5 * t))
+    b = encode_plane_wave(am, 0.0, 0.0, 1)
+    r = measure_ambisonics(b, FS)
+    assert np.isfinite(r["lra"])
+    assert r["lra"] > 1.0
+    assert np.isfinite(r["true_peak_dbtp"])

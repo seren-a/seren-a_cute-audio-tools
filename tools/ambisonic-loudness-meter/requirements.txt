@@ -1,0 +1,6 @@
+numpy
+scipy
+soundfile
+matplotlib
+mosqito>=1.2
+pytest

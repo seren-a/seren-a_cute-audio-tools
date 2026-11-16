@@ -39,15 +39,34 @@ virtuellem Lautsprecher.
 
 ```
 ambisonic-loudness-meter/
+├── cli.py                       # Kommandozeile: python3 cli.py MEIN_HOA.wav [--soundscape] [--json]
+├── requirements.txt
 ├── src/
 │   ├── ambisonic_loudness.py    # BS.1770-5/EBU R 128 + HOA-Decoding
 │   └── soundscape_metrics.py    # Torresin-Parameter (mosqito-basiert)
 ├── notebooks/
-│   └── ambisonic_loudness_demo.ipynb   # Demo mit synthetischen Szenen
-└── tests/                       # pytest (Referenz- und Sanity-Checks)
+│   └── ambisonic_loudness_demo.ipynb   # Demo mit synthetischen Szenen (ausgeführt)
+├── tests/                       # pytest (Referenz- und Sanity-Checks, 22 Tests)
+└── plugin/                      # AU/VST3-Plugin (JUCE, C++-Portierung des DSP-Kerns)
+    ├── CMakeLists.txt
+    ├── src/dsp/AmbisonicDsp.h   # JUCE-unabhängiger DSP-Kern (C++17)
+    ├── src/dsp/DspTests.cpp     # Referenztests gegen die pytest-Werte
+    ├── src/PluginProcessor.*    # bis 16 Kanäle, Parameter: HOA Order 1–3
+    ├── src/PluginEditor.*       # BS.1770-Meter + Richtungs-Karte
+    └── src/PluginSmokeTest.cpp  # headless End-to-End-Test
 ```
 
 ## Benutzung
+
+Kommandozeile (B-Format-WAV, ACN/SN3D):
+
+```
+python3 cli.py mein_hoa_signal.wav                  # Loudness-Report
+python3 cli.py mein_hoa_signal.wav --soundscape      # + Torresin-Parameter (W-Komponente)
+python3 cli.py mein_hoa_signal.wav --json           # maschinenlesbar
+```
+
+Als Modul:
 
 ```python
 import sys; sys.path.insert(0, "src")
@@ -72,34 +91,42 @@ haengen absolut von der Skalierung ab.
 
 ## Abhängigkeiten
 
-`numpy`, `scipy`, `matplotlib`, `soundfile`, `mosqito` (>= 1.2,
-psychoakustische Metriken), `pytest` (Tests).
+`pip install -r requirements.txt` – `numpy`, `scipy`, `matplotlib`,
+`soundfile`, `mosqito` (>= 1.2, psychoakustische Metriken), `pytest` (Tests).
 
 ## Tests
 
 ```
 cd tools/ambisonic-loudness-meter
-python3 -m pytest tests
+python3 -m pytest tests          # 22 pytest-Checks (Python-Kern)
 ```
 
 Geprüft u. a.: Stereo-1-kHz-Referenz (−23 dBFS ⇒ −23 LUFS), A-Bewertung
 (−19,1 dB bei 100 Hz), Zwicker-Referenz (60 dB SPL/1 kHz ⇒ 4 sone),
-Richtungsvarianz der Loudness, Perzentil-Logik.
+relatives Gating, LRA zweier Pegelstufen, True Peak (auch mehrkanalig
+entlang der Zeitachse), Richtungsvarianz der Loudness, Perzentil-Logik.
 
-## Roadmap: AU/VST3-Plugin
+## AU/VST3-Plugin (JUCE)
 
-Der Python-Kern ist bewusst plugin-tauglich strukturiert (Block-basierte
-Filter, keine Abhängigkeit von Dateien). Geplanter Weg:
+Echtzeit-Meter als Plugin (`plugin/`, siehe `plugin/README.md`):
+BS.1770-5 (Integrated/Short-Term/Momentary/LRA/True Peak/W-only) plus
+Richtungs-Loudness-Karte nach Energy-Decoding (max-rE). Bis zu 16 Kanäle
+((order+1)²), Parameter HOA Order 1–3, Ausgang = Durchgang.
 
-1. **JUCE**-Projekt (C++), Portierung von K-Filter, A-/C-Bewertung und
-   Zwicker-Loudness aus dem Python-Referenzcode (Validierung gegen die
-   pytest-Referenzwerte).
-2. Prozessor für bis zu 16 Kanäle ((order+1)²), Parameter: Ordnung,
-   Layout, Kalibrierung.
-3. GUI: BS.1770-Meter (Integrated/ST/M/LRA/TP) + Torrescape-Panel
-   (N10, L_A10−L_A90, S, FS, R, L_C−L_A) + Richtungs-Karte.
-4. Build: VST3 + AU (macOS) aus einer Codebasis (JUCE), CI-Build-Skript
-   unter `scripts/`.
+Der DSP-Kern (`plugin/src/dsp/AmbisonicDsp.h`) ist JUCE-unabhängig und wird
+ohne JUCE gegen dieselben Normreferenzen getestet wie der Python-Kern
+(`DspTests.cpp`, 31 Checks); `PluginSmokeTest.cpp` schickt Audio headless
+durch den Prozessor. Cross-Check C++ vs. Python: Abweichungen < 0.01 LU.
+
+Build (holt JUCE automatisch, baut VST3 + AU auf macOS):
+
+```
+scripts/build-ambisonic-plugin.sh
+```
+
+Die psychoakustischen Soundscape-Metriken (N10/N90, Sharpness, Roughness,
+Fluctuation Strength) bleiben im Python-Kern (mosqito) – eine Echtzeit-
+Portierung ins Plugin ist als nächster Schritt vorgesehen.
 
 ## Quellen
 
