@@ -4,7 +4,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 def body_html(src):
     b = src
-    for key, img in (("__IMG_SPACE__", "img_space.jpg"), ("__IMG_ROOM__", "img_room.jpg"), ("__IMG_LOOKS__", "img_looks.jpg")):
+    for key, img in (("__IMG_SPACE__", "img_space.jpg"), ("__IMG_ROOM__", "img_room.jpg"), ("__IMG_LOOKS__", "img_looks.jpg"), ("__IMG_HALL__", "img_hall.jpg"), ("__IMG_SPLIT__", "img_split.jpg")):
         b = b.replace(key, base64.b64encode((HERE / img).read_bytes()).decode())
     return b
 def build(old_body_src, new_body_src, frame):

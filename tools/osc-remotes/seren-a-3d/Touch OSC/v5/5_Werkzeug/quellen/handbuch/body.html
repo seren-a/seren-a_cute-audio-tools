@@ -4,7 +4,7 @@
     <div class="knob" id="logoKnob" aria-hidden="true"></div>
     <h1><b>3D</b>Handbuch <span class="kaomoji" aria-hidden="true">(｡•ᴗ•｡)♡</span></h1>
   </div>
-  <p class="sub">seren.a 3D <b>v6.1</b> · 04.11.26 · TouchOSC-Oberflächen und DAW-Skripte für IEM StereoEncoder, MultiEncoder, SceneRotator, VST MultiPanner und dearVR PRO. Häkchen bleiben auf diesem Gerät gespeichert, Werte in den Pillen lassen sich antippen und kopieren.</p>
+  <p class="sub">seren.a 3D <b>v8.21</b> · 18.11.26 · TouchOSC-Oberflächen und DAW-Skripte für IEM StereoEncoder, MultiEncoder, SceneRotator, VST MultiPanner und dearVR PRO. Häkchen bleiben auf diesem Gerät gespeichert, Werte in den Pillen lassen sich antippen und kopieren.</p>
   <div class="skins" role="group" aria-label="Look">
     <span>Look</span>
     <button data-s="auto">Auto</button>
@@ -24,6 +24,7 @@
 </header>
 
 <nav class="toc" aria-label="Kapitel">
+  <a href="#v8" style="--c:var(--pink)"><span class="dot"></span>Neu seit v6.1 · Hall, Split, Reiter</a>
   <a href="#v61" style="--c:var(--cyan)"><span class="dot"></span>Neu in v6.1 · Looks, eine E16-Szene</a>
   <a href="#multieq" style="--c:var(--yellow)"><span class="dot"></span>Plugins am Twister &amp; E16</a>
   <a href="#neu" style="--c:var(--pink)"><span class="dot"></span>Neu in v5.0</a>
@@ -40,6 +41,93 @@
   <a href="#versionen" style="--c:var(--hi)"><span class="dot"></span>Ordner &amp; Versionen</a>
 </nav>
 <div class="search"><input id="q" type="search" placeholder="Suchen, z. B. Insert 5, Zoom, Bypass, Port" aria-label="Handbuch durchsuchen"></div>
+
+<!-- Neu v8 -->
+<section class="guide" id="v8" style="--c:var(--pink)">
+  <div class="ghead"><div class="knob" style="--a:-70deg" aria-hidden="true"></div><h2>Neu seit v6.1 · bis v8.21 · Hall-Reiter, Split, Reiter nach Wunsch, E16 + Twister in einem Skript</h2></div>
+  <hr class="rule">
+  <div class="meta"><span>18.11.26 · iPad und Monitor (5:4 und Full HD) · alles Weitere zu einzelnen Versionen: <code>ÄNDERUNGEN.md</code> · <b>bisher nur in der Simulation getestet</b>, nicht an den echten Geräten</span></div>
+
+  <h3>Neue Dateinamen (v8.21)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Gerät</th><th>Datei in <code>1_Oberflaechen/3D-Space-Viewer</code></th><th>Vorher</th></tr>
+    <tr><td>iPad</td><td><code>3D-Space-Monitor-iPad.tosc</code></td><td><code>IEM-Space.tosc</code></td></tr>
+    <tr><td>Monitor 5:4 (1280 × 1024)</td><td><code>3D-Space-Monitor-5zu4.tosc</code> („5:4“ geht in Dateinamen am Mac nicht)</td><td><code>IEM-Monitor.tosc</code></td></tr>
+    <tr><td>Monitor Full HD (1920 × 1080)</td><td><code>3D-Space-Monitor-HD.tosc</code></td><td><code>IEM-Monitor_HD.tosc</code></td></tr>
+  </table></div>
+  <p class="lead">Der Ordner hieß bis v8.20 <code>IEM_3-Ansichten</code> (davor <code>iPad_IEM-Space</code>, <code>Monitor_5zu4</code>, <code>Monitor_HD</code>). Die alten Dateien können weg. Die Oberflächen liegen jetzt immer zusammen und gehören mit <code>3_Reaper/Reaper_3D.lua</code> zusammen aktualisiert.</p>
+
+  <h3>Die Reiter oben</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--pink)"><span class="n">space</span><b>IEM-Draufsicht</b><span>Punkte je Spur (StereoEncoder, MultiEncoder-Master), Breite, Yaw/Pitch.</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">multi</span><b>MultiEncoder-Eingänge</b><span>Bis 16 Eingänge der gewählten Spur.</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">panner</span><b>VST MultiPanner</b><span>X × Y, oben = vorn (Nuendo, über Quick Controls).</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">room</span><b>dearVR PRO</b><span>Raum von oben, nur Anzeige; Taste „groß“ füllt den Bildschirm (v8.17, wird gespeichert).</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">FDN</span><b>Sends in den FDN-Reverb</b><span>Neu in v8.20, nur Reaper. Siehe unten.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">mcfx</span><b>Sends in den mcfx-Convolver</b><span>Neu in v8.20, nur Reaper. Wie FDN.</span></div>
+    <div class="lvl" style="--c:var(--pink)"><span class="n">split</span><b>vier Felder auf einmal</b><span>Neu in v8.21, nur Monitor 5:4 und HD. Siehe unten.</span></div>
+  </div>
+
+  <h3>Hall-Reiter FDN und mcfx (v8.20)</h3>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_HALL__" alt="Monitor im Reiter FDN: links Gesamtpegel des Halls, Preset und je Send eine Doppelsäule, rechts die Liste der Quellspuren mit Send-dB und Pegel" width="1000" height="800"><figcaption>Monitor 5:4 · FDN-Hall mit Beispieldaten: links der Hall, rechts die Quellspuren</figcaption></figure>
+  <p class="lead">Der Reiter zeigt die <b>Sends, die in einen FDN-Reverb bzw. mcfx-Convolver laufen</b>: ein Platz je Quellspur (Name, Farbe). Links stehen der <b>Gesamtpegel des Halls</b> (Balken mit Spitzenwert-Halten, dB), das <b>Preset</b> des Hall-Plugins und je Send eine Doppelsäule.</p>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--pink)"><span class="n">links</span><b>Send-Fader</b><span>Die linke Säule jedes Platzes ist der Send-Pegel der Spur; der Strich ist 0 dB. Gemutete Sends sind blass und tragen „stumm“.</span></div>
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">rechts</span><b>Pegel am Hall</b><span>Die rechte Säule ist der Pegel, der am Hall ankommt.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">Chips 1–6</span><b>mehrere Hall-Instanzen</b><span>Liegen mehrere FDN- bzw. mcfx-Instanzen im Projekt, schaltest du mit den Chips um. Titel und Untertitel nennen Spurname und Preset.</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">Liste</span><b>rechts wie sonst</b><span>Zeigt je Spur Send-dB und Pegel.</span></div>
+  </div>
+  <div class="tip warn"><b>Wichtig zu wissen:</b> Der Pegel am Hall wird <b>gerechnet</b> (Quellspur-Peak × Send-Fader), nicht aus dem Hall-Signal selbst gelesen. Der Hall-Reiter ändert den Spurfilter der DAW nicht. Die DAW kennt nur <b>einen</b> Reiterstand: haben mehrere Oberflächen den Reiter offen, gewinnt der zuletzt gewählte. Im Monitor gilt im Hall-Reiter die Ansicht „16“, danach wieder deine.</div>
+
+  <h3>Split-Ansicht (v8.21)</h3>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_SPLIT__" alt="Monitor im Reiter split: vier Felder space, multi, panner und room links, die gemeinsame Spurliste rechts" width="1000" height="800"><figcaption>Monitor 5:4 · split mit Beispieldaten (multi bleibt ohne MultiEncoder leer)</figcaption></figure>
+  <p class="lead">Der Reiter <b>split</b> zeigt <b>vier Felder gleichzeitig</b>: space (IEM-Draufsicht), multi (MultiEncoder), panner (MultiPanner X × Y) und room (dearVR). Rechts steht <b>eine gemeinsame Spurliste</b>; je Spur steht dort, in welchen Feldern sie vorkommt, z. B. „space · panner · room“.</p>
+  <ul class="fix">
+    <li><b>Antippen und Ziehen</b> gilt nur im berührten Feld: space bewegt Azimut/Elevation, multi die MultiEncoder-Eingänge, panner X/Y, room wählt nur aus. Die gewählte Spur ist in allen Feldern markiert.</li>
+    <li><b>Felder ein/aus:</b> Config Seite 2 › „Split-Ansicht zeigt“. Mindestens ein Feld bleibt; bei 1–3 Feldern füllen sie den Platz.</li>
+    <li><b>Ansicht:</b> im Split gilt die 16er-Ansicht ohne Horizont, die Tasten 16 / 32v / 32h / 4×8 / 64 und „horizont“ tun dort nichts. Beim Zurückschalten kommen deine Ansicht und der Horizont wieder.</li>
+    <li><b>Auf dem iPad gibt es split noch nicht</b>, dort ist der Platz zu knapp.</li>
+  </ul>
+
+  <h3>Config Seite 2 (seit v8.19)</h3>
+  <p class="lead">⚙ öffnet die Config, die Taste oben („Seite 2 ›“) wechselt zwischen <b>Seite 1</b> (Pegel, Ballistik, Gruppen, Aussehen, Symbole, 64er-Ansicht) und <b>Seite 2</b>:</p>
+  <div class="tblwrap"><table>
+    <tr><th>Bereich (Seite 2)</th><th>Was es macht</th></tr>
+    <tr><td><b>Reiter zeigen</b></td><td>space, multi, panner, room, FDN-Hall, mcfx-Hall und (Monitor) split einzeln ein-/ausblenden; die Kopfzeile rückt zusammen. Mindestens ein Reiter bleibt.</td></tr>
+    <tr><td><b>Spuren zeigen im Reiter …</b></td><td>Reiter wählen, dann die Spurtypen: Audio, <b>3OA</b>, FX, Gruppe/Ordner, MIDI/Instr. 3OA = Audiospur mit 16 Kanälen oder „3OA“/„ambiX“ im Namen (das erkennt Reaper).</td></tr>
+    <tr><td><b>Beschriftung statt Nummer</b></td><td>Nummer, Spurname oder Preset (Name und Preset werden gekürzt, wo wenig Platz ist).</td></tr>
+    <tr><td><b>Zusatzzeilen je Spurtyp</b></td><td>„↳ Subspuren“ und „← Sends“ (Anzahl Subspuren, Anzahl Sends zu dieser Spur), nur in den breiten Listenzeilen, nicht bei 64 / 4×8 / 32h.</td></tr>
+    <tr><td><b>Split-Ansicht zeigt</b></td><td>Felder space / multi / panner / room (nur Monitor).</td></tr>
+  </table></div>
+  <p class="lead"><b>Paletten</b> (Seite 1 › Aussehen, v8.19): seren.a, Nuendo dark, Cute Pink (hell), Girly Pop Dark, Dark Pastel Pink. Alle Texte folgen der Palette. „Farben TouchOSC“ oder „Spurfarben“ bestimmt die Punkt- und Spurfarben.</p>
+
+  <h3>Ansichten, Gruppen, Filter</h3>
+  <div class="levels">
+    <div class="lvl" style="--c:var(--cyan)"><span class="n">v8.4</span><b>Spurfilter</b><span>Reaper baut die Bänke nur aus passenden Spuren (Audio / FX = Spuren mit Receives / Gruppe / Instrument, dazu „nur Spuren mit Plugin“). Echte Spurnummern in Listen und Bereichsanzeige; Bank vor/zurück überspringt leere Bänke.</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">v8.13</span><b>32 Spuren</b><span>iPad: Taste „32“ (Spuren 17–32 als Kacheln unten). Monitor: Ansicht <b>4×8</b> (Ansicht oben, 32 Spuren in 4 Reihen à 8 unten).</span></div>
+    <div class="lvl" style="--c:var(--orange)"><span class="n">v8.14</span><b>Gruppen (Reaper)</b><span>Config Seite 1: bis zu 12 Gruppen zum An-/Abhaken. A–D ordnest du selbst zu (+A … +D, dann Spuren antippen, nochmal = fertig), dazu Reaper-Ordner ohne dearVR/Hall. An = nur deren Spuren. Gespeichert im Projekt.</span></div>
+    <div class="lvl" style="--c:var(--pink)"><span class="n">v8.15 / 8.18</span><b>Voreinstellung</b><span>Ansicht (Reiter, Layout, Horizont, „groß“) und die ganze Config werden in Reaper gespeichert und beim Öffnen geladen, getrennt für iPad und Monitor.</span></div>
+    <div class="lvl" style="--c:var(--yellow)"><span class="n">v8.16</span><b>Monitor Full HD</b><span>Dieselben Ansichten wie 5:4, nur mit dem breiten Platz: breitere Liste, bei 32v zwei Spalten, bei 32h und 4×8 laufen die Felder über die ganze Breite.</span></div>
+  </div>
+
+  <h3>E16, Twister und OXI (Reaper)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Version</th><th>Was</th></tr>
+    <tr><td>v8.0</td><td><code>3_Reaper/Reaper_E16_Twister.lua</code>: E16 und Twister in <b>einem</b> Skript. Es ersetzt <code>Reaper_MultiEQ.lua</code>, <code>reaper_to_e16.lua</code> und e16-reverb-remote. Neu einrichten; Anleitung <code>3_Reaper/LIESMICH_E16_Twister.md</code>. Einstellungsfenster (ReaImGui) und Menü am E16.</td></tr>
+    <tr><td>v8.1 / 8.5</td><td>Ziel-Vorschläge im Fenster (Spuren mit Receives und Reverb/Delay/Room oder dearVR); einheitlich: Encoder 15 = Spur, 16 = Master, stumme Sends blinken, Sends und Fader höchstens 0 dB (einstellbar).</td></tr>
+    <tr><td>v8.10 / 8.11</td><td>MultiEQ A/B nur von der gewählten Spur, ohne Master; Fader-Grenze 0 / +6 / +12 dB / aus.</td></tr>
+    <tr><td>v7.0 – 7.2, v8.6 – 8.12</td><td><b>OXI One MkII Puzzle</b> (<code>3_Reaper/OXI/Reaper_OXI_Puzzle.lua</code>): 8 Spuren × bis zu 16 Items als Grid, Regionen als Felder, Spurtasten (Mute/Solo/Rec), Marker-Zeile als Loop-Anzeige.</td></tr>
+    <tr><td>v8.18</td><td>Reaper-Konsole bleibt leer (Haken in den Einstellungen schaltet Meldungen ein); Azimut und SceneRotator-Yaw drehen über ±180° durch; E16-Skript und Puzzle setzen beim Start die MIDI-Geräte einmal zurück (abschaltbar); SceneRotator zeigt beim Drehen kurz sein Fenster (2,5 s).</td></tr>
+  </table></div>
+
+  <h3>Auf v8.21 aktualisieren</h3>
+  <ol class="steps">
+    <li><input type="checkbox" id="v8a"><div><div class="t">Ordner v5 ersetzen</div><p>Neue Dateien nach <code>Touch OSC/v5</code>. Die alten <code>IEM-*.tosc</code> (Ordner <code>IEM_3-Ansichten</code>) löschen.</p></div></li>
+    <li><input type="checkbox" id="v8b"><div><div class="t">Reaper</div><p><code>3_Reaper/Reaper_3D.lua</code> ist seit v8.20 unverändert; nur neu laden und starten, wenn noch eine ältere Fassung läuft. LOG: <code>3D v8.20 aktiv (Reaper) …</code>.</p></div></li>
+    <li><input type="checkbox" id="v8c"><div><div class="t">TouchOSC</div><p>Die Oberflächen aus <code>1_Oberflaechen/3D-Space-Viewer</code> auf iPad und Monitor laden. Die Voreinstellung bleibt erhalten; neue Reiter erscheinen von selbst.</p></div></li>
+    <li><input type="checkbox" id="v8d"><div><div class="t">Prüfen</div><p>Hall-Reiter: Reaper-Projekt mit FDN-Reverb und Sends öffnen, Reiter FDN wählen. Split: Monitor › Reiter split. Geht etwas nicht: LOG ansehen (siehe Fehlersuche).</p></div></li>
+  </ol>
+</section>
 
 <!-- Neu v6.1 -->
 <section class="guide" id="v61" style="--c:var(--cyan)">
@@ -70,7 +158,7 @@
     <div class="lvl" style="--c:var(--green)"><span class="n">Seite 1</span><b>DAW Link</b><span>wie bisher (Nuendo: Sends+QC / EQ / Inserts, 16 halten = nächste Unterseite · Reaper: <code>reaper_to_e16.lua</code>). Ringfarben jetzt von der DAW.</span></div>
     <div class="lvl" style="--c:var(--cyan)"><span class="n">Seite 2</span><b>MultiEQ</b><span>= Ebene 1 am Twister.</span></div>
     <div class="lvl" style="--c:var(--orange)"><span class="n">Seite 3</span><b>Kompressor</b><span>Omni; <span class="nb">Encoder 8</span> halten = Directional ↔ Omni.</span></div>
-    <div class="lvl" style="--c:var(--red)"><span class="n">Seite 4</span><b>Reverb</b><span>= Ebene 4 (Hall): FDN oben, Convolver unten, Presets auf 7 und 14.</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">Seite 4</span><b>Reverb</b><span>= Ebene 4 (Hall): FDN oben, Convolver unten, Presets auf 7 und 14. <span class="nb">Encoder 8</span> halten = Hall ↔ <b>Hall-EQ</b>.</span></div>
   </div>
   <p>Seiten wechselst du am E16 wie gewohnt. Die Szene sagt der DAW bei jedem Wechsel, welche Seite zu sehen ist; die DAW zeichnet nur diese. Die alten Szenen <b>DAW-Link</b> und <b>MultiEQ</b> brauchst du nicht mehr.</p>
 
@@ -78,6 +166,7 @@
   <div class="levels">
     <div class="lvl" style="--c:var(--green)"><span class="n">Ebene 2 · Omni</span><b>Makeup auf 8</b><span><span class="nb">Encoder 8</span> drehen = Makeup von Omni A (tippen = Bypass, halten = Ebene). LookAhead: <span class="nb">Encoder 7</span> tippen (A) bzw. 2× auf 6 / 14.</span></div>
     <div class="lvl" style="--c:var(--red)"><span class="n">Ebene 4 · Hall</span><b>Presets durchschalten</b><span><span class="nb">Encoder 7</span> = FDN-Preset, <span class="nb">Encoder 14</span> = Convolver-Preset (je eine Raste = ein Preset), Convolver 9–13 = seine ersten 5 Parameter. Reaper: die Presetliste des Plugins. Nuendo: nur, wenn das Plugin einen Parameter „Program“/„Preset“ hat – Nuendo gibt Skripten keine Presetliste.</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">Ebene 5 · Hall-EQ</span><b>der MultiEQ direkt vor dem FDN</b><span>Liegt im Slot unmittelbar vor dem FDN Reverb ein MultiEQ, ist das der <b>Hall-EQ</b>: er zählt nicht mehr als MultiEQ A/B und hat eine eigene Ebene. Twister: <span class="nb">Encoder 8</span> halten, bis „Hall-EQ“ kommt. E16: Seite 4, <span class="nb">Encoder 8</span> halten = Hall ↔ Hall-EQ. Bedienung wie MultiEQ A: Drehen = Frequenz, drücken + drehen = Gain, halten + drehen = Q, 2× an/aus, 3× sperren; Bänder 1–3 auf 1–3, Bänder 4–6 auf 5–7 (Anzeige „H1“ … „H6“). Ohne MultiEQ vor dem FDN wird die Ebene übersprungen.</span></div>
     <div class="lvl" style="--c:var(--yellow)"><span class="n">Nuendo</span><b>gerasterte Encoder: feine Schritte</b><span>Gain 0,5 dB pro Raste, Frequenz in kleinen Schritten statt 7,5 dB bzw. 0 → 20 kHz. (Nuendo meldete bei IEM-Plugins die normierten statt der echten Werte; das Skript erkennt das jetzt und rechnet mit dem Anzeigetext.)</span></div>
   </div>
 
@@ -104,10 +193,10 @@
   <div class="meta"><span>MultiEQ, OmniComp, DirectionalComp und <b>Hall</b> (FDN Reverb + mcfx Convolver) · Reaper: <code>Reaper_MultiEQ.lua</code> · Nuendo: MFTView (Twister <span class="nb">Bank 4</span>) und E16DAWLink (E16 Seiten 2–4) · gleiche Griffe in beiden DAWs</span></div>
   <h3>Auf jeder Ebene gleich</h3>
   <div class="levels">
-    <div class="lvl" style="--c:var(--green)"><span class="n">8</span><b>OmniComp A</b><span>tippen = Bypass · <b>halten + loslassen</b> = nächste Ebene: MultiEQ → Omni → Directional → Hall (E16: eigene Seiten 2–4, auf Seite 3 Omni ↔ Directional)</span></div>
+    <div class="lvl" style="--c:var(--green)"><span class="n">8</span><b>OmniComp A</b><span>tippen = Bypass · <b>halten + loslassen</b> = nächste Ebene: MultiEQ → Omni → Directional → Hall → Hall-EQ (E16: eigene Seiten 2–4, auf Seite 3 Omni ↔ Directional, auf Seite 4 Hall ↔ Hall-EQ)</span></div>
     <div class="lvl" style="--c:var(--yellow)"><span class="n">15</span><b>Solo</b><span>tippen = Solo (blinkt gelb, orange = gemutet) · drücken + drehen = SceneRotator Yaw</span></div>
     <div class="lvl" style="--c:var(--muted)"><span class="n">16</span><b>Spur · Master · Mute</b><span>drehen = Spur · drücken + drehen = Master −30…0 dB · tippen = Mute · <b>Nuendo/Twister: halten</b> = zurück zu Sends/QC</span></div>
-    <div class="lvl"><span class="n">Farben</span><b>Twister</b><span><span class="nb">Encoder 8</span> zeigt die Ebene: Utility-Farbe MultiEQ, grün Omni, magenta Directional, hellblau Hall. Vom Master/Stereo Out = cyan, gesperrtes Band = violett, Solo gelb, gemutet ohne Solo orange, Mute rot blinkend, Master einstellen = gedimmtes Rot. E16: vom Master weiß, Solo 53, gemutet 55, Mute 60, Master 0.</span></div>
+    <div class="lvl"><span class="n">Farben</span><b>Twister</b><span><span class="nb">Encoder 8</span> zeigt die Ebene: Utility-Farbe MultiEQ, grün Omni, magenta Directional, hellblau Hall, rosa Hall-EQ. Vom Master/Stereo Out = cyan, gesperrtes Band = violett, Solo gelb, gemutet ohne Solo orange, Mute rot blinkend, Master einstellen = gedimmtes Rot. E16: vom Master weiß, Solo 53, gemutet 55, Mute 60, Master 0.</span></div>
   </div>
   <h3>Belegung pro Ebene</h3>
   <div class="enclegend"><span><b>fett</b> = drehen</span><span class="p">drücken + drehen</span><span class="h">halten (0,45 s) + drehen</span><span class="t">tippen</span>
@@ -297,14 +386,14 @@
 <section class="guide" id="reaper" style="--c:var(--green)">
   <div class="ghead"><div class="knob" style="--a:60deg" aria-hidden="true"></div><h2>Reaper einrichten</h2></div>
   <hr class="rule">
-  <div class="meta"><span>ReaScript · <code>3_Reaper/Reaper_3D.lua</code> v5.0</span></div>
+  <div class="meta"><span>ReaScript · <code>3_Reaper/Reaper_3D.lua</code> (Stand v8.21)</span></div>
   <p class="lead">In Reaper ist der FX-Slot egal. Pro Rolle zählt das erste aktive Plugin der Kette. Der VST MultiPanner fehlt in Reaper, der Modus panner bleibt dort leer.</p>
   <h3>Schritte</h3>
   <ol class="steps">
     <li><input type="checkbox" id="r1"><div><div class="t">MIDI-Geräte</div><p>Einstellungen › MIDI Devices: TouchOSC Bridge <b>Ausgang an</b>, <b>Eingang an</b> („nur Steuerung“).</p></div></li>
     <li><input type="checkbox" id="r2"><div><div class="t">Skript laden</div><p>Actions › Show action list › New action › Load ReaScript › <code>Reaper_3D.lua</code>, einmal starten. Eine alte Aktion auf <code>seren-a_v3/…</code> neu laden.</p></div></li>
     <li><input type="checkbox" id="r3"><div><div class="t">Twister dazu (optional)</div><p><code>Reaper_Twister.lua</code> als zweites ReaScript starten, Twister In/Out an. Beide laufen nebeneinander.</p></div></li>
-    <li><input type="checkbox" id="r4"><div><div class="t">Kontrolle</div><p>LOG zeigt <code>3D v5.0 aktiv (Reaper) - Plugins in beliebigem FX-Slot</code> und pro Spur mit mehreren Plugins eine Zeile wie <code>Spur 3 Plugins: StereoEncoder FX1 (aus), MultiEncoder FX2 *</code>.</p></div></li>
+    <li><input type="checkbox" id="r4"><div><div class="t">Kontrolle</div><p>LOG zeigt <code>3D v8.20 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config</code> und pro Spur mit mehreren Plugins eine Zeile wie <code>Spur 3 Plugins: StereoEncoder FX1 (aus), MultiEncoder FX2 *</code>.</p></div></li>
   </ol>
   <h3>Schalter oben im Skript</h3>
   <div class="vals">
@@ -343,14 +432,15 @@
 <section class="guide" id="oberflaechen" style="--c:var(--hi)">
   <div class="ghead"><div class="knob" style="--a:-20deg" aria-hidden="true"></div><h2>Oberflächen und Modi</h2></div>
   <hr class="rule">
-  <div class="meta"><span>Ordner <code>1_Oberflaechen</code> · Bilder aller Seiten in <code>4_Vorschau</code></span></div>
+  <div class="meta"><span>Ordner <code>1_Oberflaechen</code> (die drei 3D-Space-Oberflächen in <code>3D-Space-Viewer</code>) · Bilder aller Seiten in <code>4_Vorschau</code></span></div>
   <div class="tblwrap" style="margin-top:14px"><table>
     <tr><th>Gerät</th><th>Datei</th><th>Modi / Seiten</th><th>Wofür</th></tr>
     <tr><td>Handy quer</td><td><code>Pan_Skript</code>, <code>Pan_OSC</code> (je mit TotalMix)</td><td>MULTIPANNER · IEM · MP-IEM · MONITOR</td><td>die gewählte Spur fein bewegen</td></tr>
     <tr><td>Handy hoch</td><td><code>Pan_Skript hochkant</code> (mit/ohne TotalMix)</td><td>wie oben</td><td>großes XY-Feld, Z als Fader</td></tr>
     <tr><td>Handy quer</td><td><code>Objekt-Uebersicht</code></td><td>IEM · MULTIPANNER · MULTI-ENC · LOG</td><td>16 Spuren als Punkte, antippen = wählen</td></tr>
-    <tr><td>iPad</td><td><code>IEM-Space</code></td><td>space · multi · panner · room · log · ⚙</td><td>16 Spuren ziehen, Width/Yaw/Pitch</td></tr>
-    <tr><td>Monitor 5:4</td><td><code>IEM-Monitor</code></td><td>space · multi · panner · room; Ansicht 16 / 32v / 32h / 64</td><td>bis 64 Spuren mit Pegeln</td></tr>
+    <tr><td>iPad</td><td><code>3D-Space-Monitor-iPad</code></td><td>space · multi · panner · room · FDN · mcfx · log · ⚙</td><td>16 (mit „32“: 32) Spuren ziehen, Width/Yaw/Pitch</td></tr>
+    <tr><td>Monitor 5:4</td><td><code>3D-Space-Monitor-5zu4</code></td><td>space · multi · panner · room · FDN · mcfx · split; Ansicht 16 / 32v / 32h / 4×8 / 64</td><td>bis 64 Spuren mit Pegeln</td></tr>
+    <tr><td>Monitor Full HD</td><td><code>3D-Space-Monitor-HD</code></td><td>wie Monitor 5:4</td><td>der große Bildschirm (1920 × 1080)</td></tr>
     <tr><td>Handy</td><td><code>Twister_View</code> (hoch/quer)</td><td>aktuelle Twister-Bank</td><td>siehe <a href="#twister">Twister &amp; E16</a></td></tr>
   </table></div>
   <h3>Die Modi</h3>
@@ -359,9 +449,11 @@
     <div class="lvl" style="--c:var(--cyan)"><span class="n">multi</span><b>MultiEncoder-Eingänge</b><span>Bis 16 Eingänge der gewählten Spur, ziehen und Gain.</span></div>
     <div class="lvl" style="--c:var(--orange)"><span class="n">panner</span><b>VST MultiPanner</b><span>Nur Nuendo, über Quick Controls. Oben im Feld = vorn.</span></div>
     <div class="lvl" style="--c:var(--yellow)"><span class="n">room</span><b>dearVR PRO</b><span>Quellen im Raum mit Wänden und Hörer. Nur Anzeige.</span></div>
+    <div class="lvl" style="--c:var(--red)"><span class="n">FDN · mcfx</span><b>Sends in den Hall</b><span>Seit v8.20, nur Reaper. Ein Platz je Quellspur mit Send-Fader, Pegel am Hall, Gesamtpegel und Preset.</span></div>
+    <div class="lvl" style="--c:var(--pink)"><span class="n">split</span><b>vier Felder auf einmal</b><span>Seit v8.21, nur Monitor: space, multi, panner und room mit einer gemeinsamen Liste.</span></div>
     <div class="lvl" style="--c:var(--green)"><span class="n">log</span><b>Was das Skript erkannt hat</b><span>Oben ◆ ERKANNT, darunter ← kommt an, → geht raus.</span></div>
   </div>
-  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_SPACE__" alt="iPad IEM-Space im Modus space: Spurchips oben, IEM-Kreis, Detailfeld, Liste mit sieben Spuren" width="900" height="675"><figcaption>iPad · space: die Liste zeigt nur Spuren mit Encoder</figcaption></figure>
+  <figure class="shot"><img src="data:image/jpeg;base64,__IMG_SPACE__" alt="iPad 3D-Space-Monitor im Modus space: Spurchips oben, IEM-Kreis, Detailfeld, Liste mit sieben Spuren" width="900" height="675"><figcaption>iPad · space: die Liste zeigt nur Spuren mit Encoder</figcaption></figure>
   <div class="tip"><b>Spur wählen:</b> In der Liste antippen wählt die Spur auch in der DAW. Alle Oberflächen folgen der in der DAW gewählten Spur.</div>
 </section>
 
@@ -422,13 +514,14 @@
 <section class="guide" id="optionen" style="--c:var(--cyan)">
   <div class="ghead"><div class="knob" style="--a:-60deg" aria-hidden="true"></div><h2>Optionen (⚙)</h2></div>
   <hr class="rule">
-  <div class="meta"><span>iPad IEM-Space und Monitor 5:4 · „fertig ♡“ schließt die Seite</span></div>
+  <div class="meta"><span>iPad, Monitor 5:4 und Monitor HD · zwei Seiten (Taste oben „Seite 2 ›“), „fertig ♡“ schließt · Seite 2 (Reiter, Beschriftung, Zusatzzeilen, Split): siehe <a href="#v8">Neu seit v6.1</a></span></div>
   <div class="tblwrap" style="margin-top:14px"><table>
     <tr><th>Bereich</th><th>Einstellungen</th></tr>
     <tr><td>Pegel · Skala</td><td>Digital, DIN, EBU, British, Nordic, K-20, K-14, K-12, LUFS≈, LU≈ · Peak / RMS · +3 dB AES17 · LUFS M 400 ms / S 3 s · LU-Bezug −23/−24/−16/−14 · RMS-Auflösung, Schwelle Glühen</td></tr>
     <tr><td>Ballistik</td><td>Typ I DIN/Nordic, Typ IIa EBU/BBC, Digital schnell, VU 300 ms · Rücklauf, Spitze halten, Glühen Anstieg/Abfall</td></tr>
-    <tr><td>Aussehen</td><td>Farben TouchOSC / Spurfarben · Theme seren.a / Nuendo dark</td></tr>
-    <tr><td>Spuren zeigen</td><td>Audio, FX, Gruppe/Ordner, MIDI/Instr · Kennzeichnung ─ FX · │ Gruppe · ♪ MIDI</td></tr>
+    <tr><td>Aussehen</td><td>Farben TouchOSC / Spurfarben · Paletten seren.a, Nuendo dark, Cute Pink (hell), Girly Pop Dark, Dark Pastel Pink</td></tr>
+    <tr><td>Spuren zeigen</td><td>je Reiter (Seite 2): Audio, 3OA, FX, Gruppe/Ordner, MIDI/Instr · Kennzeichnung ─ FX · │ Gruppe · ♪ MIDI</td></tr>
+    <tr><td>Gruppen <span class="st ok">v8.14</span></td><td>bis 12 Gruppen zum An-/Abhaken (A–D selbst zuordnen, dazu Reaper-Ordner); an = nur deren Spuren</td></tr>
     <tr><td><b>nur Spuren mit Plugin</b> <span class="st ok">neu</span></td><td>an (Standard): pro Modus nur Spuren mit dem passenden Plugin, die Liste rückt auf. Aus: alle Spuren der Bank, wie bis v4.4.</td></tr>
     <tr><td><b>Auslastung (Reaper)</b> <span class="st ok">neu</span></td><td>aus (Standard). An: <code>CPU 23 %  ·  REAPER 12 %</code> klein neben der Versionsnummer. Ab 85 % oder nach einem Aussetzer in Warnfarbe mit „Aussetzer!“.</td></tr>
     <tr><td>Symbole</td><td>aus, Punkt, Liste, beide · Symbolgröße, Deckkraft</td></tr>
@@ -502,6 +595,8 @@
     <tr><td>„<span class="nb ins">Insert 5</span> …“ fehlt bei einer Spur (Nuendo)</td><td>Kein Encoder/Rotator in <span class="nb ins">Insert 5–9</span>, oder andere Parameternamen. Seit v5.5 nicht mehr <span class="nb ins">Insert 4/5</span>.</td></tr>
     <tr><td>Werte kommen an (←), Ziehen bewegt nichts</td><td>Nuendo: Bridge als Eingang fehlt · Reaper: Bridge-Eingang aus (das LOG sagt es).</td></tr>
     <tr><td>„dearVR PRO: Position nicht erkannt“</td><td>Positions-Parameter nicht unter den ersten 16 (Nuendo) bzw. andere Namen. Die Zeile nennt die gefundenen Namen; bitte schicken.</td></tr>
+    <tr><td>FDN-/mcfx-Reiter zeigt „–“ oder bleibt leer</td><td>Nur Reaper. Es muss ein FDN Reverb bzw. mcfx-Convolver im Projekt liegen, und Spuren müssen Sends dorthin haben. LOG ansehen; Art und Instanz meldet die Oberfläche beim Wählen des Reiters.</td></tr>
+    <tr><td>Reiter „split“ fehlt</td><td>Nur Monitor 5:4 und HD. Config Seite 2 › Reiter zeigen › split einschalten.</td></tr>
     <tr><td>„◆ Achtung: … senden gleichzeitig“</td><td>Zwei DAW-Skripte laufen. Nur eins laufen lassen.</td></tr>
   </table></div>
   <h3>Der Reihe nach</h3>
@@ -556,11 +651,11 @@
   <div class="tblwrap" style="margin-top:14px"><table>
     <tr><th>Ordner</th><th>Inhalt</th></tr>
     <tr><td><code>0_Fehlersuche</code></td><td>Bridge-Test.tosc, Reaper_Diagnose.lua</td></tr>
-    <tr><td><code>1_Oberflaechen</code></td><td>Handy_Pan, Handy_Objekt-Uebersicht, iPad_IEM-Space, Monitor_5zu4, Handy_Twister-View</td></tr>
+    <tr><td><code>1_Oberflaechen</code></td><td>3D-Space-Viewer (iPad, Monitor 5zu4, Monitor HD), Handy_Pan, Handy_Objekt-Uebersicht, Handy_Twister-View</td></tr>
     <tr><td><code>2_Nuendo-Cubase</code></td><td>Kopie der MIDI-Remote-Skripte (TouchOSC3D, MFTView, E16DAWLink)</td></tr>
-    <tr><td><code>3_Reaper</code></td><td>Reaper_3D.lua, Reaper_Twister.lua, Reaper_MultiEQ.lua, Twister_Bank4_MultiEQ.mfs</td></tr>
+    <tr><td><code>3_Reaper</code></td><td>Reaper_3D.lua, Reaper_Twister.lua, Reaper_E16_Twister.lua (ersetzt Reaper_MultiEQ.lua), OXI/Reaper_OXI_Puzzle.lua, Twister_Bank4_MultiEQ.mfs</td></tr>
     <tr><td><code>4_Vorschau</code></td><td>Bilder aller Seiten</td></tr>
-    <tr><td><code>5_Werkzeug</code></td><td>Quellen, Build-Skripte, Tests, PROTOKOLL.md</td></tr>
+    <tr><td><code>5_Werkzeug</code></td><td>Quellen, Build-Skripte, Tests; <code>PROTOKOLL.md</code> (Nachrichten zwischen DAW-Skript und Oberflächen) liegt im Ordner v5</td></tr>
     <tr><td><code>z_alt</code></td><td>Sicherungen <code>JJMMTT-vX.Y.Z(wichtigste Neuerung)</code>, z. B. <code>261027-v4.4(room dearVR)</code></td></tr>
   </table></div>
   <h3>Versionsregel</h3>
@@ -573,7 +668,14 @@
   <h3>Verlauf</h3>
   <div class="tblwrap"><table>
     <tr><th>Version</th><th>Datum</th><th>Wichtigste Neuerung</th></tr>
-    <tr><td><b>v6.1</b></td><td>04.11.26</td><td>Twister View: 5 Looks, große Schrift, Bank tippen; E16 in einer Szene mit Reverb-Seite und Presets; IEM-Farben; Threshold-Ring von oben; Nuendo-Sprünge am E16 behoben</td></tr>
+    <tr><td><b>v8.21</b></td><td>17.11.26</td><td>Split-Ansicht (Monitor, vier Felder, gemeinsame Liste); Oberflächen heißen <code>3D-Space-Monitor-iPad / -5zu4 / -HD</code></td></tr>
+    <tr><td>v8.20</td><td>17.11.26</td><td>Hall-Reiter FDN und mcfx (Sends, Gesamtpegel, Preset, Instanzen)</td></tr>
+    <tr><td>v8.19</td><td>17.11.26</td><td>Neue Paletten, Name/Preset statt Nummer, 3OA-Spuren, Zusatzzeilen, Reiter in der Config</td></tr>
+    <tr><td>v8.18</td><td>17.11.26</td><td>„groß“ wird gespeichert; E16/Puzzle starten ruhiger; Yaw/Azimut drehen durch; SceneRotator zeigt sein Fenster</td></tr>
+    <tr><td>v8.13 – 8.17</td><td>10.–13.11.26</td><td>32 Spuren (iPad „32“, Monitor 4×8), Gruppen, Voreinstellung speichern, Monitor Full HD, room „groß“</td></tr>
+    <tr><td>v8.0 – 8.12</td><td>07.–11.11.26</td><td>E16 + Twister in einem Reaper-Skript, Spurfilter für die Übersichten, OXI Puzzle und Sends</td></tr>
+    <tr><td>v7.x</td><td>07.11.26</td><td>OXI One MkII: Puzzle, Sends 16/32</td></tr>
+    <tr><td>v6.1</td><td>04.11.26</td><td>Twister View: 5 Looks, große Schrift, Bank tippen; E16 in einer Szene mit Reverb-Seite und Presets; IEM-Farben; Threshold-Ring von oben; Nuendo-Sprünge am E16 behoben</td></tr>
     <tr><td>v6.0.1</td><td>03.11.26</td><td>Fix: Twister-Skript (MFTView) lädt in Nuendo wieder vollständig, E16-Szene MultiEQ läuft in Nuendo</td></tr>
     <tr><td>v6.0</td><td>02.11.26</td><td>Plugins (MultiEQ, Kompressoren, Hall) am Twister und E16 auch in Nuendo; Hall-Ebene</td></tr>
     <tr><td>v5.5</td><td>30.10.26</td><td>Nuendo: Insert-Plan <span class="nb">5–9</span></td></tr>
