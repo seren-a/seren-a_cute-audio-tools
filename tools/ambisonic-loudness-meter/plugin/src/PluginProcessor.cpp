@@ -227,14 +227,21 @@ MeterSnapshot AmbisonicLoudnessMeterProcessor::snapshot() const {
 
 void AmbisonicLoudnessMeterProcessor::getStateInformation(juce::MemoryBlock& destData) {
     int idx = orderParam != nullptr ? orderParam->getIndex() : 0;
+    float spl = splOffsetParam != nullptr ? splOffsetParam->get() : 94.0f;
     destData.append(&idx, sizeof(idx));
+    destData.append(&spl, sizeof(spl));
 }
 
 void AmbisonicLoudnessMeterProcessor::setStateInformation(const void* data, int sizeInBytes) {
-    if (data != nullptr && sizeInBytes >= (int)sizeof(int) && orderParam != nullptr) {
-        int idx = 0;
-        std::memcpy(&idx, data, sizeof(idx));
+    if (data == nullptr || sizeInBytes < (int)sizeof(int)) return;
+    int idx = 0;
+    std::memcpy(&idx, data, sizeof(idx));
+    if (orderParam != nullptr)
         *orderParam = juce::jlimit(0, 2, idx);
+    if (sizeInBytes >= (int)(sizeof(int) + sizeof(float)) && splOffsetParam != nullptr) {
+        float spl = 94.0f;
+        std::memcpy(&spl, (const char*)data + sizeof(int), sizeof(spl));
+        *splOffsetParam = juce::jlimit(60.0f, 120.0f, spl);
     }
 }
 
