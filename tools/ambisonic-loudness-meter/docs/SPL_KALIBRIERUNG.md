@@ -27,9 +27,11 @@ SPL Cal = 83 + 23 = 106 dB
 
 ### Vorgehen
 
-1. **Kalibrierdatei** erzeugen: 1 kHz-Sinus, −23 dBFS RMS, 60 s, auf die
-   Monitor-Ausgabe geroutet (in REAPER: Item properties → *Normalize* auf
-   −23 LUFS, oder externes File — z. B. EBU Tech 3341 Alignment Signal).
+1. **Kalibrierdatei** erzeugen: 1 kHz-Sinus, −23 dBFS RMS, 60 s — z. B. mit
+   `python3 scripts/make_calibration_signal.py calibration.wav`
+   (fertiges File: `examples/calibration_1kHz_-23dBFS_60s.wav`),
+   oder offizielles EBU-Tech-3341-Alignment-Signal von tech.ebu.ch,
+   oder in REAPER Item → *Normalize* auf −23 LUFS.
 2. **Abspielen** (Loop), Fader auf 0 dB.
 3. **Messung mit echtem SPL-Meter** (Klasse 2 reicht):
    - Position = Hör-/Messposition (dort, wo das Ambisonic-Mic stand),
