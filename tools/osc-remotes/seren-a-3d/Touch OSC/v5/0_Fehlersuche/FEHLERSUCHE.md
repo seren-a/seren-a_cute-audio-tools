@@ -41,6 +41,6 @@ Die Oberfläche zeigt jede ankommende Nachricht mit Verbindungsnummer. Oben steh
 - Nuendo-Skripte schreiben jetzt in die Skript-Konsole, was sie tun.
 
 ## Zur Frage „OSC im Plugin aktivieren?“
-Für Panner_Skript, Objekt-Übersicht und IEM-Space: **nein**. Die reden nur über die Bridge mit dem
+Für Panner_Skript, Objekt-Übersicht und 3D-Space-Monitor-iPad: **nein**. Die reden nur über die Bridge mit dem
 DAW-Skript, OSC im Plugin bleibt aus. OSC im Plugin brauchst du nur für die Panner_OSC-Fassungen
 (StereoEncoder: Listen 8001, Sender Handy-IP 9101 · Rotator 8002/9102 · MultiEncoder 8003/9103).

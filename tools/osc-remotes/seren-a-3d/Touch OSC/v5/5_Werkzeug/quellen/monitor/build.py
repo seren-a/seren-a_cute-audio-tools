@@ -99,7 +99,7 @@ def pill(name, frame, caption, size=16):
 
 HDR_X0, HDR_GAP = 222, 3          # muss zu HDR_X0/HDR_GAP in monitor_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
 HDR = [("mode_iem", 56, "space", 13), ("mode_me", 52, "multi", 13), ("mode_mp", 58, "panner", 13),
-       ("mode_room", 50, "room", 13), ("mode_fdn", 44, "fdn", 13), ("mode_mcfx", 52, "mcfx", 13),
+       ("mode_room", 50, "room", 13), ("mode_fdn", 44, "fdn", 13), ("mode_mcfx", 52, "mcfx", 13), ("mode_sp", 48, "split", 13),
        ("lay_16", 38, "16", 13), ("lay_32v", 42, "32v", 13), ("lay_32h", 42, "32h", 13), ("lay_32r", 42, "4×8", 13), ("lay_64", 38, "64", 13),
        ("pano_btn", 80, "horizont", 13), ("col_btn", 96, "tosc farben", 13), ("cfg_btn", 42, "⚙", 19), ("log_btn", 44, "log", 13)]
 
@@ -203,6 +203,24 @@ def dot(k, size=30):
     return g
 
 
+def split_quads():
+    """v8.21: vier Felder der Split-Ansicht (Zeichnung wird zur Laufzeit gesetzt, Frames hier nur Platzhalter)."""
+    k = []
+    for i in (1, 2, 3, 4):
+        n = f"spq{i}"
+        parts = [box((0, 0, 10, 10), PANEL, name=n + "_bg", radius=16),
+                 lbl(n + "_title", (0, 0, 10, 10), "", 14, PINK),
+                 box((0, 0, 10, 10), PANEL2, name=n + "_sqb", radius=12),
+                 box((0, 0, 10, 10), PANEL2, name=n + "_c1", shape=Shape.CIRCLE)]
+        for j in (1, 2, 3):
+            parts.append(box((0, 0, 10, 10), PINK_DD, name=f"{n}_r{j}", shape=Shape.CIRCLE, bg=False, outline=True))
+        parts += [box((0, 0, 1, 10), PINK_D, name=n + "_hx"), box((0, 0, 10, 1), PINK_D, name=n + "_hy")]
+        for c in parts:
+            c.set("visible", False)
+        k += parts
+    return k
+
+
 def build():
     doc = t.Document.new(frame=(0, 0, W, H), color=BG, background=True, outline=False)
     root = doc.root
@@ -220,6 +238,7 @@ def build():
     for i in (1, 2, 3, 4):
         k += [square(i), square(i, True)]
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO), under the dots
+    k += split_quads()                     # v8.21: Split-Ansicht (Hintergründe der 4 Felder), unter den Punkten
     cx, cy, cw, ch = CA[1]
     k.append(hall_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
                            PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.20: Hall-Reiter (Ansicht 16: Anzeige links, Sends rechts)
@@ -252,7 +271,7 @@ def build():
             lbl(None, (16, 10, W - 48, 24), "✧ log ✧   ◆ vom DAW-Skript erkannt   ← kommt an   → geht raus", 14, LAV),
             lbl("mon_text", (16, 42, W - 48, H - 130), "", 15, TXT, multi=True, valign=AlignV.TOP))
     k.append(mon)
-    cfg = config_ui.build(W, H, with64=True)
+    cfg = config_ui.build(W, H, with64=True, split=True)
     k.append(cfg)
     root.add(*k)
     from themenames import theme_script

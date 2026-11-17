@@ -39,7 +39,7 @@ def _fader(name, x, y, w, h, title, default):
     return [_lbl(name + "_t", (x, y, w * 0.6, 20), title, 12, DIM), _lbl(name + "_val", (x + w * 0.6, y, w * 0.4, 20), "", 12, TXT, AlignH.RIGHT), f]
 
 
-def build(W, H, with64=False):
+def build(W, H, with64=False, split=False):
     """Returns the overlay group (hidden). Coordinates scale with the page size."""
     g = t.group(name="cfg_overlay", frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
     g.visible = False
@@ -133,13 +133,13 @@ def build(W, H, with64=False):
     # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
     k2 = []
     TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
-    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall")]
+    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall")] + ([("sp", "split")] if split else [])
     TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
     y = y0
     k2.append(_lbl(None, (x1, y, col_w, 26 * s), "REITER zeigen", 14 * s, "#7af5ff")); y += 30 * s
     for i, (key, cap) in enumerate(HTABS):
         k2 += _btn("cfg_tab_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
-    y += 3 * (bh + gap) + 10 * s
+    y += ((len(HTABS) + 1) // 2) * (bh + gap) + 10 * s
     k2.append(_lbl("cfg_tab_lbl", (x1, y, col_w, 26 * s), "Spuren zeigen im Reiter", 14 * s, "#7af5ff")); y += 30 * s
     k2.append(_lbl(None, (x1, y, col_w, 20 * s), "Reiter wählen, dann die Spurtypen:", 12 * s, DIM)); y += 22 * s
     for i, (key, cap) in enumerate(TABS):
@@ -162,6 +162,14 @@ def build(W, H, with64=False):
         k2 += _btn("cfg_xs_%s_subs" % key, x2 + col_w * 0.36, y, col_w * 0.31, bh, "↳ Sub", 12 * s)
         k2 += _btn("cfg_xs_%s_sends" % key, x2 + col_w * 0.69, y, col_w * 0.31, bh, "← Sends", 12 * s)
         y += bh + gap
+    if split:       # v8.21: Split-Ansicht (Monitor): welche Felder
+        y = y0
+        k2.append(_lbl(None, (x3, y, col_w, 26 * s), "SPLIT-ANSICHT zeigt", 14 * s, "#7af5ff")); y += 30 * s
+        k2.append(_lbl(None, (x3, y, col_w, 40 * s), "vier Felder (space · multi · panner · room), eine gemeinsame Spurliste", 11 * s, DIM)); y += 42 * s
+        for i, (key, cap) in enumerate(TABS):
+            k2 += _btn("cfg_sp_" + key, x3 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
+        y += 2 * (bh + gap) + 4 * s
+        k2.append(_lbl(None, (x3, y, col_w, 60 * s), "Spurtypen und „nur mit Plugin“ gelten im Split für alle Felder gemeinsam (alle Typen).", 11 * s, DIM))
     p1 = t.group(name="cfg_p1", frame=(0, 0, W, H), color="#0a0414", background=False, outline=False)
     p1.add(*k)
     p2 = t.group(name="cfg_p2", frame=(0, 0, W, H), color="#0a0414", background=False, outline=False)

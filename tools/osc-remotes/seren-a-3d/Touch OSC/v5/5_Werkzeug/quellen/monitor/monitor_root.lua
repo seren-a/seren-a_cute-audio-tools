@@ -59,6 +59,9 @@ if HD then      -- v8.16: Full HD, die Ansicht bleibt quadratisch, die Liste bek
   GEO['64']  = { ca = { 460, 64, 1000, 1000 }, n = 64, pano = 3 }
 end
 
+-- v8.21: Split-Ansicht (Reiter „split“): vier Felder (space, multi, panner, room), EINE gemeinsame Spurliste
+HAS_SPLIT = true
+SPL = { f = nil, off = 0, was = false, panoBefore = nil, dq = nil, sel = false }
 local PH = 0.34          -- Horizont-Band unten (muss zu build.py passen)
 local obj, me = {}, {}
 for k = 1, MAXO do
@@ -124,6 +127,7 @@ local function trackNo(k)                       -- echte Spurnummer (Reaper schi
 end
 local function nShown() return min(GEO[layout].n, mode == 'me' and 16 or 64) end
 local function present(k)
+  if mode == 'sp' then return spAny(k) end
   if mode == 'me' then return k <= meInfo.count end
   if k > win then return false end
   local o = obj[k]
@@ -132,6 +136,22 @@ local function present(k)
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'room' then return o.seenDv end
   return hasBit(o.flags, 2) or o.seenMp
+end
+function spAny(k)                               -- Spur gehört in irgendein Feld (multi = eigene Eingänge, zählt nicht)
+  local sv, r = mode, false
+  for _, m in ipairs(SPLIT_MODES) do
+    if m ~= 'me' and LOOK.split[m] ~= false then mode = m; if present(k) then r = true end end
+  end
+  mode = sv
+  return r
+end
+function spMember(k)                            -- in der Liste: in welchen Feldern die Spur vorkommt
+  local sv, t = mode, {}
+  for _, m in ipairs(SPLIT_MODES) do
+    if m ~= 'me' and LOOK.split[m] ~= false then mode = m; if present(k) then t[#t + 1] = TAB_CAP[m] end end
+  end
+  mode = sv
+  return table.concat(t, ' · ')
 end
 local function colorOf(k)
   if mode ~= 'me' and LOOK.colors == 'daw' and obj[k].col then return obj[k].col end
@@ -170,7 +190,7 @@ local function note(ch, n) sendMIDI({ 0x90 + ch, n, 127 }, MIDI_OUT); sendMIDI({
 
 grSend = function(b) sendMIDI(b, MIDI_OUT) end
 local viewLoaded, viewSent, viewAsked, viewT = false, nil, false, 0
-local function viewExtra() return { mode = mode, lay = HL.layoutBefore or layout, pano = panoOn and 1 or 0, big = RM.big and 1 or 0 } end
+local function viewExtra() return { mode = mode, lay = HL.layoutBefore or layout, pano = ((SPL.panoBefore ~= nil) and SPL.panoBefore or panoOn) and 1 or 0, big = RM.big and 1 or 0 } end
 local function viewTick()                          -- v8.15: einmal fragen, dann Änderungen nach Reaper (höchstens 1× pro s)
   if src.name ~= 'REAPER' then return end
   local t = getMillis()
@@ -352,6 +372,7 @@ local function CAfull()
 end
 -- mit Horizont wird der Kreis kleiner und sitzt über dem Horizont-Band
 local function CA()
+  if SPL.f then return SPL.f end                -- v8.21: gerade wird ein Split-Feld gezeichnet / bedient
   local f = CAfull()
   if not panoOn then return f end
   if bigRoom() then return { x = f.x, y = f.y, w = f.w, h = f.h * (1 - PH) - 6 } end
@@ -502,7 +523,7 @@ local function layoutDot(pre, k, s)
 end
 local function doLayout()
   relayout = false
-  local s = DOT[layout]
+  local s = (mode == 'sp') and (HD and 26 or 22) or DOT[layout]
   for k = 1, MAXO do
     local inLayout = k <= GEO[layout].n
     setVisible('c' .. k, false)                 -- render() shows the ones in use
@@ -511,6 +532,7 @@ local function doLayout()
   end
   for _, n in ipairs({ 'circ1', 'circ2', 'circ3', 'sq1', 'sq2', 'sq3', 'pano1', 'pano2', 'pano3',
                        'circ1s', 'circ2s', 'circ3s', 'sq1s', 'sq2s', 'sq3s' }) do setVisible(n, false) end
+  spqHide()
   local ca = CA()
   setFrame('top_xy', ca.x, ca.y, ca.w, ca.h)
   local po = PO()
@@ -526,30 +548,30 @@ end
 --------------------------------------------------------------------------
 local lvPos, lvGlow, lvHold, lvVal = {}, {}, {}, {}
 local function drawDot(pre, k, px, py, glow, isCur, col, show, lower)
-  setVisible(pre .. k, show)
+  setVisible(pre .. (k + SPL.off), show)
   if not show then return end
-  local g = C(pre .. k)
+  local g = C(pre .. (k + SPL.off))
   if not g then return end
   local w = g.frame.w
-  setFrame(pre .. k, px - w / 2, py - w / 2, w, w)
-  if pre == 'p' then setColor(pre .. k, col, 0.85); return end
+  setFrame(pre .. (k + SPL.off), px - w / 2, py - w / 2, w, w)
+  if pre == 'p' then setColor(pre .. (k + SPL.off), col, 0.85); return end
   local soft = (cur[mode] and not isCur) and 0.45 or 1
   local s = w / 2.6
   local gs = s + (w - s) * clamp(glow, 0, 1)
-  setFrame(pre .. k .. '_glow', (w - gs) / 2, (w - gs) / 2, gs, gs)
-  setColor(pre .. k .. '_glow', col, soft * (0.08 + 0.45 * glow))
-  setColor(pre .. k .. '_dot', col, lower and soft * 0.18 or soft * (0.78 + 0.22 * glow))
-  setVisible(pre .. k .. '_lo', lower == true)
-  if lower then setColor(pre .. k .. '_lo', col, soft) end
-  setVisible(pre .. k .. '_ring', isCur)
+  setFrame(pre .. (k + SPL.off) .. '_glow', (w - gs) / 2, (w - gs) / 2, gs, gs)
+  setColor(pre .. (k + SPL.off) .. '_glow', col, soft * (0.08 + 0.45 * glow))
+  setColor(pre .. (k + SPL.off) .. '_dot', col, lower and soft * 0.18 or soft * (0.78 + 0.22 * glow))
+  setVisible(pre .. (k + SPL.off) .. '_lo', lower == true)
+  if lower then setColor(pre .. (k + SPL.off) .. '_lo', col, soft) end
+  setVisible(pre .. (k + SPL.off) .. '_ring', isCur)
   local showIcon = LOOK.icons == 'dot' or LOOK.icons == 'both'
   local ic = (showIcon and mode ~= 'me') and iconFor(obj[k].icon, obj[k].name) or ''
-  setText(pre .. k .. '_icon', ic)
+  setText(pre .. (k + SPL.off) .. '_icon', ic)
   if ic ~= '' then
     local is = s * 0.9 * LOOK.iconSize
-    setFrame(pre .. k .. '_icon', (w + s) / 2 - is * 0.35, (w + s) / 2 - is * 0.45, is, is)
-    setSize(pre .. k .. '_icon', floor(is * 0.8))
-    local c = C(pre .. k .. '_icon'); if c then c.textColor = Color(1, 1, 1, LOOK.iconAlpha) end
+    setFrame(pre .. (k + SPL.off) .. '_icon', (w + s) / 2 - is * 0.35, (w + s) / 2 - is * 0.45, is, is)
+    setSize(pre .. (k + SPL.off) .. '_icon', floor(is * 0.8))
+    local c = C(pre .. (k + SPL.off) .. '_icon'); if c then c.textColor = Color(1, 1, 1, LOOK.iconAlpha) end
   end
 end
 
@@ -585,38 +607,113 @@ local function renderRoom()
   if #objs == 0 then setText('rt_title', 'kein dearVR PRO auf diesen Spuren') end
 end
 
-local function renderDots()
-  renderRoom()
-  local n = nShown()
-  for k = 1, MAXO do
+-- Punkte aller Objekte 1..kmax des aktuellen Modus; off verschiebt die Punkt-Steuerelemente (Split: je Feld 16 eigene)
+local function dotsLoop(kmax)
+  local n, off = nShown(), SPL.off
+  for k = 1, kmax do
+    local dk = k + off
     local on = k <= n and present(k) and hallMode(mode) == 0
     local col = on and colorOf(k) or PASTEL[1]
     local isCur = on and k == cur[mode]
     if on then
       local x, y, lower = posTop(k)
       drawDot('d', k, x, y, lvGlow[k] or 0, isCur, col, true, lower)
-      if mode == 'room' and not roomIn[k] then setColor('d' .. k .. '_dot', col, 0.22); setColor('d' .. k .. '_glow', col, 0.05) end
+      if mode == 'room' and not roomIn[k] then setColor('d' .. dk .. '_dot', col, 0.22); setColor('d' .. dk .. '_glow', col, 0.05) end
       local o = obj[k]
-      setText('d' .. k .. '_num', labelFor(o, tostring(k), 3))
+      setText('d' .. dk .. '_num', labelFor(o, tostring(k), 3))
       local wide = mode == 'iem' and not hasBit(o.flags, 4) and abs(o.wid) >= 2
-      setVisible('wl' .. k, wide); setVisible('wr' .. k, wide)
+      setVisible('wl' .. dk, wide); setVisible('wr' .. dk, wide)
       if wide then             -- Breite: linke/rechte Kante der Stereobasis, gleiche Höhe
-        local f, ws = CA(), DOT[layout] * 0.45
+        local f, ws = CA(), ((mode == 'sp' or SPL.f) and (HD and 26 or 22) or DOT[layout]) * 0.45
         for side, sgn in pairs({ wl = 1, wr = -1 }) do
           local sx, sy = toTop(f, o.az + sgn * o.wid / 2, o.el)
-          setFrame(side .. k, sx - ws / 2, sy - ws / 2, ws, ws)
-          setColor(side .. k, col, (cur[mode] and not isCur) and 0.35 or 0.8)
+          setFrame(side .. dk, sx - ws / 2, sy - ws / 2, ws, ws)
+          setColor(side .. dk, col, (cur[mode] and not isCur) and 0.35 or 0.8)
         end
       end
       if panoOn then
         local px, py = posPano(k)
         drawDot('p', k, px, py, 0, isCur, col, true)
-      else setVisible('p' .. k, false) end
+      else setVisible('p' .. dk, false) end
     else
-      setVisible('d' .. k, false); setVisible('p' .. k, false)
-      setVisible('wl' .. k, false); setVisible('wr' .. k, false)
+      setVisible('d' .. dk, false); setVisible('p' .. dk, false)
+      setVisible('wl' .. dk, false); setVisible('wr' .. dk, false)
     end
   end
+end
+
+-- v8.21: Split-Ansicht -------------------------------------------------------------------------------------------
+local SPQ_TITLE = { iem = 'space · IEM-Draufsicht', me = 'multi · MultiEncoder', mp = 'panner · MultiPanner X × Y', room = 'room · dearVR PRO' }
+function spqHide()
+  for i = 1, 4 do
+    for _, sfx in ipairs({ '_bg', '_title', '_c1', '_r1', '_r2', '_r3', '_hx', '_hy', '_sqb' }) do setVisible('spq' .. i .. sfx, false) end
+  end
+end
+function spQuads()                              -- Felder der Split-Ansicht: Modus + Rahmen + quadratisches Zeichenfeld
+  local a = CAfull()
+  local list = {}
+  for _, m in ipairs(SPLIT_MODES) do if LOOK.split[m] ~= false then list[#list + 1] = m end end
+  local n = #list
+  if n == 0 then return {} end
+  local cols = (n == 1) and 1 or 2
+  local rows = math.ceil(n / cols)
+  local g = 8
+  local cw, rh = (a.w - g * (cols - 1)) / cols, (a.h - g * (rows - 1)) / rows
+  local qs = {}
+  for i, m in ipairs(list) do
+    local c, r = (i - 1) % cols, floor((i - 1) / cols)
+    local x, y = a.x + c * (cw + g), a.y + r * (rh + g)
+    local s = min(cw - 8, rh - 32)
+    qs[i] = { m = m, x = x, y = y, w = cw, h = rh, f = { x = x + (cw - s) / 2, y = y + 28 + (rh - 28 - s) / 2, w = s, h = s } }
+  end
+  return qs
+end
+local function renderSplit()
+  local th = theme()
+  local qs = spQuads()
+  for k = 1, MAXO do                            -- alle Punkte erst aus; die Felder holen sich ihre 16 zurück
+    setVisible('d' .. k, false); setVisible('p' .. k, false); setVisible('wl' .. k, false); setVisible('wr' .. k, false)
+  end
+  spqHide()
+  local keep = mode
+  mode = 'iem'; renderRoom(); mode = keep       -- Room-Zeichnung erst aus, das Room-Feld schaltet sie wieder ein
+  for _, n in ipairs(RM.ZOOM_CTL) do setVisible(n, false) end
+  for i, q in ipairs(qs) do
+    local pre = 'spq' .. i
+    setVisible(pre .. '_bg', true); setFrame(pre .. '_bg', q.x, q.y, q.w, q.h); setColor(pre .. '_bg', th.panel, 1)
+    setVisible(pre .. '_title', true); setFrame(pre .. '_title', q.x + 12, q.y + 5, q.w - 24, 20); setText(pre .. '_title', SPQ_TITLE[q.m])
+    local f = q.f
+    local cx, cy = f.x + f.w / 2, f.y + f.h / 2
+    if q.m == 'iem' or q.m == 'me' then
+      local R = topR(f)
+      setVisible(pre .. '_c1', true); setFrame(pre .. '_c1', cx - R, cy - R, 2 * R, 2 * R); setColor(pre .. '_c1', th.row, 1)
+      for j = 1, 3 do
+        local r = R * j / 3 + 0
+        setVisible(pre .. '_r' .. j, true); setFrame(pre .. '_r' .. j, cx - r, cy - r, 2 * r, 2 * r); setColor(pre .. '_r' .. j, th.line, j == 3 and 1 or 0.6)
+      end
+      setVisible(pre .. '_hx', true); setFrame(pre .. '_hx', cx - 0.5, cy - R, 1, 2 * R); setColor(pre .. '_hx', th.line, 0.8)
+      setVisible(pre .. '_hy', true); setFrame(pre .. '_hy', cx - R, cy - 0.5, 2 * R, 1); setColor(pre .. '_hy', th.line, 0.8)
+    elseif q.m == 'mp' then
+      setVisible(pre .. '_sqb', true); setFrame(pre .. '_sqb', f.x, f.y, f.w, f.h); setColor(pre .. '_sqb', th.row, 1)
+      setVisible(pre .. '_hx', true); setFrame(pre .. '_hx', cx - 0.5, f.y, 1, f.h); setColor(pre .. '_hx', th.line, 0.8)
+      setVisible(pre .. '_hy', true); setFrame(pre .. '_hy', f.x, cy - 0.5, f.w, 1); setColor(pre .. '_hy', th.line, 0.8)
+    end
+  end
+  for i, q in ipairs(qs) do                     -- Punkte: je Feld sein eigener 16er-Block der Punkt-Steuerelemente
+    mode, SPL.f, SPL.off = q.m, q.f, (i - 1) * 16
+    if q.m == 'room' then
+      renderRoom()
+      for _, n in ipairs(RM.ZOOM_CTL) do setVisible(n, false) end
+    end
+    dotsLoop(16)
+  end
+  mode, SPL.f, SPL.off = keep, nil, 0
+end
+
+local function renderDots()
+  if mode == 'sp' then renderSplit(); return end
+  renderRoom()
+  dotsLoop(MAXO)
 end
 
 -- 64er-Ansicht: unter (unten: über) dem 4x4-Block alle Werte des Objekts, das sich gerade bewegt
@@ -699,7 +796,8 @@ local function renderCells()
       setText(cn .. '_name', (mode ~= 'me' and o.name == '' and not on) and '' or name)
       local val = ''
       if on then
-        if hallMode(mode) ~= 0 then val = hallSendText(o)
+        if mode == 'sp' then val = spMember(k)
+        elseif hallMode(mode) ~= 0 then val = hallSendText(o)
         elseif mode == 'mp' then val = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then val = RM.fmtPos(o)
         elseif mode == 'me' then val = 'Az ' .. fmtDeg(me[k].az) .. ' El ' .. fmtDeg(me[k].el)
@@ -790,9 +888,9 @@ local function render()
   local gi = GEO[layout].pano
   local sm = panoOn and 's' or ''
   local hm = hallMode(mode) ~= 0
-  setVisible('circ' .. gi .. sm, mode ~= 'mp' and mode ~= 'room' and not hm); setVisible('sq' .. gi .. sm, mode == 'mp')
+  setVisible('circ' .. gi .. sm, mode ~= 'mp' and mode ~= 'room' and not hm and mode ~= 'sp'); setVisible('sq' .. gi .. sm, mode == 'mp')
   setVisible('hall_g', hm)
-  setVisible('pano' .. gi, panoOn and mode ~= 'room' and not hm)
+  setVisible('pano' .. gi, panoOn and mode ~= 'room' and not hm and mode ~= 'sp')
   setColor('pano' .. gi .. '_fill', th.panel, CFG64.panoAlpha)
   setText('pano' .. gi .. '_title', mode == 'mp' and 'rückansicht · X × Z' or 'horizont · azimut × elevation')
   setVisible('pano_xy', panoOn and not logOpen and not cfgOpen and not hm); setVisible('top_xy', not hm)
@@ -864,12 +962,15 @@ end
 
 local function selectK(k)
   cur[mode] = k
+  if SPL.sel or mode == 'sp' then                -- v8.21: Split: dieselbe Spur ist in allen Feldern (und der Liste) gewählt
+    if mode ~= 'me' then for _, m in ipairs({ 'sp', 'iem', 'mp', 'room' }) do cur[m] = k end end
+  end
   if mode ~= 'me' and hallMode(mode) == 0 and CFG.selectInDaw and not obj[k].sel then note(14, k - 1) end
   if mode == 'room' then dirty = true end
   dirty = true
 end
 
-local function onXY(name, touchStart)
+local function onXY0(name, touchStart)
   if logOpen or cfgOpen or hallMode(mode) ~= 0 then return end
   local c = C(name); if not c then return end
   local px, py = xyPoint(c)
@@ -887,6 +988,25 @@ local function onXY(name, touchStart)
   else moveTo(dragK, fromTop(CA(), px, py)) end
 end
 
+local function onXY(name, touchStart)
+  if mode ~= 'sp' then return onXY0(name, touchStart) end
+  if logOpen or cfgOpen then return end
+  local c = C(name); if not c then return end
+  if touchStart then                              -- v8.21: Split: das berührte Feld bestimmt, was bewegt wird
+    local px, py = xyPoint(c)
+    SPL.dq = nil
+    for _, q in ipairs(spQuads()) do
+      if px >= q.x and px <= q.x + q.w and py >= q.y and py <= q.y + q.h then SPL.dq = q end
+    end
+  end
+  local q = SPL.dq
+  if not q then return end
+  local sv = mode
+  mode, SPL.f, SPL.sel = q.m, q.f, true
+  onXY0(name, touchStart)
+  mode, SPL.f, SPL.sel = sv, nil, false
+end
+
 local function onButton(name)
   if cfgOpen and name ~= 'cfg_btn' then
     if name == 'cfg_close' then cfgOpen = false; dirty = true; return end
@@ -899,7 +1019,7 @@ local function onButton(name)
   if mm and LOOK.showBy[mm] then mode = mm; dirty = true; return end
   local ch = tonumber(name:match('^hall_i(%d)$') or '')           -- v8.20: andere Hall-Instanz
   if ch then HL.want = ch - 1; dirty = true; return end
-  if name:match('^lay_') and hallMode(mode) ~= 0 then return end  -- v8.20: im Hall-Reiter gilt die 16er-Ansicht
+  if (name:match('^lay_') or name == 'pano_btn') and (hallMode(mode) ~= 0 or mode == 'sp') then return end  -- v8.20: im Hall-Reiter gilt die 16er-Ansicht
   if name:match('^lay_') then layout = name:sub(5); relayout = true; cache = {}; return end
   if name == 'pano_btn' then panoOn = not panoOn; relayout = true; cache = {}; return end
   if name == 'col_btn' then LOOK.colors = (LOOK.colors == 'daw') and 'tosc' or 'daw'; cfgPaint(); dirty = true; return end
@@ -927,11 +1047,11 @@ cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sen
 -- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, Ansichten, horizont, Farben, ⚙, log);
 -- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.
 HDR_X0, HDR_GAP = 222, 3
-HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'lay_16', 'lay_32v', 'lay_32h', 'lay_32r', 'lay_64',
+HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'mode_sp', 'lay_16', 'lay_32v', 'lay_32h', 'lay_32r', 'lay_64',
               'pano_btn', 'col_btn', 'cfg_btn', 'log_btn' }
 local tabSig = nil
 function layoutTabs()
-  local sig = tabsMask() .. ',' .. hallTabsMask()
+  local sig = tabsMask() .. ',' .. hallTabsMask() .. ',' .. (LOOK.tabs.sp ~= false and 1 or 0)
   if sig == tabSig then return end
   tabSig = sig
   local x = HDR_X0
@@ -960,7 +1080,7 @@ end
 local HE = {}
 local lastT, lastRender = 0, 0
 VS.id = 2                                        -- v8.15: Ansicht in Reaper merken
-VS.extra = function() return { m = mode, lay = HL.layoutBefore or layout, pano = panoOn and 1 or 0, big = RM.big and 1 or 0 } end
+VS.extra = function() return { m = mode, lay = HL.layoutBefore or layout, pano = ((SPL.panoBefore ~= nil) and SPL.panoBefore or panoOn) and 1 or 0, big = RM.big and 1 or 0 } end
 VS.applyExtra = function(key, v)
   if key == 'm' and LOOK.showBy[v] then mode = v end
   if key == 'lay' and GEO[v] then layout = v; relayout = true; cache = {} end
@@ -976,8 +1096,13 @@ function update()
   if themeApplied ~= LOOK.theme then applyTheme() end
   layoutTabs()
   local hm = hallMode(mode) ~= 0                -- v8.20: im Hall-Reiter gilt die 16er-Ansicht (Hall-Anzeige links, Sends rechts)
-  if hm and layout ~= '16' then HL.layoutBefore = layout; layout = '16'; relayout = true; cache = {}
-  elseif not hm and HL.layoutBefore then layout = HL.layoutBefore; HL.layoutBefore = nil; relayout = true; cache = {} end
+  local spl = (mode == 'sp')                    -- v8.21: ebenso im Split (4 Felder links, Liste rechts), ohne Horizont
+  if spl then
+    if SPL.panoBefore == nil then SPL.panoBefore = panoOn; panoOn = false; relayout = true; cache = {} end
+  elseif SPL.panoBefore ~= nil then panoOn = SPL.panoBefore; SPL.panoBefore = nil; relayout = true; cache = {} end
+  if spl ~= SPL.was then SPL.was = spl; relayout = true; cache = {} end
+  if (hm or spl) and layout ~= '16' then HL.layoutBefore = layout; layout = '16'; relayout = true; cache = {}
+  elseif not (hm or spl) and HL.layoutBefore then layout = HL.layoutBefore; HL.layoutBefore = nil; relayout = true; cache = {} end
   if not hm and LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true; relayout = true end
   hallSelect(mode, src.name, function(b) sendMIDI(b, MIDI_OUT) end)
   if relayout then doLayout() end
@@ -996,7 +1121,7 @@ function update()
   end
   if layout == '64' then renderInfo() end
   if logOpen then monDraw() end
-  if mode == 'iem' or mode == 'room' then
+  if mode == 'iem' or mode == 'room' or mode == 'sp' then
     local n = 0
     for k = 1, min(win, MAXO) do if present(k) then n = n + 1 end end
     BK.step(n, function(d) note(15, d > 0 and 3 or 2) end)

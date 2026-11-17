@@ -28,7 +28,7 @@ local function cfgCtl(name) return root:findByName(name, true) end
 CFG2 = { page = 1, tab = nil }
 function cfgTab() return CFG2.tab or LOOK.mode end
 function cfgShow() return LOOK.showBy[cfgTab()] end
-TAB_CAP = { iem = 'space', me = 'multi', mp = 'panner', room = 'room', fdn = 'FDN', mcfx = 'mcfx' }
+TAB_CAP = { iem = 'space', me = 'multi', mp = 'panner', room = 'room', fdn = 'FDN', mcfx = 'mcfx', sp = 'split' }
 function tabsMask()                          -- die vier Spur-Reiter (wie v8.19)
   local b = 0
   for i, m in ipairs(TAB_FILT) do if LOOK.tabs[m] ~= false then b = b + 2 ^ (i - 1) end end
@@ -36,6 +36,11 @@ function tabsMask()                          -- die vier Spur-Reiter (wie v8.19)
 end
 function hallTabsMask()                      -- v8.20: Hall-Reiter (fehlt der Schlüssel, sind sie sichtbar)
   return (LOOK.tabs.fdn ~= false and 1 or 0) + (LOOK.tabs.mcfx ~= false and 2 or 0)
+end
+function splitMask()                         -- v8.21: Felder der Split-Ansicht
+  local b = 0
+  for i, m in ipairs(SPLIT_MODES) do if LOOK.split[m] ~= false then b = b + 2 ^ (i - 1) end end
+  return math.floor(b)
 end
 function showMask(t)
   local b = 0
@@ -148,7 +153,8 @@ local function cfgPaint()
   pill('cfg_col_tosc', LOOK.colors == 'tosc'); pill('cfg_col_daw', LOOK.colors == 'daw')
   for _, key in ipairs(THEME_ORDER) do pill('cfg_th_' .. key, LOOK.theme == key) end
   for _, key in ipairs(TYPE_ORDER) do pill('cfg_sh_' .. key, cfgShow()[key] ~= false) end
-  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); if m ~= 'fdn' and m ~= 'mcfx' then pill('cfg_et_' .. m, cfgTab() == m) end end
+  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); if m ~= 'fdn' and m ~= 'mcfx' and m ~= 'sp' then pill('cfg_et_' .. m, cfgTab() == m) end end
+  for _, m in ipairs(SPLIT_MODES) do pill('cfg_sp_' .. m, LOOK.split[m] ~= false) end
   for _, key in ipairs({ 'num', 'name', 'preset' }) do pill('cfg_lb_' .. key, LOOK.label == key) end
   for _, k in ipairs(TYPE_ORDER) do
     local e = LOOK.extra[k] or {}
@@ -198,7 +204,7 @@ local function cfgState(extra)
   local function add(k, v) t[#t + 1] = k .. '=' .. tostring(v) end
   add('sc', LV.scale); add('md', LV.mode); add('aes', LV.aes17 and 1 or 0); add('loud', LV.loud); add('tg', LV.target)
   add('col', LOOK.colors); add('th', LOOK.theme); add('mk', LOOK.marks and 1 or 0); add('cpu', LOOK.cpu and 1 or 0); add('ic', LOOK.icons)
-  add('tabs', tabsMask()); add('tabh', hallTabsMask()); add('lb', LOOK.label); add('xs', extraMask())
+  add('tabs', tabsMask()); add('tabh', hallTabsMask()); add('tabsp', LOOK.tabs.sp ~= false and 1 or 0); add('spl', splitMask()); add('lb', LOOK.label); add('xs', extraMask())
   for _, m in ipairs(TAB_FILT) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
   local names = {}
   for name in pairs(CFG_FADERS) do names[#names + 1] = name end
@@ -225,6 +231,8 @@ local function cfgApplyState(str)                -- gibt die Tabelle zurück (f�
   if kv.lb then LOOK.label = kv.lb end
   if num('tabs') then for i, m in ipairs(TAB_FILT) do LOOK.tabs[m] = math.floor(num('tabs') / 2 ^ (i - 1)) % 2 == 1 end end
   if num('tabh') then LOOK.tabs.fdn = num('tabh') % 2 == 1; LOOK.tabs.mcfx = math.floor(num('tabh') / 2) % 2 == 1 end
+  if num('tabsp') then LOOK.tabs.sp = num('tabsp') == 1 end
+  if num('spl') then for i, m in ipairs(SPLIT_MODES) do LOOK.split[m] = math.floor(num('spl') / 2 ^ (i - 1)) % 2 == 1 end end
   if num('xs') then
     for i, k in ipairs(TYPE_ORDER) do
       LOOK.extra[k] = { subs = math.floor(num('xs') / 2 ^ (2 * i - 2)) % 2 == 1, sends = math.floor(num('xs') / 2 ^ (2 * i - 1)) % 2 == 1 }
@@ -256,8 +264,13 @@ local function cfgButton(name)
   elseif name:match('^cfg_tab_%w+$') then
     local m = name:sub(9); LOOK.tabs[m] = (LOOK.tabs[m] == false)
     local any = false
-    for _, x in ipairs(TAB_ORDER) do if LOOK.tabs[x] ~= false then any = true end end
+    for _, x in ipairs(TAB_ORDER) do if LOOK.tabs[x] ~= false and (x ~= 'sp' or HAS_SPLIT) then any = true end end
     if not any then LOOK.tabs[m] = true end                     -- mindestens ein Reiter bleibt
+  elseif name:match('^cfg_sp_%w+$') then                         -- v8.21: Felder der Split-Ansicht
+    local m = name:sub(8); LOOK.split[m] = (LOOK.split[m] == false)
+    local any = false
+    for _, x in ipairs(SPLIT_MODES) do if LOOK.split[x] ~= false then any = true end end
+    if not any then LOOK.split[m] = true end                    -- mindestens ein Feld bleibt
   elseif name:match('^cfg_lb_%w+$') then LOOK.label = name:sub(8)
   elseif name:match('^cfg_xs_%w+_%w+$') then
     local ty, what = name:match('^cfg_xs_(%w+)_(%w+)$')

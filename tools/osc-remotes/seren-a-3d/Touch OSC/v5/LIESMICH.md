@@ -51,10 +51,10 @@ TotalMix 7001/9001 (OSC 1).
 - `1_Oberflaechen`
   - `Handy_Pan` – Pan_Skript / Pan_OSC, je mit und ohne TotalMix, Pan_Skript hochkant (mit/ohne TotalMix)
   - `Handy_Objekt-Uebersicht` – Objekt-Uebersicht
-  - `IEM_3-Ansichten` – die drei IEM-Ansichten zusammen (ab v8.19)
-    - `IEM-Space.tosc` – iPad (Modi space · multi · panner · room)
-    - `IEM-Monitor.tosc` – Monitor 5:4 (Modi space · multi · panner · room; Ansichten 16/32v/32h/64)
-    - `IEM-Monitor_HD.tosc` – derselbe Monitor in Full HD (1920 × 1080), für den großen Bildschirm (v8.16)
+  - `3D-Space-Viewer` – die drei Oberflächen zusammen (bis v8.20 `IEM_3-Ansichten`)
+    - `3D-Space-Monitor-iPad.tosc` – iPad (Reiter space · multi · panner · room · FDN · mcfx)
+    - `3D-Space-Monitor-5zu4.tosc` – Monitor 5:4 (dieselben Reiter + **split** = vier Felder auf einmal; Ansichten 16/32v/32h/64)
+    - `3D-Space-Monitor-HD.tosc` – derselbe Monitor in Full HD (1920 × 1080), für den großen Bildschirm (v8.16)
   - Room-Ansicht (iPad, Monitor, Monitor HD): Taste „groß“ lässt den Raum den ganzen Bildschirm füllen, „klein“ bringt Liste und Details zurück (v8.17)
     - „groß“ wird mit der Voreinstellung in Reaper gespeichert (v8.18)
   - `Handy_Twister-View` – Twister_View hoch und quer
