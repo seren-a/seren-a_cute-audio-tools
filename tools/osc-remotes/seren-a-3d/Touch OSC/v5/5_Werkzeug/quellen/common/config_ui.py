@@ -43,17 +43,20 @@ def build(W, H, with64=False):
     """Returns the overlay group (hidden). Coordinates scale with the page size."""
     g = t.group(name="cfg_overlay", frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
     g.visible = False
-    k = [t.box(frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)]
-    k[0].set("interactive", False)
+    bgbox = t.box(frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
+    bgbox.set("interactive", False)
+    k = []
     s = min(W / 1280, H / 1024)
     pad = 24 * s
     col_w = (W - 4 * pad) / 3
     bh, gap = 40 * s, 8 * s
     x1, x2, x3 = pad, 2 * pad + col_w, 3 * pad + 2 * col_w
     y0 = 64 * s
-    k.append(_lbl(None, (pad, 12 * s, W * 0.5, 40 * s), "✧ config ✧", 26 * s, "#ff6fc7"))
-    k += _btn("cfg_close", W - pad - 140 * s, 12 * s, 140 * s, 40 * s, "fertig ♡", 16 * s)
-    k.append(_lbl("cfg_info", (pad, H - 40 * s, W - 2 * pad, 30 * s), "", 13 * s, DIM))
+    kh = [bgbox]
+    kh.append(_lbl(None, (pad, 12 * s, W * 0.3, 40 * s), "✧ config ✧", 26 * s, "#ff6fc7"))
+    kh += _btn("cfg_page", W * 0.34, 12 * s, 150 * s, 40 * s, "Seite 2 ›", 15 * s)
+    kh += _btn("cfg_close", W - pad - 140 * s, 12 * s, 140 * s, 40 * s, "fertig ♡", 16 * s)
+    kh.append(_lbl("cfg_info", (pad, H - 40 * s, W - 2 * pad, 30 * s), "", 13 * s, DIM))
 
     # Spalte 1: Pegel
     y = y0
@@ -107,12 +110,11 @@ def build(W, H, with64=False):
     k.append(_lbl(None, (x3, y, col_w, 26 * s), "AUSSEHEN", 14 * s, "#7af5ff")); y += 30 * s
     k += _btn("cfg_col_tosc", x3, y, bw2, bh, "Farben TouchOSC", 12 * s)
     k += _btn("cfg_col_daw", x3 + bw2 + gap, y, bw2, bh, "Spurfarben", 12 * s); y += bh + gap
-    k += _btn("cfg_th_synth", x3, y, bw2, bh, "seren.a", 12 * s)
-    k += _btn("cfg_th_nuendo", x3 + bw2 + gap, y, bw2, bh, "Nuendo dark", 12 * s); y += bh + gap + 6 * s
-    k.append(_lbl(None, (x3, y, col_w, 26 * s), "SPUREN zeigen", 14 * s, "#7af5ff")); y += 30 * s
-    for i, (key, cap) in enumerate([("audio", "Audio"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]):
-        k += _btn("cfg_sh_" + key, x3 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 12 * s)
-    y += 2 * (bh + gap)
+    bw3t = (col_w - 2 * gap) / 3
+    for i, (key, cap) in enumerate([("synth", "seren.a"), ("nuendo", "Nuendo dark"), ("cute", "Cute Pink"),
+                                    ("girly", "Girly Pop Dark"), ("pastel", "Dark Pastel Pink")]):
+        k += _btn("cfg_th_" + key, x3 + (i % 3) * (bw3t + gap), y + (i // 3) * (bh + gap), bw3t, bh, cap, 11 * s)
+    y += 2 * (bh + gap) + 6 * s
     k += _btn("cfg_marks", x3, y, col_w, bh, "Kennzeichnung ─ FX · │ Gruppe · ♪ MIDI", 12 * s); y += bh + gap
     k += _btn("cfg_only", x3, y, bw2, bh, "nur Spuren mit Plugin", 12 * s)
     k += _btn("cfg_cpu", x3 + bw2 + gap, y, bw2, bh, "Auslastung (Reaper)", 12 * s); y += bh + gap + 6 * s
@@ -128,5 +130,41 @@ def build(W, H, with64=False):
         k += _fader("cfg_f_gsz", x3, y, col_w, 60 * s, "Feldgröße", 0.3); y += 68 * s
         k += _fader("cfg_f_ga", x3, y, col_w, 60 * s, "Feld-Deckkraft", 0.5); y += 68 * s
         k += _fader("cfg_f_pa", x3, y, col_w, 60 * s, "Horizont-Deckkraft", 0.5); y += 68 * s
-    g.add(*k)
+    # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
+    k2 = []
+    TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
+    TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
+    y = y0
+    k2.append(_lbl(None, (x1, y, col_w, 26 * s), "REITER zeigen", 14 * s, "#7af5ff")); y += 30 * s
+    for i, (key, cap) in enumerate(TABS):
+        k2 += _btn("cfg_tab_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
+    y += 2 * (bh + gap) + 10 * s
+    k2.append(_lbl("cfg_tab_lbl", (x1, y, col_w, 26 * s), "Spuren zeigen im Reiter", 14 * s, "#7af5ff")); y += 30 * s
+    k2.append(_lbl(None, (x1, y, col_w, 20 * s), "Reiter wählen, dann die Spurtypen:", 12 * s, DIM)); y += 22 * s
+    for i, (key, cap) in enumerate(TABS):
+        k2 += _btn("cfg_et_" + key, x1 + i * (bw4 + gap), y, bw4, bh, cap, 12 * s)
+    y += bh + gap + 4 * s
+    for i, (key, cap) in enumerate(TYPES):
+        k2 += _btn("cfg_sh_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 12 * s)
+    y += 3 * (bh + gap) + 4 * s
+    k2.append(_lbl(None, (x1, y, col_w, 40 * s), "3OA = Audiospur mit 16 Kanälen oder „3OA/ambiX“ im Namen (erkennt Reaper)", 11 * s, DIM))
+    y = y0
+    k2.append(_lbl(None, (x2, y, col_w, 26 * s), "BESCHRIFTUNG statt Nummer", 14 * s, "#7af5ff")); y += 30 * s
+    for i, (key, cap) in enumerate([("num", "Nummer"), ("name", "Spurname"), ("preset", "Preset")]):
+        k2 += _btn("cfg_lb_" + key, x2 + i * (bw3 + gap), y, bw3, bh, cap, 13 * s)
+    y += bh + gap + 4 * s
+    k2.append(_lbl(None, (x2, y, col_w, 40 * s), "Namen und Presets werden gekürzt, wo wenig Platz ist", 11 * s, DIM)); y += 42 * s
+    k2.append(_lbl(None, (x2, y, col_w, 26 * s), "ZUSATZZEILEN je Spurtyp", 14 * s, "#7af5ff")); y += 30 * s
+    k2.append(_lbl(None, (x2, y, col_w, 20 * s), "↳ Subspuren  ·  ← Sends zu dieser Spur", 12 * s, DIM)); y += 24 * s
+    for key, cap in TYPES:
+        k2.append(_lbl(None, (x2, y, col_w * 0.34, bh), cap, 12 * s, TXT))
+        k2 += _btn("cfg_xs_%s_subs" % key, x2 + col_w * 0.36, y, col_w * 0.31, bh, "↳ Sub", 12 * s)
+        k2 += _btn("cfg_xs_%s_sends" % key, x2 + col_w * 0.69, y, col_w * 0.31, bh, "← Sends", 12 * s)
+        y += bh + gap
+    p1 = t.group(name="cfg_p1", frame=(0, 0, W, H), color="#0a0414", background=False, outline=False)
+    p1.add(*k)
+    p2 = t.group(name="cfg_p2", frame=(0, 0, W, H), color="#0a0414", background=False, outline=False)
+    p2.add(*k2)
+    p2.visible = False
+    g.add(*kh, p1, p2)
     return g

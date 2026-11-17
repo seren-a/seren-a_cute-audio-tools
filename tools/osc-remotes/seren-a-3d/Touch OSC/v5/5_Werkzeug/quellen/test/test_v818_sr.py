@@ -17,7 +17,7 @@ TRACKS[1] = { name='Vox', guid='{1}', sel=true, info={}, peak=0, fx={ SE(), SR()
 L.execute(open(os.path.join(D, '..', 'reaper', 'reaper_seren3D.lua')).read())
 def pump(n=1):
     for _ in range(n): g.T = g.T + 0.05; L.execute("DEFER()")
-def inject(b): L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, string.char(" + ",".join(str(x) for x in b) + "), 2})")
+def inject(b): L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, \"" + "".join("\\%03d" % x for x in b) + "\", 2})")
 def shown(): return L.eval("(function() local n = 0; for _, v in pairs(reaper.__shown) do if v then n = n + 1 end end; return n end)()")
 pump(3)
 check(shown() == 0, 'am Anfang kein Fenster offen')

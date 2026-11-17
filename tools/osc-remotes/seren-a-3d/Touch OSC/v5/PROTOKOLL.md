@@ -158,3 +158,13 @@ OXI E16, Szene MultiEQ (E16_MultiEQ.lua, MultiEQ.oxie16): Seite 1 = MultiEQ, Sei
 - **Gerät → DAW: SysEx `0E <Oberfläche> <Text>`** bei jeder Änderung (höchstens 1× pro s): `k=v;…` – Modus, iPad `n32`,
   Monitor `lay`/`pano`, Pegel-Skala/-Modus/AES17/LUFS/LU-Bezug, Farben, Look, Kennzeichnung, CPU, Symbole und alle Config-Fader.
 - Spurfilter (Typen, nur mit Plugin) und Gruppen waren schon in Reaper gespeichert (v8.4 / v8.14).
+
+## v8.19 – 3OA, Zusatzzeilen, Preset
+- **DAW → Gerät: cmd 22 `<Obj> <3OA 0/1> <Subspuren> <Sends>`** (Werte 0–127): 3OA-Spur (16+ Kanäle oder Name mit 3OA/ambiX), Anzahl Unterspuren
+  eines Ordners (alle Ebenen) und Anzahl Receives der Spur. **cmd 23 `<Obj> <Text>`** = Name des aktuellen Presets des Haupt-Plugins
+  (Encoder, sonst Rotator, sonst dearVR). Beide nur bei Änderung.
+- **Spurtyp-Bit 16 = 3OA** im Filter (Gerät → DAW `0B <Typen 0–31> <Plugin>`, DAW → Gerät cmd 16). ExtState `seren_3D/filter2` (Standard 31,1;
+  der alte Schlüssel `filter` wird nicht mehr gelesen). Die Oberflächen übernehmen cmd 16 nur beim ersten Mal; jeder Reiter hat danach seinen eigenen
+  Filter und schickt ihn beim Reiterwechsel.
+- Flag 16 (Spur mit Receives) bleibt wie bisher; ein Ordner geht vor Receives vor Instrument vor 3OA vor Audio.
+

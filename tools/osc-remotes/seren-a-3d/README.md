@@ -1,14 +1,11 @@
 # seren.a – Übersicht über alle Skripte und Oberflächen
 
-**Stand: 17.11.26, 21:30 · aktuelle Version v8.18**
+**Stand: 17.11.26, 22:10 · aktuelle Version v8.19**
 Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was wohin gehört, steht oben, die Update-Liste darunter. Die ausführlichen Anleitungen sind unten verlinkt.
 
 ---
 
-> **Einzelne Werkzeuge als eigene Branches:** Puzzle, E16 und Twister (Reaper, Nuendo) in [seren-a-reaper-scripts](https://github.com/seren-a/seren-a-reaper-scripts#branches-seren-a-3d), die Moss-Erweiterung der OXI (Reaper, Bitwig) in [`oxi-mk2-moss-extended`](https://github.com/seren-a/seren-a_cute-audio-tools/tree/oxi-mk2-moss-extended). Dieser Ordner ist das Gesamtpaket.
-
-
-## 1. Was gehört wohin (Stand v8.18)
+## 1. Was gehört wohin (Stand v8.19)
 
 ### Reaper – Aktionsliste (ReaScript laden)
 
@@ -45,9 +42,9 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datei | Gerät | Version im Layout |
 | --- | --- | --- |
-| `iPad_IEM-Space/IEM-Space.tosc` | iPad | v8.18 · 17.11.26 |
-| `Monitor_5zu4/IEM-Monitor.tosc` | Monitor 5:4 | v8.18 · 17.11.26 |
-| `Monitor_HD/IEM-Monitor_HD.tosc` | Monitor Full HD 1920 × 1080 | v8.18 · 17.11.26 |
+| `IEM_3-Ansichten/IEM-Space.tosc` | iPad | v8.19 · 17.11.26 |
+| `IEM_3-Ansichten/IEM-Monitor.tosc` | Monitor 5:4 | v8.19 · 17.11.26 |
+| `IEM_3-Ansichten/IEM-Monitor_HD.tosc` | Monitor Full HD 1920 × 1080 | v8.19 · 17.11.26 |
 | `Handy_Objekt-Uebersicht/Objekt-Uebersicht.tosc` | Handy quer | v8.4 · 07.11.26 |
 | `Handy_Pan/…` (6 Varianten) | Handy | v6.1 |
 | `Handy_Twister-View/Twister_View(_quer).tosc` | Handy | v6.1 |
@@ -70,6 +67,7 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datum, Uhrzeit | Version | Was | Neu einspielen |
 | --- | --- | --- | --- |
+| 17.11.26, 22:10 | **v8.19** | Drei neue Paletten (Cute Pink, Girly Pop Dark, Dark Pastel Pink), alle Texte folgen der Palette; statt Nummer wahlweise Spurname oder Preset; 3OA-Spuren als eigener Typ; Zusatzzeilen (Subspuren, Sends); Config Seite 2: Reiter ein/aus und je Reiter eigene Spurtypen; die drei Ansichten liegen im Ordner `IEM_3-Ansichten` | alle drei Oberflächen neu öffnen (jetzt aus `IEM_3-Ansichten`), `Reaper_3D.lua` neu starten (Filter-Schlüssel neu: alter Filter wird einmal auf „alles“ zurückgesetzt) |
 | 17.11.26, 21:30 | **v8.18** | „groß“ wird gespeichert (iPad, Monitor, Monitor HD); E16-Skript: Konsole ganz still, Azimut/Yaw drehen über ±180° durch; E16-Skript und Puzzle setzen beim Start die MIDI-Geräte zurück; 3D-Skript: SceneRotator zeigt kurz sein Fenster, sendet an alle „TouchOSC Bridge“-Ports, Fehler stehen in der Konsole | alle drei Oberflächen neu öffnen, `Reaper_3D.lua`, `Reaper_E16_Twister.lua`, `Reaper_OXI_Puzzle.lua` neu starten |
 | 13.11.26, 13:30 | **v8.17** | Room „groß“ auf iPad, Monitor 5:4 und Monitor HD: Raum füllt den ganzen Bildschirm | iPad-, Monitor- und Monitor-HD-Oberfläche neu öffnen |
 | 13.11.26, 13:00 | **v8.16** | Monitor in Full HD (1920 × 1080): neue Oberfläche `IEM-Monitor_HD`, alle Ansichten wie beim 5:4-Monitor | `Monitor_HD/IEM-Monitor_HD.tosc` auf den Bildschirm laden (Reaper-Skript bleibt) |

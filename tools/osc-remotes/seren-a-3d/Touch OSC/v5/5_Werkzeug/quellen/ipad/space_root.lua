@@ -94,7 +94,7 @@ local function hasBit(f, b) return floor(f / b) % 2 == 1 end
 local function present(k)
   if k > win() then return false end
   local o = obj[k]
-  if mode ~= 'me' and o.name ~= '' and not typeShown(o.flags) then return false end
+  if mode ~= 'me' and o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'mp' then return hasBit(o.flags, 2) or o.seenMp end
   if mode == 'room' then return o.seenDv end
@@ -193,7 +193,7 @@ local function clearAll()
     o.name, o.mpName, o.col, o.flags, o.sel, o.lvlIn = '', '', nil, 0, false, 0
     o.seenEnc, o.seenRot, o.seenMp = false, false, false
     o.seenDv, o.room, o.roomName = false, nil, ''
-    o.num = nil
+    o.num, o.oa3, o.subs, o.sends, o.preset = nil, false, 0, 0, ''
   end
   meInfo.count, meInfo.name = 0, ''
   dirty = true
@@ -250,9 +250,13 @@ local function onSysex(m)
     clearAll()
   elseif cmd == 11 and k and k <= N then obj[k].icon = sysexText(m, 6)
   elseif cmd == 16 and m[6] then                              -- Spurfilter der DAW (Reaper)
-    if filterFromDaw(m[5], m[6]) then cfgPaint() end
-    filtSent = table.concat({ filterBits() }, ',')
+    if filtSent == nil then                                   -- v8.19: nur beim ersten Mal; danach gilt die Auswahl je Reiter von hier
+      if filterFromDaw(m[5], m[6]) then cfgPaint() end
+      filtSent = table.concat({ filterBits() }, ',')
+    end
   elseif cmd == 17 and k and k <= N and m[7] then obj[k].num = m[6] * 128 + m[7]
+  elseif cmd == 22 and k and k <= N and m[8] then obj[k].oa3, obj[k].subs, obj[k].sends = (m[6] == 1), m[7], m[8]; dirty = true   -- v8.19: 3OA, Subspuren, Sends
+  elseif cmd == 23 and k and k <= N then obj[k].preset = sysexText(m, 6); dirty = true                                       -- v8.19: Preset des Haupt-Plugins
   elseif cmd == 10 and m[9] and m[5] == 3 and m[6] < N then   -- dearVR position, metres -32..32
     local o, part = obj[m[6] + 1], ({ 'rx', 'ry', 'rz' })[m[7] + 1]
     if part then o[part] = (m[8] * 128 + m[9]) / 16383 * 64 - 32; o.seenDv = true end
@@ -515,13 +519,25 @@ end
 local SLOT_PARTS = {
   { 'sel', '' }, { 'sel', '_bg' }, { 'sel', '_ring' }, { 'sel', '_num' }, { 'sel', '_name' },
   { 'r', '_bg' }, { 'r', '_chip' }, { 'r', '_num' }, { 'r', '_name' }, { 'r', '_val' }, { 'r', '_lvlbg' },
-  { 'r', '_lvl' }, { 'r', '_hold' }, { 'r', '_glyph' }, { 'r', '_tap' }, { 'r', '_fx' }, { 'r', '_grp' },
+  { 'r', '_lvl' }, { 'r', '_hold' }, { 'r', '_glyph' }, { 'r', '_tap' }, { 'r', '_fx' }, { 'r', '_grp' }, { 'r', '_xt' },
 }
 local function buildSlots()
   slotK, kSlot = {}, {}
   for k = 1, N do
     local keep = present(k) or (not LOOK.onlyPlug and (mode ~= 'me'))
     if keep then slotK[#slotK + 1] = k; kSlot[k] = #slotK end
+  end
+end
+
+-- v8.19: Zeile mit Zusatzzeilen (Subspuren, Sends): Werte rücken nach links, Name wird schmaler
+rowGeo = {}
+function rowExtra(i, vc, nc, on)
+  local g = rowGeo[i]
+  if not g then g = { v = vc.frame, n = nc.frame }; rowGeo[i] = g end
+  local v, n = g.v, g.n
+  if i <= 16 then
+    vc.frame = on and Rectangle(v.x - 60, v.y, v.w + 8, v.h) or v
+    nc.frame = Rectangle(n.x, n.y, on and (n.w - 60) or n.w, n.h)
   end
 end
 
@@ -552,21 +568,22 @@ local function render()
       setColor('sel' .. i .. '_bg', col, isCur and 1 or (on and 0.35 or 0.08))
       setVisible('sel' .. i .. '_ring', isCur)
       setText('sel' .. i .. '_name', on and nameOf(k):sub(1, 9) or '')
-      setText('sel' .. i .. '_num', tostring(numOf(k)))
+      setText('sel' .. i .. '_num', labelFor(o, tostring(numOf(k)), 4))
       for _, part in ipairs({ '_num', '_name' }) do
         local c = C('sel' .. i .. part)
         if c then
           if isCur then c.textColor = Color(0.14, 0.06, 0.25, 1)
-          else c.textColor = Color(1, 0.94, 0.98, on and 0.9 or 0.3) end
+          else local tx = theme().text; c.textColor = Color(tx[1], tx[2], tx[3], on and 0.9 or 0.3) end
         end
       end
       setColor('r' .. i .. '_chip', col, on and 1 or 0.25)
       local row = C('r' .. i .. '_bg')
       if row then
-        if isCur then row.color = Color(0.36, 0.16, 0.52, 1)
-        else row.color = Color(0.17, 0.08, 0.31, on and 1 or 0.55) end
+        local th = theme()
+        if isCur then row.color = Color(th.rowCur[1], th.rowCur[2], th.rowCur[3], 1)
+        else row.color = Color(th.row[1], th.row[2], th.row[3], on and 1 or 0.55) end
       end
-      setText('r' .. i .. '_num', tostring(numOf(k)))
+      setText('r' .. i .. '_num', labelFor(o, tostring(numOf(k)), 3))
       local name = ''
       if on then name = nameOf(k)
       elseif mode == 'iem' and o.name ~= '' then name = o.name .. ' · kein Encoder' end
@@ -581,7 +598,10 @@ local function render()
       if on and mode ~= 'me' and lvVal[k] then vals = vals .. '  ' .. lvFormat(lvVal[k]) end
       if i > 16 then vals = vals:gsub('%s+El', '\nEl'):gsub('%s+–$', ''):gsub('%s+(%-?[%d%.]+ dBFS)', '\n%1') end   -- Kacheln: untereinander
       setText('r' .. i .. '_val', vals)
-      local typ = typeOf(o.flags)
+      local typ = typeOf(o.flags, o)
+      local xt = (mode ~= 'me' and on) and extraText(o, typ) or ''
+      setText('r' .. i .. '_xt', xt)
+      do local vc, nc2 = C('r' .. i .. '_val'), C('r' .. i .. '_name'); if vc and nc2 then rowExtra(i, vc, nc2, xt ~= '') end end
       setVisible('r' .. i .. '_fx', LOOK.marks and mode ~= 'me' and o.name ~= '' and typ == 'fx')
       setVisible('r' .. i .. '_grp', LOOK.marks and mode ~= 'me' and o.name ~= '' and typ == 'group')
       local g = (LOOK.marks and mode ~= 'me' and typ == 'instr') and '♪' or ''
@@ -589,13 +609,13 @@ local function render()
         local ic = iconFor(o.icon, o.name); if ic ~= '' then g = (g ~= '' and (g .. ' ') or '') .. ic end
       end
       setText('r' .. i .. '_glyph', g)
-      local gc = C('r' .. i .. '_glyph'); if gc then gc.textColor = Color(1, 0.94, 0.98, LOOK.iconAlpha) end
+      local gc = C('r' .. i .. '_glyph'); if gc then local tx = theme().text; gc.textColor = Color(tx[1], tx[2], tx[3], LOOK.iconAlpha) end
     end
   end
   -- Detail
   local showA, showRot = false, false
   if cu then
-    setText('det_num', tostring(numOf(cu)))
+    setText('det_num', labelFor(obj[cu], tostring(numOf(cu)), 4))
     setColor('det_chip', colorOf(cu), 1)
     setText('det_name', nameOf(cu))
     if mode == 'room' then
@@ -639,17 +659,17 @@ local function render()
   for _, n in ipairs({ 'yaw_fader', 'yaw_lbl', 'pitch_fader', 'pitch_lbl' }) do setVisible(n, showRot) end
   -- Modus, Hintergründe, LOG
   for _, m in ipairs({ 'iem', 'me', 'mp', 'room' }) do
-    setColor('mode_' .. m .. '_bg', m == mode and { 1, 0.43, 0.78 } or { 0.18, 0.08, 0.35 }, 1)
+    setColor('mode_' .. m .. '_bg', m == mode and theme().accent or theme().pill, 1)
   end
-  setColor('log_btn_bg', logOpen and { 0.37, 0.95, 1 } or { 0.18, 0.08, 0.35 }, 1)
-  setColor('cfg_btn_bg', cfgOpen and { 0.37, 0.95, 1 } or { 0.18, 0.08, 0.35 }, 1)
-  setColor('col_btn_bg', LOOK.colors == 'daw' and { 0.37, 0.95, 1 } or { 0.18, 0.08, 0.35 }, 1)
+  setColor('log_btn_bg', logOpen and theme().accent2 or theme().pill, 1)
+  setColor('cfg_btn_bg', cfgOpen and theme().accent2 or theme().pill, 1)
+  setColor('col_btn_bg', LOOK.colors == 'daw' and theme().accent2 or theme().pill, 1)
   setText('col_btn_lbl', LOOK.colors == 'daw' and 'spurfarben' or 'tosc farben')
   setVisible('cfg_overlay', cfgOpen)
   setVisible('bg_top', mode ~= 'mp' and mode ~= 'room'); setVisible('bg_pano', mode ~= 'mp' and mode ~= 'room' and not n32)
   setVisible('tiles32', n32 and not bigRoom()); setVisible('pano_xy', not n32)
   setVisible('det_g', not bigRoom())
-  setColor('n32_btn_bg', n32 and { 0.37, 0.95, 1 } or { 0.18, 0.08, 0.35 }, 1)
+  setColor('n32_btn_bg', n32 and theme().accent2 or theme().pill, 1)
   setVisible('bg_top_mp', mode == 'mp'); setVisible('bg_pano_mp', mode == 'mp')
   setVisible('mon_overlay', logOpen)
 end
@@ -753,13 +773,46 @@ local function applyTheme()
   local th = theme()
   themeApplied = LOOK.theme
   root.color = Color(th.bg[1], th.bg[2], th.bg[3], 1)
+  for k, f in pairs({ txt = 1, dim = 0.62 }) do          -- alle benannten Schriften (Zeilen, Details, Reiter ...) folgen der Palette
+    for _, n in ipairs(THEME_NAMES[k]) do local c = C(n); if c then c.textColor = Color(th.text[1], th.text[2], th.text[3], f) end end
+  end
+  for _, n in ipairs(THEME_NAMES.acc) do local c = C(n); if c then c.textColor = Color(th.accent2[1], th.accent2[2], th.accent2[3], 1) end end
   for _, c in ipairs(root:findAllByName('th_panel', true) or {}) do
     c.color = Color(th.panel[1], th.panel[2], th.panel[3], (c.color and c.color.a) or 1)
+  end
+  for role, f in pairs({ th_text = 1, th_dim = 0.62, th_accent = -1 }) do      -- v8.19: Schriften folgen der Palette
+    for _, c in ipairs(root:findAllByName(role, true) or {}) do
+      if f == -1 then c.textColor = Color(th.accent[1], th.accent[2], th.accent[3], 1)
+      else c.textColor = Color(th.text[1], th.text[2], th.text[3], f) end
+    end
   end
   dirty = true
 end
 cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sendFilter(); dirty = true end
 
+-- v8.19: Reiter ein-/ausblenden (Config, Seite 2): sichtbare rücken zusammen; ist der aktuelle weg, gilt der erste sichtbare
+local tabSig = nil
+function layoutTabs()
+  local sig = tostring(tabsMask())
+  if sig == tabSig then return end
+  tabSig = sig
+  local x = 318
+  for _, m in ipairs(TAB_ORDER) do
+    local on = LOOK.tabs[m] ~= false
+    for _, sfx in ipairs({ '', '_bg', '_lbl' }) do
+      local c = C('mode_' .. m .. sfx)
+      if c then
+        c.visible = on
+        if on then local f = c.frame; c.frame = Rectangle(x, f.y, ({ iem = 78, me = 70, mp = 84, room = 70 })[m], f.h) end
+      end
+    end
+    if on then x = x + ({ iem = 82, me = 74, mp = 88, room = 74 })[m] end
+  end
+  if LOOK.tabs[mode] == false then
+    for _, m in ipairs(TAB_ORDER) do if LOOK.tabs[m] ~= false then mode = m; break end end
+  end
+  dirty = true
+end
 local lastT, lastRender = 0, 0
 VS.id = 1                                        -- v8.15: Ansicht in Reaper merken
 VS.extra = function() return { m = mode, n32 = n32 and 1 or 0, big = RM.big and 1 or 0 } end
@@ -775,6 +828,8 @@ function update()
   local dt = (lastT > 0) and (t - lastT) / 1000 or 0.016
   lastT = t
   if themeApplied ~= LOOK.theme then applyTheme() end
+  layoutTabs()
+  if LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true end
   for k = 1, N do
     local o = obj[k]
     local v, pos, glow, hp = lvStep(k, o.lvlIn, dt, t)

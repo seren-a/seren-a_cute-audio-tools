@@ -21,7 +21,7 @@ def pump(n=1):
         L.execute("OUT = {}")
     return out
 def inject(b):
-    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, string.char(" + ",".join(str(x) for x in b) + "), 2})")
+    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, \"" + "".join("\\%03d" % x for x in b) + "\", 2})")
 for name, tosc, sid, setup, chk in (
         ('iPad', '../ipad/dist/seren-a_IEM-Space.tosc', 0, ["onReceiveNotify('btn','mode_room')", "onReceiveNotify('btn','n32_btn')", "onReceiveNotify('btn','cfg_btn')", "onReceiveNotify('btn','cfg_sc_ebu')", "onReceiveNotify('btn','cfg_close')"], ('n32', 'mode', 'room')),
         ('Monitor', '../monitor/dist/seren-a_IEM-Monitor.tosc', 1, ["onReceiveNotify('btn','lay_32r')", "onReceiveNotify('btn','cfg_btn')", "onReceiveNotify('btn','cfg_sc_ebu')", "onReceiveNotify('btn','cfg_close')"], ('lay', 'lay', '32r'))):

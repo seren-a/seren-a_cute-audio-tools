@@ -50,6 +50,10 @@ def lbl(name, frame, text="", size=14, color=TXT, align=AlignH.LEFT, valign=Alig
                                        background=False, outline=False)
     if name:
         c.name = name
+    elif color == TXT:
+        c.name = "th_text"          # v8.19: Schrift folgt der Palette (applyTheme)
+    elif color == DIM:
+        c.name = "th_dim"
     c.value("text").default = text
     c.set("interactive", False)
     return c
@@ -226,6 +230,7 @@ def track_list():
               lbl(n + "_name", (LIST_X + 52, y + 2, 190, h - 10), "", 16, TXT),
               lbl(n + "_val", (LIST_X + 240, y + 2, LIST_W - 252, h - 10), "", 12, DIM,
                   AlignH.RIGHT),
+              lbl(n + "_xt", (LIST_X + LIST_W - 60, y + 2, 52, h - 8), "", 10, DIM, AlignH.RIGHT, multi=True),
               box((LIST_X + 52, y + h - 8, LIST_W - 64, 4), PINK_DD, name=n + "_lvlbg", radius=2),
               box((LIST_X + 52, y + h - 8, 0, 4), PINK, name=n + "_lvl", radius=2),
               box((LIST_X + 52, y + h - 8, 2, 4), TXT, name=n + "_hold"),
@@ -250,6 +255,7 @@ def tiles32():
               lbl(n + "_num", (x + 6, y + 6, 30, 30), str(N + i + 1), 12, "#24103f", AlignH.CENTER),
               lbl(n + "_name", (x + 40, y + 4, tw - 44, 34), "", 14, TXT),
               lbl(n + "_val", (x + 6, y + 40, tw - 12, 40), "", 11, DIM, multi=True, valign=AlignV.TOP),
+              lbl(n + "_xt", (x + tw - 58, y + th - 44, 52, 32), "", 10, DIM, AlignH.RIGHT, multi=True, valign=AlignV.BOTTOM),
               box((x + 6, y + th - 10, tw - 12, 4), PINK_DD, name=n + "_lvlbg", radius=2),
               box((x + 6, y + th - 10, 0, 4), PINK, name=n + "_lvl", radius=2),
               box((x + 6, y + th - 10, 2, 4), TXT, name=n + "_hold"),
@@ -320,6 +326,8 @@ def build():
     k.append(mon)
     k.append(config_ui.build(W, H, with64=False))
     root.add(*k)
+    from themenames import theme_script
+    root.script = theme_script(doc) + root.script
     return doc
 
 

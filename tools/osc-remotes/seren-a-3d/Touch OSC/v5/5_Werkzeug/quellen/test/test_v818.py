@@ -21,7 +21,7 @@ def pump(n=1):
         L.execute("OUT = {}")
     return out
 def inject(b):
-    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, string.char(" + ",".join(str(x) for x in b) + "), 2})")
+    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, \"" + "".join("\\%03d" % x for x in b) + "\", 2})")
 for name, tosc, sid in (('iPad', '../ipad/dist/seren-a_IEM-Space.tosc', 0), ('Monitor', '../monitor/dist/seren-a_IEM-Monitor.tosc', 1),
                         ('Monitor HD', '../monitor/dist/seren-a_IEM-Monitor_HD.tosc', 1)):
     v = View(os.path.join(D, tosc)); v.midi(*sx(4, text='REAPER')); v.tick(50, 3); v.tick(1100, 3)

@@ -13,7 +13,7 @@ def sx(cmd, *d, text=''): return [0xF0, 0x7D, 0x4F, cmd, *d, *[ord(c) for c in t
 L = lua54.LuaRuntime(unpack_returned_tuples=True); g = L.globals()
 L.execute(open(os.path.join(D, 'reaper_mock.lua')).read())
 L.execute("""
-EXT["seren_3D/filter"] = nil            -- default of the script: all types, only tracks with a 3D plugin
+EXT["seren_3D/filter2"] = nil            -- default of the script: all types, only tracks with a 3D plugin
 local function P(name, v) return { name = name, v = v or 0.5, fmt = function(x) return string.format('%.1f', x) end } end
 local function SE() return { name = 'VST3: StereoEncoder (IEM)', params = { P('Azimuth Angle'), P('Elevation Angle'), P('Stereo Width') } } end
 local DV = { name = 'VST3: dearVR PRO 2 (Dear Reality)', params = { P('Input Mode'), P('Azimuth'), P('Elevation'), P('Distance') } }
@@ -38,13 +38,13 @@ m = pump(2)
 nm, no = objs(m)
 check(nm[:3] == ['T3', 'T10', 'T51'] and nm[3] == '', f'Standard: nur Spuren mit 3D-Plugin, dearVR auf Spur 51 steht auf Platz 3 ({nm})')
 check(no[:3] == [3, 10, 51], f'echte Spurnummern gehen mit (cmd 17) ({no})')
-check([0xF0, 0x7D, 0x4F, 16, 15, 1, 0xF7] in m, 'Filterstand an die Oberflächen (cmd 16 = 15,1)')
+check([0xF0, 0x7D, 0x4F, 16, 31, 1, 0xF7] in m, 'Filterstand an die Oberflächen (cmd 16 = 31,1)')
 def filt(types, plug):
     L.execute(f"SEQ = SEQ + 1; table.insert(HIST, 1, {{SEQ, string.char(0xF0, 0x7D, 0x4F, 0x0B, {types}, {plug}, 0xF7), 2}})")
 filt(2, 0)
 m = pump(3)
 nm, no = objs(m)
-check(nm[0] == 'T30' and nm[1] == '' and g.EXT['seren_3D/filter'] == '2,0', f'Filter FX (= Spuren mit Receives), alle: nur T30, gespeichert ({nm}, {g.EXT["seren_3D/filter"]})')
+check(nm[0] == 'T30' and nm[1] == '' and g.EXT['seren_3D/filter2'] == '2,0', f'Filter FX (= Spuren mit Receives), alle: nur T30, gespeichert ({nm}, {g.EXT["seren_3D/filter2"]})')
 check([0xF0, 0x7D, 0x4F, 5, 0, 0xF7] in m and [0xF0, 0x7D, 0x4F, 16, 2, 0, 0xF7] in m, 'Filterwechsel: Bank 1 + neuer Stand an alle')
 filt(4, 0); nm, _ = objs(pump(3))
 check(nm[0] == 'T20' and nm[1] == '', f'Filter Gruppe/Ordner: T20 ({nm})')
@@ -69,14 +69,14 @@ for name, tosc, pre in (('iPad', os.path.join(D, '..', 'ipad', 'dist', 'seren-a_
         v.sent()
         v.run("onReceiveNotify('btn','cfg_btn')"); v.run("onReceiveNotify('btn','cfg_only')"); v.tick()
         s = v.sent()
-        check([0xF0, 0x7D, 0x4F, 0x0B, 15, 0, 0xF7] in s, f'{name}: „nur Spuren mit Plugin“ aus → Filter an die DAW')
+        check([0xF0, 0x7D, 0x4F, 0x0B, 31, 0, 0xF7] in s, f'{name}: „nur Spuren mit Plugin“ aus → Filter an die DAW')
         v.run("onReceiveNotify('btn','cfg_sh_audio')"); v.tick()
-        check([0xF0, 0x7D, 0x4F, 0x0B, 14, 0, 0xF7] in v.sent(), f'{name}: Audio aus → Filter 14,0')
+        check([0xF0, 0x7D, 0x4F, 0x0B, 30, 0, 0xF7] in v.sent(), f'{name}: Audio aus → Filter 30,0')
         v.run("onReceiveNotify('btn','cfg_close')")
         v.midi(*sx(16, 2, 1)); v.tick(); v.sent()
         v.run("onReceiveNotify('btn','cfg_btn')"); v.run("onReceiveNotify('btn','cfg_sh_group')"); v.tick()
         s = v.sent()
-        check([0xF0, 0x7D, 0x4F, 0x0B, 6, 1, 0xF7] in s, f'{name}: Stand der DAW übernommen (FX, nur Plugin) + Gruppe an = 6,1 ({s})')
+        check([0xF0, 0x7D, 0x4F, 0x0B, 26, 0, 0xF7] in s, f'{name}: spätere DAW-Stände überschreiben die eigene Auswahl des Reiters nicht (Gruppe aus = 26,0) ({s})')
         v.run("onReceiveNotify('btn','cfg_close')")
     # skipping empty banks (Nuendo: no filter in the DAW)
     v = View(tosc)

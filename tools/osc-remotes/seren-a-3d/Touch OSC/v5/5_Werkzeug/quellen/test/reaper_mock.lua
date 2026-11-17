@@ -62,6 +62,7 @@ reaper.GetTrackColor = function(tr) return tr.color or 0 end
 reaper.ColorFromNative = function(c) return (c >> 16) & 255, (c >> 8) & 255, c & 255 end
 reaper.SetOnlyTrackSelected = function(tr) for _, t in ipairs(TRACKS) do t.sel = (t == tr) end end
 reaper.Track_GetPeakInfo = function(tr, ch) return tr.peak or 0 end
+reaper.TrackFX_GetPreset = function(tr, f) local x = tr.fx[f + 1]; if x and x.preset then return true, x.preset end return false, '' end
 reaper.__shown = {}
 reaper.TrackFX_GetFloatingWindow = function(tr, f) return reaper.__shown[tostring(tr) .. ":" .. f] and 1 or nil end
 reaper.TrackFX_Show = function(tr, f, m) reaper.__shown[tostring(tr) .. ":" .. f] = (m == 3) or nil end
@@ -71,7 +72,8 @@ reaper.TrackFX_SetParamNormalized = function(tr, f, p, v) tr.fx[f + 1].params[p 
 reaper.GetMediaTrackInfo_Value = function(tr, k)
   if k == "IP_TRACKNUMBER" then for i, t in ipairs(TRACKS) do if t == tr then return i end end end
   if k == "B_SHOWINTCP" then return tr.hidden and 0 or 1 end
-  if k == "I_FOLDERDEPTH" then return tr.folder and 1 or 0 end
+  if k == "I_FOLDERDEPTH" then return tr.depth or (tr.folder and 1 or 0) end
+  if k == "I_NCHAN" then return tr.nch or 2 end
   return 0
 end
 reaper.TrackFX_GetInstrument = function(tr) return tr.instr and 0 or -1 end
@@ -80,7 +82,7 @@ reaper.GetSetTrackGroupMembership = function(tr, g, m, v) return (g == "VOLUME_V
 reaper.TrackFX_GetEnabled = function(tr, f) return not tr.fx[f + 1].off end
 reaper.TrackFX_GetOffline = function(tr, f) return tr.fx[f + 1].offline == true end
 -- v8.4: ExtState (track filter; old tests run with "all tracks" = 15,0) and receives
-EXT = { ["seren_3D/filter"] = "15,0" }
+EXT = { ["seren_3D/filter2"] = "31,0" }
 reaper.GetExtState = function(s, k) return EXT[s .. "/" .. k] or "" end
 reaper.SetExtState = function(s, k, v) EXT[s .. "/" .. k] = v end
 reaper.GetTrackNumSends = function(tr, cat) if cat == -1 then return tr.recv or 0 end return 0 end

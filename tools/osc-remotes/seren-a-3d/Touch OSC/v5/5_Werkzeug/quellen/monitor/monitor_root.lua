@@ -127,7 +127,7 @@ local function present(k)
   if mode == 'me' then return k <= meInfo.count end
   if k > win then return false end
   local o = obj[k]
-  if o.name ~= '' and not typeShown(o.flags) then return false end
+  if o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'room' then return o.seenDv end
   return hasBit(o.flags, 2) or o.seenMp
@@ -209,7 +209,7 @@ local function clearAll()
     o.name, o.mpName, o.icon, o.col, o.flags, o.sel, o.lvlIn = '', '', '', nil, 0, false, 0
     o.seenEnc, o.seenRot, o.seenMp = false, false, false
     o.seenDv, o.room, o.roomName = false, nil, ''
-    o.num = nil
+    o.num, o.oa3, o.subs, o.sends, o.preset = nil, false, 0, 0, ''
   end
   meInfo.count, meInfo.name = 0, ''
   lvReset(); dirty = true
@@ -281,9 +281,13 @@ local function onSysex(m)
     if parts and parts[p + 1] and kk <= MAXO then setPart(obj[kk], kind, parts[p + 1], (m[8] * 128 + m[9]) / 16383) end
   elseif cmd == 11 and k and k <= MAXO then obj[k].icon = sysexText(m, 6)
   elseif cmd == 16 and m[6] then                              -- Spurfilter der DAW (Reaper)
-    if filterFromDaw(m[5], m[6]) then cfgPaint(); relayout = true end
-    filtSent = table.concat({ filterBits() }, ',')
+    if filtSent == nil then                                   -- v8.19: nur beim ersten Mal; danach gilt die Auswahl je Reiter von hier
+      if filterFromDaw(m[5], m[6]) then cfgPaint(); relayout = true end
+      filtSent = table.concat({ filterBits() }, ',')
+    end
   elseif cmd == 17 and k and k <= MAXO and m[7] then obj[k].num = m[6] * 128 + m[7]
+  elseif cmd == 22 and k and k <= MAXO and m[8] then obj[k].oa3, obj[k].subs, obj[k].sends = (m[6] == 1), m[7], m[8]; dirty = true   -- v8.19: 3OA, Subspuren, Sends
+  elseif cmd == 23 and k and k <= MAXO then obj[k].preset = sysexText(m, 6); dirty = true                                       -- v8.19: Preset des Haupt-Plugins
   elseif cmd == 12 and m[5] then win = clamp(m[5], 1, MAXO); relayout = true
   elseif cmd == 14 and k and k <= MAXO then        -- dearVR room: 6 walls in cm (2 bytes each) + preset name
     local o = obj[k]
@@ -589,6 +593,7 @@ local function renderDots()
       drawDot('d', k, x, y, lvGlow[k] or 0, isCur, col, true, lower)
       if mode == 'room' and not roomIn[k] then setColor('d' .. k .. '_dot', col, 0.22); setColor('d' .. k .. '_glow', col, 0.05) end
       local o = obj[k]
+      setText('d' .. k .. '_num', labelFor(o, tostring(k), 3))
       local wide = mode == 'iem' and not hasBit(o.flags, 4) and abs(o.wid) >= 2
       setVisible('wl' .. k, wide); setVisible('wr' .. k, wide)
       if wide then             -- Breite: linke/rechte Kante der Stereobasis, gleiche Höhe
@@ -660,7 +665,7 @@ local function buildSlots()
     local o = obj[k]
     local keep
     if mode == 'me' or LOOK.onlyPlug then keep = present(k)
-    else keep = (o.name ~= '' and typeShown(o.flags)) or present(k) end
+    else keep = (o.name ~= '' and typeShown(o.flags, o)) or present(k) end
     if inL and keep then slotK[#slotK + 1] = k; kSlot[k] = #slotK end
   end
 end
@@ -683,7 +688,7 @@ local function renderCells()
       if grid then setColor(cn .. '_bg', isCur and th.rowCur or col, isCur and 0.95 or CFG64.gridAlpha * (on and 0.75 or 0.3))
       else setColor(cn .. '_bg', isCur and th.rowCur or th.row, on and 1 or 0.5) end
       setColor(cn .. '_num', col, on and 1 or 0.3)
-      local numTxt = tostring((mode ~= 'me') and trackNo(k) or k)
+      local numTxt = labelFor(o, tostring((mode ~= 'me') and trackNo(k) or k), grid and 3 or 4)
       setText(cn .. '_num', numTxt); setText(cn .. '_numb', grid and numTxt or '')
       local name = nameOf(k)
       if mode == 'iem' and not on and o.name ~= '' then name = o.name .. ' · –' end
@@ -710,7 +715,18 @@ local function renderCells()
       end
       setText(cn .. '_val', val)
       -- Kennzeichnung + Symbol
-      local typ = typeOf(o.flags)
+      local typ = typeOf(o.flags, o)
+      do                                              -- v8.19: Zusatzzeilen (nur in den breiten Zeilen)
+        local _, _, cw, ch, cst = cellRect(i)
+        local xt = (cst == 'row' and mode ~= 'me' and on) and extraText(o, typ) or ''
+        setText(cn .. '_xt', xt)
+        local csz = 36
+        setFrame(cn .. '_xt', cw - 66, 2, 58, ch - 8)
+        if cst == 'row' then
+          setFrame(cn .. '_name', csz + 16, 2, cw - csz - 46 - (xt ~= '' and 64 or 0), ch * 0.55)
+          setFrame(cn .. '_val', csz + 16, ch * 0.52, cw - csz - 22 - (xt ~= '' and 64 or 0), ch * 0.3)
+        end
+      end
       setVisible(cn .. '_fx', LOOK.marks and mode ~= 'me' and typ == 'fx')
       setVisible(cn .. '_grp', LOOK.marks and mode ~= 'me' and typ == 'group')
       setColor(cn .. '_fx', th.accent2, 0.9); setColor(cn .. '_grp', th.accent, 0.95)
@@ -784,6 +800,16 @@ local function applyTheme()
   local th = theme()
   themeApplied = LOOK.theme
   root.color = Color(th.bg[1], th.bg[2], th.bg[3], 1)
+  for role, f in pairs({ th_text = 1, th_dim = 0.62, th_accent = -1 }) do      -- v8.19: Schriften folgen der Palette
+    for _, c in ipairs(root:findAllByName(role, true) or {}) do
+      if f == -1 then c.textColor = Color(th.accent[1], th.accent[2], th.accent[3], 1)
+      else c.textColor = Color(th.text[1], th.text[2], th.text[3], f) end
+    end
+  end
+  for k, f in pairs({ txt = 1, dim = 0.62 }) do          -- alle benannten Schriften (Zeilen, Details, Reiter ...) folgen der Palette
+    for _, n in ipairs(THEME_NAMES[k]) do local c = C(n); if c then c.textColor = Color(th.text[1], th.text[2], th.text[3], f) end end
+  end
+  for _, n in ipairs(THEME_NAMES.acc) do local c = C(n); if c then c.textColor = Color(th.accent2[1], th.accent2[2], th.accent2[3], 1) end end
   for _, role in ipairs({ 'panel', 'line' }) do
     local list = root:findAllByName('th_' .. role, true)
     for _, c in ipairs(list or {}) do local a = th[role]; c.color = Color(a[1], a[2], a[3], (c.color and c.color.a) or 1) end
@@ -886,6 +912,29 @@ end
 
 cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sendFilter(); relayout = true; dirty = true end
 
+-- v8.19: Reiter ein-/ausblenden (Config, Seite 2): sichtbare rücken zusammen; ist der aktuelle weg, gilt der erste sichtbare
+local tabSig = nil
+function layoutTabs()
+  local sig = tostring(tabsMask())
+  if sig == tabSig then return end
+  tabSig = sig
+  local x = 300
+  for _, m in ipairs(TAB_ORDER) do
+    local on = LOOK.tabs[m] ~= false
+    for _, sfx in ipairs({ '', '_bg', '_lbl' }) do
+      local c = C('mode_' .. m .. sfx)
+      if c then
+        c.visible = on
+        if on then local f = c.frame; c.frame = Rectangle(x, f.y, 60, f.h) end
+      end
+    end
+    if on then x = x + 63 end
+  end
+  if LOOK.tabs[mode] == false then
+    for _, m in ipairs(TAB_ORDER) do if LOOK.tabs[m] ~= false then mode = m; break end end
+  end
+  dirty = true; relayout = true
+end
 local lastT, lastRender = 0, 0
 VS.id = 2                                        -- v8.15: Ansicht in Reaper merken
 VS.extra = function() return { m = mode, lay = layout, pano = panoOn and 1 or 0, big = RM.big and 1 or 0 } end
@@ -902,6 +951,8 @@ function update()
   local dt = (lastT > 0) and (t - lastT) / 1000 or 0.016
   lastT = t
   if themeApplied ~= LOOK.theme then applyTheme() end
+  layoutTabs()
+  if LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true; relayout = true end
   if relayout then doLayout() end
   for k = 1, min(win, MAXO) do
     local v, pos, glow, hp = lvStep(k, obj[k].lvlIn, dt, t)

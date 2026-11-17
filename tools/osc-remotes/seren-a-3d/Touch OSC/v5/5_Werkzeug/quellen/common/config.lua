@@ -23,6 +23,32 @@ local CFG_FADERS = {
 
 local function cfgCtl(name) return root:findByName(name, true) end
 
+-- v8.19: Seite 2 der Config (Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen). CFG2.tab = Reiter, dessen Spurauswahl
+-- gerade bearbeitet wird (sonst der aktuelle).
+CFG2 = { page = 1, tab = nil }
+function cfgTab() return CFG2.tab or LOOK.mode end
+function cfgShow() return LOOK.showBy[cfgTab()] end
+TAB_CAP = { iem = 'space', me = 'multi', mp = 'panner', room = 'room' }
+function tabsMask()
+  local b = 0
+  for i, m in ipairs(TAB_ORDER) do if LOOK.tabs[m] ~= false then b = b + 2 ^ (i - 1) end end
+  return math.floor(b)
+end
+function showMask(t)
+  local b = 0
+  for i, k in ipairs(TYPE_ORDER) do if t[k] ~= false then b = b + 2 ^ (i - 1) end end
+  return math.floor(b)
+end
+function extraMask()
+  local b = 0
+  for i, k in ipairs(TYPE_ORDER) do
+    local e = LOOK.extra[k]
+    if e and e.subs then b = b + 2 ^ (2 * i - 2) end
+    if e and e.sends then b = b + 2 ^ (2 * i - 1) end
+  end
+  return math.floor(b)
+end
+
 -- Gruppen (v8.14, Reaper): A–D von hier + Ordner aus Reaper ohne dearVR/Hall. Die DAW schickt die Liste (cmd 19 Anzahl,
 -- cmd 18 idx flags name; flags 1 = an, 2 = A–D, 4 = hat Spuren). Antippen = zeigen an/aus (SysEx 0C),
 -- „+A“…„+D“ = Zuordnen: danach Spuren antippen (SysEx 0D <Buchstabe> <Objekt>), nochmal tippen = fertig.
@@ -107,7 +133,7 @@ local function cfgPaint()
   local function pill(name, on)
     local c = cfgCtl(name .. '_bg')
     if c then
-      local a = on and th.accent or th.pill
+      local a = on and th.accent or { 0.18, 0.086, 0.35 }          -- die Config bleibt dunkel, egal welche Palette
       c.color = Color(a[1], a[2], a[3], 1)
     end
   end
@@ -117,8 +143,17 @@ local function cfgPaint()
   for _, tg in ipairs({ 23, 24, 16, 14 }) do pill('cfg_tg_' .. tg, LV.target == -tg) end
   for i, f in ipairs(FALLBACKS) do pill('cfg_fb_' .. i, math.abs(LV.fallback - f.v) < 0.05) end
   pill('cfg_col_tosc', LOOK.colors == 'tosc'); pill('cfg_col_daw', LOOK.colors == 'daw')
-  pill('cfg_th_synth', LOOK.theme == 'synth'); pill('cfg_th_nuendo', LOOK.theme == 'nuendo')
-  for _, key in ipairs({ 'audio', 'fx', 'group', 'instr' }) do pill('cfg_sh_' .. key, LOOK.show[key] ~= false) end
+  for _, key in ipairs(THEME_ORDER) do pill('cfg_th_' .. key, LOOK.theme == key) end
+  for _, key in ipairs(TYPE_ORDER) do pill('cfg_sh_' .. key, cfgShow()[key] ~= false) end
+  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); pill('cfg_et_' .. m, cfgTab() == m) end
+  for _, key in ipairs({ 'num', 'name', 'preset' }) do pill('cfg_lb_' .. key, LOOK.label == key) end
+  for _, k in ipairs(TYPE_ORDER) do
+    local e = LOOK.extra[k] or {}
+    pill('cfg_xs_' .. k .. '_subs', e.subs == true); pill('cfg_xs_' .. k .. '_sends', e.sends == true)
+  end
+  for p = 1, 2 do local g = cfgCtl('cfg_p' .. p); if g then g.visible = (CFG2.page == p) end end
+  local pl = cfgCtl('cfg_page_lbl'); if pl then pl.values.text = (CFG2.page == 1) and 'Seite 2 ›' or '‹ Seite 1' end
+  local tl = cfgCtl('cfg_tab_lbl'); if tl then tl.values.text = 'Spuren zeigen im Reiter „' .. TAB_CAP[cfgTab()] .. '“' end
   pill('cfg_marks', LOOK.marks)
   pill('cfg_only', LOOK.onlyPlug); pill('cfg_cpu', LOOK.cpu)
   for _, key in ipairs({ 'off', 'dot', 'list', 'both' }) do pill('cfg_ic_' .. key, LOOK.icons == key) end
@@ -160,6 +195,8 @@ local function cfgState(extra)
   local function add(k, v) t[#t + 1] = k .. '=' .. tostring(v) end
   add('sc', LV.scale); add('md', LV.mode); add('aes', LV.aes17 and 1 or 0); add('loud', LV.loud); add('tg', LV.target)
   add('col', LOOK.colors); add('th', LOOK.theme); add('mk', LOOK.marks and 1 or 0); add('cpu', LOOK.cpu and 1 or 0); add('ic', LOOK.icons)
+  add('tabs', tabsMask()); add('lb', LOOK.label); add('xs', extraMask())
+  for _, m in ipairs(TAB_ORDER) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
   local names = {}
   for name in pairs(CFG_FADERS) do names[#names + 1] = name end
   table.sort(names)
@@ -182,6 +219,16 @@ local function cfgApplyState(str)                -- gibt die Tabelle zurück (f�
   if kv.mk then LOOK.marks = kv.mk == '1' end
   if kv.cpu then LOOK.cpu = kv.cpu == '1' end
   if kv.ic then LOOK.icons = kv.ic end
+  if kv.lb then LOOK.label = kv.lb end
+  if num('tabs') then for i, m in ipairs(TAB_ORDER) do LOOK.tabs[m] = math.floor(num('tabs') / 2 ^ (i - 1)) % 2 == 1 end end
+  if num('xs') then
+    for i, k in ipairs(TYPE_ORDER) do
+      LOOK.extra[k] = { subs = math.floor(num('xs') / 2 ^ (2 * i - 2)) % 2 == 1, sends = math.floor(num('xs') / 2 ^ (2 * i - 1)) % 2 == 1 }
+    end
+  end
+  for _, m in ipairs(TAB_ORDER) do
+    if num('sh_' .. m) then for i, k in ipairs(TYPE_ORDER) do LOOK.showBy[m][k] = math.floor(num('sh_' .. m) / 2 ^ (i - 1)) % 2 == 1 end end
+  end
   for name, f in pairs(CFG_FADERS) do local v = num(name:sub(5)); if v then f[1][f[2]] = v end end
   lvReset(); cfgPaint()
   return kv
@@ -198,9 +245,20 @@ local function cfgButton(name)
   elseif name:match('^cfg_fb_%d$') then local f = FALLBACKS[tonumber(name:sub(-1))]; if f then LV.fallback = f.v end
   elseif name == 'cfg_col_tosc' then LOOK.colors = 'tosc'
   elseif name == 'cfg_col_daw' then LOOK.colors = 'daw'
-  elseif name == 'cfg_th_synth' then LOOK.theme = 'synth'
-  elseif name == 'cfg_th_nuendo' then LOOK.theme = 'nuendo'
-  elseif name:match('^cfg_sh_%w+$') then local s = name:sub(8); LOOK.show[s] = (LOOK.show[s] == false)
+  elseif name:match('^cfg_th_%w+$') and THEMES[name:sub(8)] then LOOK.theme = name:sub(8)
+  elseif name:match('^cfg_sh_%w+$') then local s = name:sub(8); local t = cfgShow(); t[s] = (t[s] == false)
+  elseif name == 'cfg_page' then CFG2.page = (CFG2.page == 1) and 2 or 1
+  elseif name:match('^cfg_et_%w+$') then CFG2.tab = name:sub(8)
+  elseif name:match('^cfg_tab_%w+$') then
+    local m = name:sub(9); LOOK.tabs[m] = (LOOK.tabs[m] == false)
+    local any = false
+    for _, x in ipairs(TAB_ORDER) do if LOOK.tabs[x] ~= false then any = true end end
+    if not any then LOOK.tabs[m] = true end                     -- mindestens ein Reiter bleibt
+  elseif name:match('^cfg_lb_%w+$') then LOOK.label = name:sub(8)
+  elseif name:match('^cfg_xs_%w+_%w+$') then
+    local ty, what = name:match('^cfg_xs_(%w+)_(%w+)$')
+    LOOK.extra[ty] = LOOK.extra[ty] or {}
+    LOOK.extra[ty][what] = not LOOK.extra[ty][what]
   elseif name == 'cfg_marks' then LOOK.marks = not LOOK.marks
   elseif name == 'cfg_only' then LOOK.onlyPlug = not LOOK.onlyPlug
   elseif name == 'cfg_cpu' then LOOK.cpu = not LOOK.cpu

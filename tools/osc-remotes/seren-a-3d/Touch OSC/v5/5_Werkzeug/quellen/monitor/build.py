@@ -69,6 +69,10 @@ def lbl(name, frame, text="", size=14, color=TXT, align=AlignH.LEFT, valign=Alig
         c.set("cornerRadius", float(radius))
     if name:
         c.name = name
+    elif color == TXT:
+        c.name = "th_text"          # v8.19: Schrift folgt der Palette (applyTheme)
+    elif color == DIM:
+        c.name = "th_dim"
     c.value("text").default = text
     c.set("interactive", False)
     return c
@@ -171,6 +175,7 @@ def cell(k):
           lbl(n + "_numb", (8.8, 10, 36, 36), str(k), 14, "#24103f", AlignH.CENTER),   # 2nd pass = bold
           lbl(n + "_name", (52, 2, w - 82, 30), "", 17, TXT),
           lbl(n + "_val", (52, 29, w - 58, 17), "", 12, DIM),
+          lbl(n + "_xt", (w - 66, 2, 58, h - 8), "", 10, DIM, AlignH.RIGHT, multi=True),
           lbl(n + "_glyph", (w - 30, 2, 28, 30), "", 16, TXT, AlignH.CENTER),
           box((52, h - 8, 0, 4), PINK, name=n + "_lvl", radius=2),
           box((52, h - 8, 2, 4), TXT, name=n + "_hold"),
@@ -241,6 +246,8 @@ def build():
     cfg = config_ui.build(W, H, with64=True)
     k.append(cfg)
     root.add(*k)
+    from themenames import theme_script
+    root.script = theme_script(doc) + root.script
     return doc
 
 

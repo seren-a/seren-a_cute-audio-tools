@@ -39,6 +39,7 @@ steht im Dokument „seren.a 3D v3 – Vergleichstabelle“: https://claude.ai/a
 7. **32 Spuren auf einmal (v8.13):** iPad: Taste „32“ oben – Spuren 17–32 erscheinen als Kacheln in zwei Reihen à 8 unten (statt Panorama), die Draufsicht zeigt alle 32 Punkte, Bank vor/zurück springt 32 weit. Monitor: Ansicht „4×8“ – Kreis oben, 32 Spuren in vier Reihen à 8 darunter.
 8. **Gruppen (v8.14, Reaper):** Config (⚙) → „GRUPPEN zeigen“: A–D sind deine eigenen Gruppen, dahinter die Reaper-Ordner ohne dearVR/Hall. Antippen = nur diese Spuren zeigen (mehrere gehen, nichts an = alle). Zuordnen: „+A“ … „+D“ tippen, die Config geht zu, dann Spuren in der Liste antippen (nochmal = wieder raus); fertig mit ⚙ → „+A“ nochmal. Alles wird im Reaper-Projekt gespeichert.
 9. **Voreinstellung (v8.15, Reaper):** iPad und Monitor merken sich in Reaper, wie du sie zuletzt eingestellt hast (Modus, 32er/Layout, Horizont, alle Config-Werte), und starten beim nächsten Öffnen genau so. Nichts zu tun – einfach einstellen.
+10. **Beschriftung, Spurtypen, Reiter (v8.19):** Config (⚙) → **Seite 2**: „Beschriftung statt Nummer“ = Spurname oder Preset (gekürzt, wo wenig Platz ist; ohne Preset bleibt die Nummer). „Zusatzzeilen“ zeigen je Spurtyp die Anzahl der Subspuren (Ordner) und der Sends in diese Spur (nur in breiten Listenzeilen). „Reiter zeigen“ blendet space/multi/panner/room ein oder aus (einer bleibt immer). „Spuren zeigen im Reiter“: erst den Reiter wählen, dann die Spurtypen Audio, 3OA, FX, Gruppe/Ordner, MIDI/Instr schalten – jeder Reiter merkt sich seine eigene Auswahl. 3OA = Audiospur mit 16 oder mehr Kanälen oder „3OA“/„ambiX“ im Namen (Reaper). Seite 1 hat jetzt fünf Paletten, dazu Cute Pink (hell), Girly Pop Dark und Dark Pastel Pink.
 
 OSC im IEM-Plugin nur für `Pan_OSC*.tosc`:
 StereoEncoder 8001/9101 (TouchOSC OSC 2), SceneRotator 8002/9102 (OSC 3), MultiEncoder 8003/9103 (OSC 4),
@@ -49,9 +50,10 @@ TotalMix 7001/9001 (OSC 1).
 - `1_Oberflaechen`
   - `Handy_Pan` – Pan_Skript / Pan_OSC, je mit und ohne TotalMix, Pan_Skript hochkant (mit/ohne TotalMix)
   - `Handy_Objekt-Uebersicht` – Objekt-Uebersicht
-  - `iPad_IEM-Space` – IEM-Space (Modi space · multi · panner · room)
-  - `Monitor_5zu4` – IEM-Monitor (Modi space · multi · panner · room; Ansichten 16/32v/32h/64)
-  - `Monitor_HD` – derselbe Monitor in Full HD (1920 × 1080), für den großen Bildschirm (v8.16)
+  - `IEM_3-Ansichten` – die drei IEM-Ansichten zusammen (ab v8.19)
+    - `IEM-Space.tosc` – iPad (Modi space · multi · panner · room)
+    - `IEM-Monitor.tosc` – Monitor 5:4 (Modi space · multi · panner · room; Ansichten 16/32v/32h/64)
+    - `IEM-Monitor_HD.tosc` – derselbe Monitor in Full HD (1920 × 1080), für den großen Bildschirm (v8.16)
   - Room-Ansicht (iPad, Monitor, Monitor HD): Taste „groß“ lässt den Raum den ganzen Bildschirm füllen, „klein“ bringt Liste und Details zurück (v8.17)
     - „groß“ wird mit der Voreinstellung in Reaper gespeichert (v8.18)
   - `Handy_Twister-View` – Twister_View hoch und quer

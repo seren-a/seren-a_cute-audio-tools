@@ -198,16 +198,38 @@ local function trackName(tr) local _, n = r.GetTrackName(tr, ""); return n end
 -- matching tracks, so 8 tracks with a 3D plugin all sit on the first page, wherever they are in the project.
 -- types: 1 audio, 2 FX (= track with receives), 4 group (= folder), 8 instrument; plug 1 = only tracks
 -- with an encoder, rotator or dearVR PRO (bypassed ones count too: the track is meant for it)
-local FILT = { types = 15, plug = 1 }
+local FILT = { types = 31, plug = 1 }              -- v8.19: + 16 = 3OA track
 do
-  local t, p = (r.GetExtState("seren_3D", "filter") or ""):match("^(%d+),(%d)$")
+  local t, p = (r.GetExtState("seren_3D", "filter2") or ""):match("^(%d+),(%d)$")
   if t then FILT.types, FILT.plug = tonumber(t), tonumber(p) end
+end
+-- v8.19: 3OA track = 16 or more channels, or the name says so (some of them are no longer called "3OA")
+local OA3_MIN_CH = 16
+local OA3_NAMES = { "3oa", "3.oa", "ambix", "3rd order", "3. ordnung" }   -- parts of the track name, lower case
+local function is3OA(tr)
+  if r.GetMediaTrackInfo_Value(tr, "I_NCHAN") >= OA3_MIN_CH then return true end
+  local _, nm = r.GetTrackName(tr)
+  nm = nm:lower()
+  for _, p in ipairs(OA3_NAMES) do if nm:find(p, 1, true) then return true end end
+  return false
 end
 local function typeBit(tr)
   if r.GetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH") == 1 then return 4 end
   if r.GetTrackNumSends(tr, -1) > 0 then return 2 end
   if r.TrackFX_GetInstrument(tr) >= 0 then return 8 end
+  if is3OA(tr) then return 16 end                   -- a plain audio track that carries 3rd order ambisonics
   return 1
+end
+-- sub tracks (children of a folder, all levels) and receives (tracks sending into this one)
+local function countSubs(tr)
+  if r.GetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH") ~= 1 then return 0 end
+  local depth, n = 1, 0
+  for i = math.floor(r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER")), r.CountTracks(0) - 1 do
+    n = n + 1
+    depth = depth + r.GetMediaTrackInfo_Value(r.GetTrack(0, i), "I_FOLDERDEPTH")
+    if depth <= 0 then break end
+  end
+  return n
 end
 local function has3D(tr)
   for fx = 0, r.TrackFX_GetCount(tr) - 1 do
@@ -314,6 +336,16 @@ local function scan()
     local tr = vis[bank * 16 + k]
     if tr then
       local info = scanTrack(tr)
+      info.oa3, info.subs, info.sends = is3OA(tr), countSubs(tr), r.GetTrackNumSends(tr, -1)
+      do                                              -- preset of the main plugin (encoder, else rotator, else dearVR)
+        local p = info.enc or info.rot or info.room
+        local pn = ""
+        if p then
+          local ok, nm = r.TrackFX_GetPreset(tr, p.fx, "")
+          if ok and nm then pn = nm end
+        end
+        info.preset = pn
+      end
       tracks[k] = info
       local no = math.floor(r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER"))
       log("e" .. no, info.enc and ("Spur " .. no .. " " .. trackName(tr) .. " - " .. describe(info.enc)) or "")
@@ -438,9 +470,9 @@ local function readInput()
       end
     elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 11 then
       local b = { e[1]:byte(1, 6) }                     -- F0 7D 4F 0B <types> <plug> F7: track filter from a surface
-      if b[2] == 0x7D and b[3] == 0x4F and b[5] <= 15 and b[6] <= 1 and (b[5] ~= FILT.types or b[6] ~= FILT.plug) then
+      if b[2] == 0x7D and b[3] == 0x4F and b[5] <= 31 and b[6] <= 1 and (b[5] ~= FILT.types or b[6] ~= FILT.plug) then
         FILT.types, FILT.plug = b[5], b[6]
-        r.SetExtState("seren_3D", "filter", FILT.types .. "," .. FILT.plug, true)
+        r.SetExtState("seren_3D", "filter2", FILT.types .. "," .. FILT.plug, true)
         bank = 0; sent = {}; level = {}; lastScan = -1e9
         ov({ 5, 0 }); ov({ 16, FILT.types, FILT.plug })
       end
@@ -569,6 +601,12 @@ local function sendOverview()
     local no = t and math.floor(r.GetMediaTrackInfo_Value(t.tr, "IP_TRACKNUMBER")) or 0
     once("no" .. k, no, function() ov({ 17, o, no // 128, no % 128 }) end)   -- real track number (v8.4)
     once("f" .. k, flags, function() ov({ 3, o, flags }) end)
+    do                                                -- v8.19: 3OA flag, sub tracks, receives (cmd 22), preset of the main plugin (cmd 23)
+      local oa, subs, snd, pre = 0, 0, 0, ""
+      if t then oa, subs, snd, pre = t.oa3 and 1 or 0, math.min(127, t.subs or 0), math.min(127, t.sends or 0), t.preset or "" end
+      once("x" .. k, oa .. "," .. subs .. "," .. snd, function() ov({ 22, o, oa, subs, snd }) end)
+      once("pr" .. k, pre, function() ov({ 23, o }, pre) end)
+    end
     local icon = ""
     if t then
       local _, path = r.GetSetMediaTrackInfo_String(t.tr, "P_ICON", "", false)

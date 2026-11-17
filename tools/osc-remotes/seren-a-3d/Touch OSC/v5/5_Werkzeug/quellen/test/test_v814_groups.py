@@ -11,7 +11,7 @@ def sx(cmd, *d, text=''): return [0xF0, 0x7D, 0x4F, cmd, *d, *[ord(c) for c in t
 L = lua54.LuaRuntime(unpack_returned_tuples=True); g = L.globals()
 L.execute(open(os.path.join(D, 'reaper_mock.lua')).read())
 L.execute("""
-EXT["seren_3D/filter"] = "15,0"
+EXT["seren_3D/filter2"] = "31,0"
 for i = 1, 12 do TRACKS[i] = { name = 'T' .. i, guid = '{' .. i .. '}', sel = false, info = {}, peak = 0, fx = {} } end
 TRACKS[1].name = 'Drums'; TRACKS[1].folder = true; TRACKS[2].parent = TRACKS[1]; TRACKS[3].parent = TRACKS[1]
 TRACKS[5].name = 'Hall'; TRACKS[5].folder = true; TRACKS[5].fx = { { name = 'VST3: FdnReverb (IEM)', params = {} } }; TRACKS[6].parent = TRACKS[5]
@@ -27,7 +27,7 @@ def pump(n=1):
         L.execute("OUT = {}")
     return out
 def inject(b):
-    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, string.char(" + ",".join(str(x) for x in b) + "), 2})")
+    L.execute("SEQ = SEQ + 1; table.insert(HIST, 1, {SEQ, \"" + "".join("\\%03d" % x for x in b) + "\", 2})")
 def groups(m):
     gl = {x[4]: (x[5], ''.join(chr(c) for c in x[6:-1])) for x in m if x[:4] == [0xF0, 0x7D, 0x4F, 18]}
     return [gl[i] for i in sorted(gl)]
