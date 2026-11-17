@@ -52,6 +52,12 @@ public:
     void setFromDouble(double v) {
         if (!std::isfinite(v)) v = lo_;
         v01.store((float)juce::jlimit(0.0, 1.0, (v - lo_) / (hi_ - lo_)));
+        dirty_.store(true);
+    }
+    // Host benachrichtigen (VST3 performEdit), damit Read-only-Params live ankommen
+    void notifyIfDirty() {
+        if (dirty_.exchange(false))
+            sendValueChangedMessageToListeners(v01.load());
     }
     double toDouble(float v) const { return lo_ + (double)v * (hi_ - lo_); }
 
@@ -59,6 +65,7 @@ private:
     juce::String name_, unit_;
     double lo_, hi_;
     std::atomic<float> v01 { 0.0f };
+    std::atomic<bool> dirty_ { false };
 };
 
 class PsyWorkerThread;
@@ -108,6 +115,7 @@ private:
     std::atomic<int> pendingOrder{-1};
     std::atomic<int> currentOrder{1};
     MeterOutputParameter* meterParams[16] = {};  // read-only, owned by addParameter
+    juce::int64 notifyCounter_ = 0;
     void pushMeterParams(const MeterSnapshot& s);
 
     ald::AmbisonicMeter meter;

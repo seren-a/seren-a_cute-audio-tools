@@ -83,6 +83,11 @@ void AmbisonicLoudnessMeterProcessor::pushMeterParams(const MeterSnapshot& s) {
     meterParams[13]->setFromDouble(s.sharpnessAcum);
     meterParams[14]->setFromDouble(s.roughnessAsper);
     meterParams[15]->setFromDouble(s.fluctStrengthVacil);
+
+    // Host benachrichtigen (VST3 performEdit), aber gedrosselt (~alle 10 Bloecke)
+    if ((++notifyCounter_ % 10) == 0)
+        for (auto* p : meterParams)
+            if (p != nullptr) p->notifyIfDirty();
 }
 
 AmbisonicLoudnessMeterProcessor::~AmbisonicLoudnessMeterProcessor() {
