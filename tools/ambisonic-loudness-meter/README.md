@@ -158,6 +158,11 @@ Beide Quellen landen im selben Schema — REAPER-Plug-in-Messungen
 (`source=reaper-fx`) und Offline-Dateianalyse (`source=file`) in einer
 Tabelle.
 
+## Doku
+
+- `docs/SPL_KALIBRIERUNG.md` — SPL-Kalibrierung How-To (EBU −23 LUFS = 83 dB SPL(C) → SPL Cal 106)
+- `docs/FAQ_LUFS_KALIBRIERUNG.md` — FAQ: LUFS-Berechnung mit Ambisonics (BS.1770-Decoding, W-Anteil pro Ordnung), Kalibrierung, 3OA-Umfang
+
 ## Quellen
 
 - Torresin, S. et al. (2020): *Indoor soundscape assessment: A principal
