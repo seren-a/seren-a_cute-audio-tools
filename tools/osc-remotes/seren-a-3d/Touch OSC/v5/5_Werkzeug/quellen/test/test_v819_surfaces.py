@@ -38,9 +38,9 @@ for lv in ('lua51', 'lua54'):
     # tabs
     v.run("onReceiveNotify('btn','cfg_tab_me')"); v.tick()
     check(not v.c['mode_me']['visible'] and v.c['mode_iem']['visible'], f'{lv}/iPad: Reiter ME ausgeblendet')
-    for m in ('iem', 'mp', 'room'): v.run(f"onReceiveNotify('btn','cfg_tab_{m}')")
+    for m in ('iem', 'mp', 'room', 'fdn', 'mcfx'): v.run(f"onReceiveNotify('btn','cfg_tab_{m}')")
     v.tick()
-    check(v.c['mode_me']['visible'] or v.c['mode_iem']['visible'] or v.c['mode_mp']['visible'] or v.c['mode_room']['visible'], f'{lv}/iPad: mindestens ein Reiter bleibt')
+    check(any(v.c['mode_' + m]['visible'] for m in ('me', 'iem', 'mp', 'room', 'fdn', 'mcfx')), f'{lv}/iPad: mindestens ein Reiter bleibt')
     # per-tab visibility: the filter of another tab is independent
     v.run("onReceiveNotify('btn','cfg_et_room')"); v.run("onReceiveNotify('btn','cfg_sh_audio')"); v.tick()
     check(v.g.root is not None, f'{lv}/iPad: Reiter-Filter lässt sich einzeln wählen')

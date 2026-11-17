@@ -94,6 +94,7 @@ local function hasBit(f, b) return floor(f / b) % 2 == 1 end
 local function present(k)
   if k > win() then return false end
   local o = obj[k]
+  if hallMode(mode) ~= 0 then return o.name ~= '' end             -- v8.20: Hall-Reiter: jeder Send ist ein Platz
   if mode ~= 'me' and o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'mp' then return hasBit(o.flags, 2) or o.seenMp end
@@ -111,7 +112,7 @@ local function trackNo(k)                       -- echte Spurnummer (Reaper schi
   if o and o.num and o.num > 0 then return o.num end
   return bank * N + k
 end
-local function numOf(k) return (mode == 'iem' or mode == 'room') and trackNo(k) or k end
+local function numOf(k) return (mode == 'iem' or mode == 'room' or hallMode(mode) ~= 0) and trackNo(k) or k end
 local function rangeText()
   local lo, hi
   for k = 1, N do if obj[k].name ~= '' and obj[k].num then local n = obj[k].num; lo = lo or n; hi = n end end
@@ -194,6 +195,7 @@ local function clearAll()
     o.seenEnc, o.seenRot, o.seenMp = false, false, false
     o.seenDv, o.room, o.roomName = false, nil, ''
     o.num, o.oa3, o.subs, o.sends, o.preset = nil, false, 0, 0, ''
+    o.sv, o.smute = nil, false
   end
   meInfo.count, meInfo.name = 0, ''
   dirty = true
@@ -221,6 +223,7 @@ local function onSysex(m)
   if vsSysex(m) then cfgPaint(); dirty = true; return end
   local cmd = m[4]
   src.t = ms()
+  if hallSysex(m, obj, N) then dirty = true; return end        -- v8.20: 24 Kopf, 25 Gesamtpegel, 26 Send, 27 Preset
   local k = m[5] and (m[5] + 1)
   if cmd == 1 and k and k <= N then obj[k].name = sysexText(m, 6)
   elseif cmd == 2 and k and k <= N and m[8] then obj[k].col = { m[6] / 127, m[7] / 127, m[8] / 127 }
@@ -236,6 +239,7 @@ local function onSysex(m)
       src.switchT = getMillis()
     end
     src.name = (s ~= '') and s or nil
+    HL.sentKey = nil                                  -- v8.20: neue DAW: Hall-Auswahl noch einmal schicken
     if src.name then monAdd('◆ verbunden: ' .. src.name, 'src') end
   elseif cmd == 5 and m[5] then
     if m[5] ~= bank then
@@ -446,7 +450,7 @@ local function renderDots()
   if bigRoom() and tf and pf then tf, pf = Rectangle(16, 168, 1334, 600), Rectangle(16, 784, 1334, 224) end
   renderRoom(tf, pf)
   for k = 1, N do
-    local on = present(k)
+    local on = present(k) and hallMode(mode) == 0
     setVisible('d' .. k, on)
     setVisible('e' .. k, on and not n32)
     if on and tf and pf then
@@ -509,6 +513,16 @@ local function renderDots()
   end
 end
 
+-- v8.20: Hall-Anzeige (Reiter FDN / mcfx): Zeichnen steckt in hall.lua (gemeinsam mit dem Monitor)
+local HE = {}
+function renderHall(dt, t)
+  if hallMode(mode) == 0 then return end
+  HE.C, HE.setText, HE.setVisible, HE.setColor = C, setText, setVisible, setColor
+  HE.slotK, HE.present, HE.obj, HE.N, HE.lvPos, HE.lvHold = slotK, present, obj, N, lvPos, lvHold
+  HE.mode, HE.dt, HE.t = mode, dt, t
+  hallRender(HE)
+end
+
 local function setFader(name, v, r)
   local c = C(name)
   if c and not c.values.touch then c.values.x = unscale(v, r) end
@@ -524,7 +538,7 @@ local SLOT_PARTS = {
 local function buildSlots()
   slotK, kSlot = {}, {}
   for k = 1, N do
-    local keep = present(k) or (not LOOK.onlyPlug and (mode ~= 'me'))
+    local keep = present(k) or (not LOOK.onlyPlug and (mode ~= 'me') and hallMode(mode) == 0)
     if keep then slotK[#slotK + 1] = k; kSlot[k] = #slotK end
   end
 end
@@ -549,6 +563,7 @@ local function render()
   elseif mode == 'iem' then setText('bank', 'Spuren ' .. rangeText())
   elseif mode == 'mp' then setText('bank', 'MultiPanner 1–16')
   elseif mode == 'room' then setText('bank', 'dearVR · Spuren ' .. rangeText())
+  elseif hallMode(mode) ~= 0 then setText('bank', HALLCAP[mode] .. ' · Sends ' .. rangeText())
   else setText('bank', meInfo.count > 0 and ('✧ ' .. meInfo.name) or 'kein MultiEncoder') end
   local c0 = cur[mode]
   if c0 and not present(c0) then cur[mode] = nil end
@@ -590,7 +605,8 @@ local function render()
       setText('r' .. i .. '_name', name)
       local vals = ''
       if on then
-        if mode == 'mp' then vals = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
+        if hallMode(mode) ~= 0 then vals = hallSendText(o)
+        elseif mode == 'mp' then vals = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then vals = RM.fmtPos(o)
         elseif mode == 'me' then vals = 'Az ' .. fmtDeg(me[k].az) .. '  El ' .. fmtDeg(me[k].el)
         else vals = 'Az ' .. fmtDeg(o.az) .. '  El ' .. fmtDeg(o.el) end
@@ -599,7 +615,7 @@ local function render()
       if i > 16 then vals = vals:gsub('%s+El', '\nEl'):gsub('%s+–$', ''):gsub('%s+(%-?[%d%.]+ dBFS)', '\n%1') end   -- Kacheln: untereinander
       setText('r' .. i .. '_val', vals)
       local typ = typeOf(o.flags, o)
-      local xt = (mode ~= 'me' and on) and extraText(o, typ) or ''
+      local xt = (mode ~= 'me' and on and hallMode(mode) == 0) and extraText(o, typ) or ''
       setText('r' .. i .. '_xt', xt)
       do local vc, nc2 = C('r' .. i .. '_val'), C('r' .. i .. '_name'); if vc and nc2 then rowExtra(i, vc, nc2, xt ~= '') end end
       setVisible('r' .. i .. '_fx', LOOK.marks and mode ~= 'me' and o.name ~= '' and typ == 'fx')
@@ -658,7 +674,7 @@ local function render()
   for _, n in ipairs({ 'fa', 'fa_lbl' }) do setVisible(n, showA) end
   for _, n in ipairs({ 'yaw_fader', 'yaw_lbl', 'pitch_fader', 'pitch_lbl' }) do setVisible(n, showRot) end
   -- Modus, Hintergründe, LOG
-  for _, m in ipairs({ 'iem', 'me', 'mp', 'room' }) do
+  for _, m in ipairs(TAB_ORDER) do
     setColor('mode_' .. m .. '_bg', m == mode and theme().accent or theme().pill, 1)
   end
   setColor('log_btn_bg', logOpen and theme().accent2 or theme().pill, 1)
@@ -666,11 +682,13 @@ local function render()
   setColor('col_btn_bg', LOOK.colors == 'daw' and theme().accent2 or theme().pill, 1)
   setText('col_btn_lbl', LOOK.colors == 'daw' and 'spurfarben' or 'tosc farben')
   setVisible('cfg_overlay', cfgOpen)
-  setVisible('bg_top', mode ~= 'mp' and mode ~= 'room'); setVisible('bg_pano', mode ~= 'mp' and mode ~= 'room' and not n32)
-  setVisible('tiles32', n32 and not bigRoom()); setVisible('pano_xy', not n32)
-  setVisible('det_g', not bigRoom())
+  local hm = hallMode(mode) ~= 0
+  setVisible('bg_top', mode ~= 'mp' and mode ~= 'room' and not hm); setVisible('bg_pano', mode ~= 'mp' and mode ~= 'room' and not n32 and not hm)
+  setVisible('tiles32', n32 and not bigRoom() and not hm); setVisible('pano_xy', not n32 and not hm); setVisible('top_xy', not hm)
+  setVisible('det_g', not bigRoom() and not hm)
   setColor('n32_btn_bg', n32 and theme().accent2 or theme().pill, 1)
   setVisible('bg_top_mp', mode == 'mp'); setVisible('bg_pano_mp', mode == 'mp')
+  setVisible('hall_g', hm)
   setVisible('mon_overlay', logOpen)
 end
 
@@ -701,7 +719,7 @@ end
 local function onDrag(name)
   local c = C(name)
   local k = cur[mode]
-  if not c or not k or logOpen or cfgOpen then return end
+  if not c or not k or logOpen or cfgOpen or hallMode(mode) ~= 0 then return end
   if (name == 'top_xy' or name == 'pano_xy') and mode == 'room' then return end   -- room: nur Anzeige
   if name == 'top_xy' or name == 'pano_xy' then
     local area = C(name == 'top_xy' and 'top_area' or 'pano_area')
@@ -744,9 +762,10 @@ local function onButton(name)
   if name == 'n32_btn' then n32 = not n32; dirty = true; return end
   if name == 'bank_prev' then BK.press(-1); note(15, 2); if n32 then note(15, 2) end; return end   -- 32: zwei DAW-Bänke
   if name == 'bank_next' then BK.press(1); note(15, 3); if n32 then note(15, 3) end; return end
-  if name == 'mode_iem' or name == 'mode_me' or name == 'mode_mp' or name == 'mode_room' then
-    mode = name:sub(6); dirty = true; return
-  end
+  local mm = name:match('^mode_(%w+)$')
+  if mm and LOOK.showBy[mm] then mode = mm; dirty = true; return end
+  local ch = tonumber(name:match('^hall_i(%d)$') or '')           -- v8.20: andere Hall-Instanz
+  if ch then HL.want = ch - 1; dirty = true; return end
   if name == 'log_btn' then logOpen = not logOpen; cfgOpen = false; monDraw(true); dirty = true; return end
   local slot = tonumber(name:match('^sel(%d+)$') or name:match('^r(%d+)_tap$') or '')
   local k = slot and slotK[slot]
@@ -790,24 +809,32 @@ local function applyTheme()
 end
 cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sendFilter(); dirty = true end
 
--- v8.19: Reiter ein-/ausblenden (Config, Seite 2): sichtbare rücken zusammen; ist der aktuelle weg, gilt der erste sichtbare
+-- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, log, Farben, ⚙, 32, DAW);
+-- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.
+HDR_X0, HDR_GAP = 252, 4
+HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'log_btn', 'col_btn', 'cfg_btn', 'n32_btn' }
 local tabSig = nil
 function layoutTabs()
-  local sig = tostring(tabsMask())
+  local sig = tabsMask() .. ',' .. hallTabsMask()
   if sig == tabSig then return end
   tabSig = sig
-  local x = 318
-  for _, m in ipairs(TAB_ORDER) do
-    local on = LOOK.tabs[m] ~= false
+  local x = HDR_X0
+  for _, nm in ipairs(HDR_ORDER) do
+    local m = nm:match('^mode_(%w+)$')
+    local on = (not m) or LOOK.tabs[m] ~= false
+    local w = 0
     for _, sfx in ipairs({ '', '_bg', '_lbl' }) do
-      local c = C('mode_' .. m .. sfx)
+      local c = C(nm .. sfx)
       if c then
         c.visible = on
-        if on then local f = c.frame; c.frame = Rectangle(x, f.y, ({ iem = 78, me = 70, mp = 84, room = 70 })[m], f.h) end
+        local f = c.frame
+        if sfx == '' then w = f.w end
+        if on then c.frame = Rectangle(x, f.y, f.w, f.h) end
       end
     end
-    if on then x = x + ({ iem = 82, me = 74, mp = 88, room = 74 })[m] end
+    if on then x = x + w + HDR_GAP end
   end
+  local sc = C('src'); if sc then local f = sc.frame; sc.frame = Rectangle(x, f.y, f.w, f.h) end
   if LOOK.tabs[mode] == false then
     for _, m in ipairs(TAB_ORDER) do if LOOK.tabs[m] ~= false then mode = m; break end end
   end
@@ -817,7 +844,7 @@ local lastT, lastRender = 0, 0
 VS.id = 1                                        -- v8.15: Ansicht in Reaper merken
 VS.extra = function() return { m = mode, n32 = n32 and 1 or 0, big = RM.big and 1 or 0 } end
 VS.applyExtra = function(key, v)
-  if key == 'm' and (v == 'iem' or v == 'me' or v == 'mp' or v == 'room') then mode = v end
+  if key == 'm' and LOOK.showBy[v] then mode = v end
   if key == 'n32' then n32 = (v == '1') end
   if key == 'big' then RM.big = (v == '1'); dirty = true end
 end
@@ -829,7 +856,8 @@ function update()
   lastT = t
   if themeApplied ~= LOOK.theme then applyTheme() end
   layoutTabs()
-  if LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true end
+  if hallMode(mode) == 0 and LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true end
+  hallSelect(mode, src.name, function(b) sendMIDI(b, MIDI_OUT) end)
   for k = 1, N do
     local o = obj[k]
     local v, pos, glow, hp = lvStep(k, o.lvlIn, dt, t)
@@ -837,6 +865,7 @@ function update()
   end
   if dirty or t - lastRender > 1000 then lastRender = t; render(); CPU.render(src.name, theme().text, theme().meterHot) end
   renderDots()
+  renderHall(dt, t)
   if logOpen then monDraw() end
   if mode == 'iem' or mode == 'room' then
     local n = 0

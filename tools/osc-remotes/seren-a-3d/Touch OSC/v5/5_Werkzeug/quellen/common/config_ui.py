@@ -133,12 +133,13 @@ def build(W, H, with64=False):
     # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
     k2 = []
     TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
+    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall")]
     TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
     y = y0
     k2.append(_lbl(None, (x1, y, col_w, 26 * s), "REITER zeigen", 14 * s, "#7af5ff")); y += 30 * s
-    for i, (key, cap) in enumerate(TABS):
+    for i, (key, cap) in enumerate(HTABS):
         k2 += _btn("cfg_tab_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
-    y += 2 * (bh + gap) + 10 * s
+    y += 3 * (bh + gap) + 10 * s
     k2.append(_lbl("cfg_tab_lbl", (x1, y, col_w, 26 * s), "Spuren zeigen im Reiter", 14 * s, "#7af5ff")); y += 30 * s
     k2.append(_lbl(None, (x1, y, col_w, 20 * s), "Reiter wählen, dann die Spurtypen:", 12 * s, DIM)); y += 22 * s
     for i, (key, cap) in enumerate(TABS):

@@ -231,6 +231,57 @@ local function countSubs(tr)
   end
   return n
 end
+-- v8.20: reverb tabs. A surface in a reverb tab (FDN, mcfx ...) shows the SENDS that feed one reverb instance instead
+-- of tracks: the object slots carry the source tracks, the send fader (cmd 26) and the live level that arrives at the reverb.
+local HALL_KINDS = {
+  { key = "fdn", pat = { "fdnreverb" } },
+  { key = "mcfx", pat = { "mcfx_convolver", "mcfx convolver" } },
+}
+local HALL = { kind = 0, inst = 0, list = {}, sends = {} }
+local function hallFind(kind)
+  local out, pats = {}, HALL_KINDS[kind].pat
+  for i = 0, r.CountTracks(0) - 1 do
+    local tr = r.GetTrack(0, i)
+    for fx = 0, r.TrackFX_GetCount(tr) - 1 do
+      local _, fn = r.TrackFX_GetFXName(tr, fx, "")
+      local n, hit = fn:lower(), false
+      for _, pt in ipairs(pats) do if n:find(pt, 1, true) then hit = true end end
+      if hit then out[#out + 1] = { tr = tr, fx = fx }; break end
+    end
+  end
+  return out
+end
+local function hallBuild()                          -- vis = source tracks of the sends into the chosen instance
+  HALL.list = hallFind(HALL.kind)
+  if HALL.inst >= #HALL.list then HALL.inst = math.max(0, #HALL.list - 1) end
+  local inst = HALL.list[HALL.inst + 1]
+  local v, sends = {}, {}
+  if inst then
+    for i = 0, r.GetTrackNumSends(inst.tr, -1) - 1 do
+      local ok, src = pcall(r.GetSetTrackSendInfo, inst.tr, -1, i, "P_SRCTRACK", 0)
+      if ok and src then
+        v[#v + 1] = src
+        sends[#v] = { idx = i, vol = r.GetTrackSendInfo_Value(inst.tr, -1, i, "D_VOL"), mute = r.GetTrackSendInfo_Value(inst.tr, -1, i, "B_MUTE") ~= 0 }
+      end
+    end
+  end
+  HALL.sends = sends
+  return v
+end
+local function peakOf(tr)
+  local n = math.max(2, math.min(16, math.floor(r.GetMediaTrackInfo_Value(tr, "I_NCHAN"))))
+  local m = 0
+  for c = 0, n - 1 do m = math.max(m, r.Track_GetPeakInfo(tr, c)) end
+  return m
+end
+local function lvOf(pk)                             -- linear peak -> 0..127 (-60..0 dBFS)
+  if pk <= 0 then return 0 end
+  return floor(math.max(0, math.min(1, (20 * math.log(pk, 10) - METER_FLOOR) / -METER_FLOOR)) * 127 + 0.5)
+end
+local function sendVal(vol)                         -- send fader -> 0..127 (-60..+12 dB)
+  if vol <= 0 then return 0 end
+  return floor(math.max(0, math.min(1, (20 * math.log(vol, 10) + 60) / 72)) * 127 + 0.5)
+end
 local function has3D(tr)
   for fx = 0, r.TrackFX_GetCount(tr) - 1 do
     local _, fn = r.TrackFX_GetFXName(tr, fx, "")
@@ -314,6 +365,7 @@ local function isVcaLead(tr)
 end
 local function buildVis()
   buildGroups()
+  if HALL.kind ~= 0 then vis = hallBuild(); return end
   vis = {}
   for i = 0, r.CountTracks(0) - 1 do
     local tr = r.GetTrack(0, i)
@@ -468,6 +520,13 @@ local function readInput()
         grpSet("grp_" .. l, table.concat(list, ";"))
         lastScan = -1e9; buildGroups(); sendGroups()
       end
+    elseif viewInSet[e[2]] and #e[1] >= 7 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 24 then
+      local b = { e[1]:byte(1, 7) }                     -- F0 7D 4F 18 <kind 0-n> <instance> F7: reverb tab (kind 0 = tracks)
+      if b[2] == 0x7D and b[3] == 0x4F and b[5] <= #HALL_KINDS and (b[5] ~= HALL.kind or b[6] ~= HALL.inst) then
+        HALL.kind, HALL.inst = b[5], b[6]
+        bank = 0; sent = {}; level = {}; lastScan = -1e9
+        ov({ 5, 0 })
+      end
     elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 11 then
       local b = { e[1]:byte(1, 6) }                     -- F0 7D 4F 0B <types> <plug> F7: track filter from a surface
       if b[2] == 0x7D and b[3] == 0x4F and b[5] <= 31 and b[6] <= 1 and (b[5] ~= FILT.types or b[6] ~= FILT.plug) then
@@ -579,7 +638,25 @@ dvUnknown = function(p)
 end
 
 -- output -------------------------------------------------------------------------------------------
+-- reverb tab header: which instance (cmd 24: kind, instance, count, track name), preset (cmd 27), total level (cmd 25)
+local function sendHallHeader()
+  local kind = HALL.kind
+  local inst = kind ~= 0 and HALL.list[HALL.inst + 1] or nil
+  local name = inst and trackName(inst.tr) or ""
+  once("hh", kind .. "," .. HALL.inst .. "," .. #HALL.list .. "," .. name, function()
+    ov({ 24, kind, HALL.inst, math.min(127, #HALL.list) }, name)
+  end)
+  local pre = ""
+  if inst then
+    local ok, nm = r.TrackFX_GetPreset(inst.tr, inst.fx, "")
+    if ok and nm then pre = nm end
+  end
+  once("hp", pre, function() ov({ 27 }, pre) end)
+  local lv = inst and lvOf(peakOf(inst.tr)) or 0
+  if sent.hl == nil or abs(lv - sent.hl) >= 1 or (lv == 0 and sent.hl ~= 0) then sent.hl = lv; ov({ 25, lv }) end
+end
 local function sendOverview()
+  if HALL.kind ~= 0 then sendHallHeader() end
   for k = 1, N do
     local t = tracks[k]
     local o = k - 1
@@ -622,7 +699,17 @@ local function sendOverview()
     end
     once("s" .. k, isSel, function() send3(0x9E, o, isSel and 127 or 0) end)
     local lv = 0
-    if t then
+    if t and HALL.kind ~= 0 then                  -- reverb tab: level that arrives at the reverb (source peak x send fader)
+      local sd = HALL.sends[bank * 16 + k] or { vol = 1, mute = false }
+      local inst = HALL.list[HALL.inst + 1]
+      if inst and sd.idx then                    -- live: the send fader and mute follow without waiting for the next scan
+        sd.vol = r.GetTrackSendInfo_Value(inst.tr, -1, sd.idx, "D_VOL")
+        sd.mute = r.GetTrackSendInfo_Value(inst.tr, -1, sd.idx, "B_MUTE") ~= 0
+      end
+      lv = sd.mute and 0 or lvOf(peakOf(t.tr) * sd.vol)
+      local sv = sd.mute and 0 or sendVal(sd.vol)
+      once("sv" .. k, sv .. "," .. (sd.mute and 1 or 0), function() ov({ 26, o, sv, sd.mute and 1 or 0 }) end)
+    elseif t then
       local pk = math.max(r.Track_GetPeakInfo(t.tr, 0), r.Track_GetPeakInfo(t.tr, 1))
       if pk > 0 then
         lv = floor(math.max(0, math.min(1, (20 * math.log(pk, 10) - METER_FLOOR) / -METER_FLOOR)) * 127 + 0.5)
@@ -793,7 +880,7 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.18 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.20 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
   if not viewIn then ov({ 8 }, "bridge|Achtung: Bridge-Eingang in Reaper aus - Bewegen vom Geraet geht nicht") end
   r.atexit(function() ov({ 7 }); ov({ 4 }, "") end)
   loop()

@@ -168,3 +168,13 @@ OXI E16, Szene MultiEQ (E16_MultiEQ.lua, MultiEQ.oxie16): Seite 1 = MultiEQ, Sei
   Filter und schickt ihn beim Reiterwechsel.
 - Flag 16 (Spur mit Receives) bleibt wie bisher; ein Ordner geht vor Receives vor Instrument vor 3OA vor Audio.
 
+## v8.20 – Hall-Reiter (FDN, mcfx)
+- **Gerät → DAW: `0x18 <Art> <Instanz>`** (SysEx F0 7D 4F 18 …): Art 0 = normale Spuren, 1 = FDN-Reverb, 2 = mcfx-Convolver; Instanz = Nummer ab 0 unter den
+  gefundenen Plugins dieser Art (in Projektreihenfolge). Reaper baut dann statt der Spurbänke die Liste der **Quellspuren, die per Send in diese Hall-Spur laufen**
+  (Plätze 1–16 je Bank). Der Spurfilter (0B) bleibt unberührt. Ein Reiterstand pro Reaper (zuletzt gesetzt gewinnt, wie beim Filter).
+- **DAW → Gerät: cmd 24 `<Art> <Instanz> <Anzahl Instanzen> <Spurname des Halls>`** (bei Änderung), **cmd 25 `<Gesamtpegel 0–127>`** (0–127 = −60…0 dBFS,
+  Peak der Hall-Spur), **cmd 26 `<Obj> <Send 0–127> <stumm 0/1>`** (Send-Fader −60…+12 dB, linear auf 0–127 verteilt), **cmd 27 `<Text>`** = Preset des Hall-Plugins.
+  cmd 1/2/17 (Name, Farbe, Spurnummer) gelten im Hall-Reiter für die Quellspur. Der Pegel je Platz (CC 0xBE) ist **gerechnet**: Quellspur-Peak × Send-Fader,
+  gemutete Sends = 0.
+- Erkannt werden Plugins mit „FdnReverb“ bzw. „mcfx_convolver“/„mcfx convolver“ im FX-Namen. Weitere Hall-Arten (z. B. SPARTA) sind in `HALL_KINDS` am Anfang
+  von `Reaper_3D.lua` ergänzbar.

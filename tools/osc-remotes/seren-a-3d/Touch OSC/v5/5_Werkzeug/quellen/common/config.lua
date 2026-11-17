@@ -28,11 +28,14 @@ local function cfgCtl(name) return root:findByName(name, true) end
 CFG2 = { page = 1, tab = nil }
 function cfgTab() return CFG2.tab or LOOK.mode end
 function cfgShow() return LOOK.showBy[cfgTab()] end
-TAB_CAP = { iem = 'space', me = 'multi', mp = 'panner', room = 'room' }
-function tabsMask()
+TAB_CAP = { iem = 'space', me = 'multi', mp = 'panner', room = 'room', fdn = 'FDN', mcfx = 'mcfx' }
+function tabsMask()                          -- die vier Spur-Reiter (wie v8.19)
   local b = 0
-  for i, m in ipairs(TAB_ORDER) do if LOOK.tabs[m] ~= false then b = b + 2 ^ (i - 1) end end
+  for i, m in ipairs(TAB_FILT) do if LOOK.tabs[m] ~= false then b = b + 2 ^ (i - 1) end end
   return math.floor(b)
+end
+function hallTabsMask()                      -- v8.20: Hall-Reiter (fehlt der Schlüssel, sind sie sichtbar)
+  return (LOOK.tabs.fdn ~= false and 1 or 0) + (LOOK.tabs.mcfx ~= false and 2 or 0)
 end
 function showMask(t)
   local b = 0
@@ -145,7 +148,7 @@ local function cfgPaint()
   pill('cfg_col_tosc', LOOK.colors == 'tosc'); pill('cfg_col_daw', LOOK.colors == 'daw')
   for _, key in ipairs(THEME_ORDER) do pill('cfg_th_' .. key, LOOK.theme == key) end
   for _, key in ipairs(TYPE_ORDER) do pill('cfg_sh_' .. key, cfgShow()[key] ~= false) end
-  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); pill('cfg_et_' .. m, cfgTab() == m) end
+  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); if m ~= 'fdn' and m ~= 'mcfx' then pill('cfg_et_' .. m, cfgTab() == m) end end
   for _, key in ipairs({ 'num', 'name', 'preset' }) do pill('cfg_lb_' .. key, LOOK.label == key) end
   for _, k in ipairs(TYPE_ORDER) do
     local e = LOOK.extra[k] or {}
@@ -195,8 +198,8 @@ local function cfgState(extra)
   local function add(k, v) t[#t + 1] = k .. '=' .. tostring(v) end
   add('sc', LV.scale); add('md', LV.mode); add('aes', LV.aes17 and 1 or 0); add('loud', LV.loud); add('tg', LV.target)
   add('col', LOOK.colors); add('th', LOOK.theme); add('mk', LOOK.marks and 1 or 0); add('cpu', LOOK.cpu and 1 or 0); add('ic', LOOK.icons)
-  add('tabs', tabsMask()); add('lb', LOOK.label); add('xs', extraMask())
-  for _, m in ipairs(TAB_ORDER) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
+  add('tabs', tabsMask()); add('tabh', hallTabsMask()); add('lb', LOOK.label); add('xs', extraMask())
+  for _, m in ipairs(TAB_FILT) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
   local names = {}
   for name in pairs(CFG_FADERS) do names[#names + 1] = name end
   table.sort(names)
@@ -220,13 +223,14 @@ local function cfgApplyState(str)                -- gibt die Tabelle zurück (f�
   if kv.cpu then LOOK.cpu = kv.cpu == '1' end
   if kv.ic then LOOK.icons = kv.ic end
   if kv.lb then LOOK.label = kv.lb end
-  if num('tabs') then for i, m in ipairs(TAB_ORDER) do LOOK.tabs[m] = math.floor(num('tabs') / 2 ^ (i - 1)) % 2 == 1 end end
+  if num('tabs') then for i, m in ipairs(TAB_FILT) do LOOK.tabs[m] = math.floor(num('tabs') / 2 ^ (i - 1)) % 2 == 1 end end
+  if num('tabh') then LOOK.tabs.fdn = num('tabh') % 2 == 1; LOOK.tabs.mcfx = math.floor(num('tabh') / 2) % 2 == 1 end
   if num('xs') then
     for i, k in ipairs(TYPE_ORDER) do
       LOOK.extra[k] = { subs = math.floor(num('xs') / 2 ^ (2 * i - 2)) % 2 == 1, sends = math.floor(num('xs') / 2 ^ (2 * i - 1)) % 2 == 1 }
     end
   end
-  for _, m in ipairs(TAB_ORDER) do
+  for _, m in ipairs(TAB_FILT) do
     if num('sh_' .. m) then for i, k in ipairs(TYPE_ORDER) do LOOK.showBy[m][k] = math.floor(num('sh_' .. m) / 2 ^ (i - 1)) % 2 == 1 end end
   end
   for name, f in pairs(CFG_FADERS) do local v = num(name:sub(5)); if v then f[1][f[2]] = v end end

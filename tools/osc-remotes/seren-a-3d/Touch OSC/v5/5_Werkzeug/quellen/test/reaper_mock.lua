@@ -85,7 +85,9 @@ reaper.TrackFX_GetOffline = function(tr, f) return tr.fx[f + 1].offline == true 
 EXT = { ["seren_3D/filter2"] = "31,0" }
 reaper.GetExtState = function(s, k) return EXT[s .. "/" .. k] or "" end
 reaper.SetExtState = function(s, k, v) EXT[s .. "/" .. k] = v end
-reaper.GetTrackNumSends = function(tr, cat) if cat == -1 then return tr.recv or 0 end return 0 end
+reaper.GetTrackNumSends = function(tr, cat) if cat == -1 then return tr.recvs and #tr.recvs or tr.recv or 0 end return 0 end
+reaper.GetSetTrackSendInfo = function(tr, cat, i, key, v) if key == "P_SRCTRACK" then return tr.recvs[i + 1].src end end
+reaper.GetTrackSendInfo_Value = function(tr, cat, i, key) local x = tr.recvs[i + 1]; if key == "D_VOL" then return x.vol elseif key == "B_MUTE" then return x.mute and 1 or 0 end return 0 end
 -- v8.14: project ExtState + parents (tr.parent)
 PEXT = {}
 reaper.GetProjExtState = function(p, s, k) local v = PEXT[s .. "/" .. k]; return v and 1 or 0, v or "" end

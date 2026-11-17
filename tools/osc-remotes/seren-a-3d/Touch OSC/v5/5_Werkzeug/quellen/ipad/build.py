@@ -13,6 +13,7 @@ from py2tosc import AlignH, AlignV, ButtonType, Orientation, Shape
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "common"))
 import config_ui  # noqa: E402
+import hall_ui  # noqa: E402
 import room_ui  # noqa: E402
 import sphere_ui  # noqa: E402
 W, H = 1366, 1024
@@ -84,17 +85,20 @@ def mode_pill(name, frame, caption, size=18):
             lbl(name + "_lbl", frame, caption, size, TXT, AlignH.CENTER), tap(name, frame)]
 
 
+HDR_X0, HDR_GAP = 252, 4          # muss zu HDR_X0/HDR_GAP in space_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
+HDR = [("mode_iem", 66, "space", 15), ("mode_me", 62, "multi", 15), ("mode_mp", 72, "panner", 15),
+       ("mode_room", 58, "room", 15), ("mode_fdn", 50, "fdn", 15), ("mode_mcfx", 58, "mcfx", 15),
+       ("log_btn", 44, "log", 14), ("col_btn", 90, "tosc farben", 12), ("cfg_btn", 42, "⚙", 22),
+       ("n32_btn", 42, "32", 15)]
+
+
 def header():
-    k = [lbl(None, (16, 12, 300, 60), "✧ seren.a ♡ IEM space", 24, PINK)]
-    k += mode_pill("mode_iem", (318, 16, 78, 52), "space", 17)
-    k += mode_pill("mode_me", (400, 16, 70, 52), "multi", 17)
-    k += mode_pill("mode_mp", (474, 16, 84, 52), "panner", 17)
-    k += mode_pill("mode_room", (562, 16, 70, 52), "room", 17)
-    k += mode_pill("log_btn", (636, 16, 48, 52), "log", 15)
-    k += mode_pill("col_btn", (688, 16, 96, 52), "tosc farben", 13)
-    k += mode_pill("cfg_btn", (788, 16, 44, 52), "⚙", 22)
-    k += mode_pill("n32_btn", (836, 16, 46, 52), "32", 15)
-    k.append(lbl("src", (884, 16, 60, 52), "keine DAW", 11, CYAN, AlignH.CENTER))
+    k = [lbl(None, (16, 12, 232, 60), "✧ seren.a ♡ IEM space", 19, PINK)]
+    x = HDR_X0
+    for name, w, cap, size in HDR:
+        k += mode_pill(name, (x, 16, w, 52), cap, size)
+        x += w + HDR_GAP
+    k.append(lbl("src", (x, 16, 56, 52), "keine DAW", 11, CYAN, AlignH.CENTER))
     k += pill_button("bank_prev", (LIST_X, 16, 64, 52), "◂")
     k.append(lbl("bank", (LIST_X + 72, 16, LIST_W - 144, 52), "Spuren 1–16", 18, TXT,
                  AlignH.CENTER))
@@ -287,13 +291,15 @@ def build():
     root = doc.root
     root.name = "seren.a IEM space"
     common = HERE.parent / "common"
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
+    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
         "\n" + (HERE / "space_root.lua").read_text()
     k = header()
     k += [top_view(), pano_view(),
           square_bg("bg_top_mp", TOP, ("✧ vorn · Y +100 ✧", "hinten · Y −100", "X −100", "X +100")),
           square_bg("bg_pano_mp", PANO, ("rückansicht · Z +100 oben", "Z −100", "X −100", "X +100"))]
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO): top view in TOP, side view in PANO
+    k.append(hall_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
+                           DIM=DIM, PANEL=PANEL, PANEL2=PANEL2, BG=BG))   # v8.20: Hall-Reiter (über den Ansichten, unter den Zieh-Flächen)
     k.append(box(TOP, BG, name="top_area", bg=False))
     k.append(box(PANO, BG, name="pano_area", bg=False))
     k += detail()

@@ -13,6 +13,7 @@ from py2tosc import AlignH, AlignV, ButtonType, Shape
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "common"))
 import config_ui  # noqa: E402
+import hall_ui  # noqa: E402
 import sphere_ui  # noqa: E402
 import room_ui  # noqa: E402
 
@@ -96,16 +97,21 @@ def pill(name, frame, caption, size=16):
             tap(name, frame)]
 
 
+HDR_X0, HDR_GAP = 222, 3          # muss zu HDR_X0/HDR_GAP in monitor_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
+HDR = [("mode_iem", 56, "space", 13), ("mode_me", 52, "multi", 13), ("mode_mp", 58, "panner", 13),
+       ("mode_room", 50, "room", 13), ("mode_fdn", 44, "fdn", 13), ("mode_mcfx", 52, "mcfx", 13),
+       ("lay_16", 38, "16", 13), ("lay_32v", 42, "32v", 13), ("lay_32h", 42, "32h", 13), ("lay_32r", 42, "4×8", 13), ("lay_64", 38, "64", 13),
+       ("pano_btn", 80, "horizont", 13), ("col_btn", 96, "tosc farben", 13), ("cfg_btn", 42, "⚙", 19), ("log_btn", 44, "log", 13)]
+
+
 def header():
-    k = [lbl(None, (10, 8, 300, 46), "✧ seren.a ♡ IEM monitor", 22, PINK)]
-    for i, (n, cap) in enumerate((("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room"))):
-        k += pill("mode_" + n, (300 + i * 63, 10, 60, 42), cap, 14)
-    for i, (n, cap) in enumerate((("16", "16"), ("32v", "32v"), ("32h", "32h"), ("32r", "4×8"), ("64", "64"))):
-        k += pill("lay_" + n, (556 + i * 47, 10, 44, 42), cap, 14)
-    k += pill("pano_btn", (794, 10, 92, 42), "horizont", 14)
-    k += pill("col_btn", (890, 10, 112, 42), "tosc farben", 14)
-    k += pill("cfg_btn", (1006, 10, 46, 42), "⚙", 20)
-    k += pill("log_btn", (1056, 10, 50, 42), "log", 14)
+    k = [lbl(None, (10, 8, 208, 46), "✧ seren.a ♡ IEM monitor", 17, PINK)]
+    x = HDR_X0
+    for name, w, cap, size in HDR:
+        k += pill(name, (x, 10, w, 42), cap, size)
+        x += w + HDR_GAP
+        if name == "lay_64":
+            x += 4
     d = W - 1280          # HD: the bank group sits at the right edge
     k.append(lbl("src_lbl", (1112 + d, 4, 164, 22), "keine DAW", 13, CYAN, AlignH.CENTER))
     k.append(lbl("range_lbl", (1146 + d, 30, 96, 26), "1–16", 13, TXT, AlignH.CENTER))
@@ -206,7 +212,7 @@ def build():
     if HD:
         assert rootlua.count("local HD = false") == 1
         rootlua = rootlua.replace("local HD = false", "local HD = true")
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
+    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
         "\n" + rootlua
     k = header()
     for i in (1, 2, 3, 4):
@@ -214,6 +220,9 @@ def build():
     for i in (1, 2, 3, 4):
         k += [square(i), square(i, True)]
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO), under the dots
+    cx, cy, cw, ch = CA[1]
+    k.append(hall_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
+                           PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.20: Hall-Reiter (Ansicht 16: Anzeige links, Sends rechts)
     for i in range(1, MAXO + 1):          # width: left/right edge of a StereoEncoder
         for side in ("wl", "wr"):
             k.append(box((-100, -100, 12, 12), PINK, name=f"{side}{i}", shape=Shape.CIRCLE))
