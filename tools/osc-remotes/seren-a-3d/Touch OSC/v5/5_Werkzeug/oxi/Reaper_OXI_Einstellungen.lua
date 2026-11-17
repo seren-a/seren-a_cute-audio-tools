@@ -9,7 +9,7 @@ end
 
 local DEFAULTS = {
   port = "oxi", layout = "16", markerRow = "0", markerKind = "auto", cells = "auto", groups = "1", markerLane = "1", rgnRange = "", folders = "1", empty = "1", receives = "show", visible = "all",
-  pinned = "1", flip = "0", mainSend = "1", tripleVol = "1", seqMute = "1", seqSolo = "1", seqState = "1", statusCol = "0", turnShow = "big", marquee = "1", select = "full", follow = "1", states = "1,2,3,4,5,6,7", sendPush = "mute", preFx = "0", handover = "1",
+  pinned = "1", flip = "0", mainSend = "1", tripleVol = "1", seqMute = "1", seqSolo = "1", seqState = "1", statusCol = "0", turnShow = "big", marquee = "1", select = "full", follow = "1", states = "1,2,3,4,5,6,7", sendPush = "mute", preFx = "0", handover = "1", midiReset = "1",
   s1 = "_SWS_TAKESCHANMODE0", s2 = "_SWS_TAKESCHANMODE3", s3 = "normtrack", s4 = "zoomitem",
   d1 = "copyfx", d2 = "copysends", d3 = "", d4 = "",
   l1 = "pastefx", l2 = "replacesends", l3 = "removefx", l4 = "removesends",
@@ -124,6 +124,7 @@ local function frame()
   if visible then
     lookPicker(ctx)
     section(ctx, "Spurtasten (die 8 Sequencer-Tasten)")
+    check("Beim Start MIDI-Ausgänge einmal aus/an (Reaper \"MIDI-Geräte zurücksetzen\"; setzt alle zurück), wenn der OXI da ist", "midiReset")
     check("Shift + Spurtaste = Master-/Parent-Send an/aus", "mainSend")
     check("2× Spurtaste = Mute", "seqMute")
     check("Spurtaste halten = Solo", "seqSolo")

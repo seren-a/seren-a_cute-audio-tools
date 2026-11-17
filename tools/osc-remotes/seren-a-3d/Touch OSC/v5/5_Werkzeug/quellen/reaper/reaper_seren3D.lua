@@ -30,6 +30,8 @@ local DV_Z_FRONT  = true                -- cartesian mode: true = +Z is IN FRONT
 local r = reaper
 local floor, abs = math.floor, math.abs
 local viewOut, viewIn
+local viewOuts, viewInSet = {}, {}   -- v8.18: every port whose name contains VIEW_MATCH (e.g. "TouchOSC Bridge" and "TouchOSC Bridge 2")
+local function hw(msg) for _, o in ipairs(viewOuts) do r.SendMIDIMessageToHardware(o, msg) end end
 local bank = 0
 local tracks = {}                      -- [k] = { tr, enc = {fx,type,idx,title}, rot = {...} }
 local vis = {}                         -- visible tracks (no VCA leaders), in order
@@ -45,11 +47,11 @@ local function sysex(id, head, text, n)
   for _, b in ipairs(head) do t[#t + 1] = string.char(b) end
   if text then t[#t + 1] = ascii7(text, n) end
   t[#t + 1] = "\247"
-  r.SendMIDIMessageToHardware(viewOut, table.concat(t))
+  hw(table.concat(t))
 end
 local function ov(head, text) sysex(0x4F, head, text) end
 -- short messages go the same way as SysEx (SendMIDIMessageToHardware), not via StuffMIDIMessage
-local function send3(a, b, c) r.SendMIDIMessageToHardware(viewOut, string.char(a, b, c)) end
+local function send3(a, b, c) hw(string.char(a, b, c)) end
 local function once(key, value, fn)
   if sent[key] == value then return end
   sent[key] = value
@@ -70,7 +72,7 @@ local function outObj(kind, o, p, norm)
   if o < 16 and KIND_CH[kind] then out14(KIND_CH[kind] + (o >> 3), ccOf(o, p), norm); return end
   local v = q14(norm)
   once("x" .. kind .. ":" .. o .. ":" .. p, v, function()
-    r.SendMIDIMessageToHardware(viewOut, string.char(0xF0, 0x7D, 0x4F, 10, kind, o, p, v // 128, v % 128, 0xF7))
+    hw(string.char(0xF0, 0x7D, 0x4F, 10, kind, o, p, v // 128, v % 128, 0xF7))
   end)
 end
 local dvUnknown                        -- defined with the dearVR part below
@@ -330,10 +332,28 @@ local function param(tr, p, role)
   local i = p and p.idx[role]
   if i then return r.TrackFX_GetParamNormalized(tr, p.fx, i) end
 end
+-- SceneRotator: its FX window opens briefly while a surface turns it, and closes again afterwards
+local SR_WINDOW, SR_WINDOW_SECS = true, 2.5
+local srWin = nil
+local function srShow(tr, p)
+  if not SR_WINDOW or p.type ~= "SR" then return end
+  if srWin and (srWin.tr ~= tr or srWin.fx ~= p.fx) and r.ValidatePtr(srWin.tr, "MediaTrack*") then
+    r.TrackFX_Show(srWin.tr, srWin.fx, 2)
+  end
+  if not r.TrackFX_GetFloatingWindow(tr, p.fx) then r.TrackFX_Show(tr, p.fx, 3) end
+  srWin = { tr = tr, fx = p.fx, t = r.time_precise() }
+end
+local function srTick(now)
+  if srWin and now - srWin.t > SR_WINDOW_SECS then
+    if r.ValidatePtr(srWin.tr, "MediaTrack*") then r.TrackFX_Show(srWin.tr, srWin.fx, 2) end
+    srWin = nil
+  end
+end
 local function setParam(tr, p, role, norm)
   local i = p and p.idx[role]
   if not i then return false end
   r.TrackFX_SetParamNormalized(tr, p.fx, i, norm)
+  srShow(tr, p)
   return true
 end
 
@@ -384,16 +404,16 @@ local function readInput()
   end
   if newest then lastSeq = newest end
   for _, e in ipairs(events) do
-    if e[2] == viewIn and #e[1] >= 10 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 10 then
+    if viewInSet[e[2]] and #e[1] >= 10 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 10 then
       local b = { e[1]:byte(1, 10) }
       if b[2] == 0x7D and b[3] == 0x4F and b[4] == 10 then onObj(b[5], b[6], b[7], (b[8] * 128 + b[9]) / 16383) end
-    elseif e[2] == viewIn and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 14 then
+    elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 14 then
       local id = e[1]:byte(5)                          -- F0 7D 4F 0E <surface> <text> F7: view preset of iPad (0) / monitor (1)
       if e[1]:byte(2) == 0x7D and id <= 3 then r.SetExtState("seren_3D", "view" .. id, e[1]:sub(6, -2), true) end
-    elseif e[2] == viewIn and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 15 then
+    elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 15 then
       local id = e[1]:byte(5)                          -- F0 7D 4F 0F <surface> F7: surface asks for its preset
       if e[1]:byte(2) == 0x7D and id <= 3 then sysex(0x4F, { 20, id }, r.GetExtState("seren_3D", "view" .. id), 1500) end
-    elseif e[2] == viewIn and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 12 then
+    elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 12 then
       local b = { e[1]:byte(1, 6) }                     -- F0 7D 4F 0C <group idx> 0 F7: show/hide a group
       local g = GRP.list[b[5] + 1]
       if b[2] == 0x7D and b[3] == 0x4F and g then
@@ -404,7 +424,7 @@ local function readInput()
         bank = 0; sent = {}; level = {}; lastScan = -1e9
         ov({ 5, 0 }); buildGroups(); sendGroups()
       end
-    elseif e[2] == viewIn and #e[1] >= 7 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 13 then
+    elseif viewInSet[e[2]] and #e[1] >= 7 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 13 then
       local b = { e[1]:byte(1, 7) }                     -- F0 7D 4F 0D <A-D 0-3> <obj> F7: track in/out of group
       local l, info = LETTERS[b[5] + 1], tracks[b[6] + 1]
       if b[2] == 0x7D and b[3] == 0x4F and l and info then
@@ -416,7 +436,7 @@ local function readInput()
         grpSet("grp_" .. l, table.concat(list, ";"))
         lastScan = -1e9; buildGroups(); sendGroups()
       end
-    elseif e[2] == viewIn and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 11 then
+    elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 11 then
       local b = { e[1]:byte(1, 6) }                     -- F0 7D 4F 0B <types> <plug> F7: track filter from a surface
       if b[2] == 0x7D and b[3] == 0x4F and b[5] <= 15 and b[6] <= 1 and (b[5] ~= FILT.types or b[6] ~= FILT.plug) then
         FILT.types, FILT.plug = b[5], b[6]
@@ -424,7 +444,7 @@ local function readInput()
         bank = 0; sent = {}; level = {}; lastScan = -1e9
         ov({ 5, 0 }); ov({ 16, FILT.types, FILT.plug })
       end
-    elseif e[2] == viewIn and #e[1] == 3 then
+    elseif viewInSet[e[2]] and #e[1] == 3 then
       local st, d1, d2 = e[1]:byte(1, 3)
       local kind, ch = st >> 4, st & 15
       if kind == 0xB and d1 < 64 then
@@ -648,6 +668,7 @@ end
 local function frame()
   local now = r.time_precise()
   readInput()
+  srTick(now)
   local st = r.GetProjectStateChangeCount(0)
   local selTr = r.GetSelectedTrack(0, 0)
   if st ~= lastState or now - lastScan > 2 or (selInfo and selInfo.tr) ~= selTr then
@@ -699,7 +720,18 @@ local function cpuPoll(now)
   ov({ 15, sys, app, (now - cpu.xT < 10) and 1 or 0 })
 end
 
-local function loop() frame(); cpuPoll(r.time_precise()); r.defer(loop) end
+-- v8.18: an error inside one frame no longer stops the script silently (that looked like "script does not load"):
+-- it is shown once in the REAPER console and on the surfaces' LOG, the script keeps running.
+local lastErr
+local function loop()
+  local ok, err = pcall(function() frame(); cpuPoll(r.time_precise()) end)
+  if not ok and err ~= lastErr then
+    lastErr = err
+    r.ShowConsoleMsg("seren.a 3D: Fehler im Skript (laeuft weiter): " .. tostring(err) .. "\n")
+    pcall(ov, { 8 }, "fehler|Skriptfehler: " .. tostring(err):sub(1, 90))
+  end
+  r.defer(loop)
+end
 
 local function find(count, name, match)
   for i = 0, count() - 1 do
@@ -708,15 +740,22 @@ local function find(count, name, match)
   end
 end
 
-viewOut = find(r.GetNumMIDIOutputs, r.GetMIDIOutputName, VIEW_MATCH)
-viewIn = find(r.GetNumMIDIInputs, r.GetMIDIInputName, VIEW_MATCH)
+for i = 0, r.GetNumMIDIOutputs() - 1 do
+  local ok, n = r.GetMIDIOutputName(i, "")
+  if ok and n:find(VIEW_MATCH, 1, true) then viewOuts[#viewOuts + 1] = i end
+end
+for i = 0, r.GetNumMIDIInputs() - 1 do
+  local ok, n = r.GetMIDIInputName(i, "")
+  if ok and n:find(VIEW_MATCH, 1, true) then viewInSet[i] = true; viewIn = viewIn or i end
+end
+viewOut = viewOuts[1]
 if not viewOut then
   r.ShowMessageBox("No MIDI output containing '" .. VIEW_MATCH .. "' found.\n" ..
     "Enable it in Preferences > MIDI Devices.", "seren.a 3D", 0)
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.15 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.18 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
   if not viewIn then ov({ 8 }, "bridge|Achtung: Bridge-Eingang in Reaper aus - Bewegen vom Geraet geht nicht") end
   r.atexit(function() ov({ 7 }); ov({ 4 }, "") end)
   loop()

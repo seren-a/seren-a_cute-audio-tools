@@ -96,6 +96,8 @@ local COMP_FINE = 1 / 400              -- compressors: share of the knob's range
 local RING_DB   = 18                   -- EQ ring shows the gain -18 .. +18 dB
 local ACCEL     = { { 2, 1 }, { 4, 2 }, { 7, 4 }, { 12, 8 }, { 1e9, 16 } }  -- ticks in 0.12 s -> factor
 local DEBUG     = false                -- every MIDI event into the console
+local RESET_MIDI_AT_START = true      -- v8.18: at start, once, switch the MIDI outputs off and on again (REAPER "Reset all MIDI devices")
+                                       --   when the E16 is connected. REAPER has no switch for one single output, so this resets all of them.
 -- =====================================================================
 
 local VERSION = "v6.1"
@@ -116,10 +118,10 @@ local lockedCache = {}
 local e16Force, mftForce = true, true
 local opened                           -- window the script opened: { tr, fx }
 
--- Console: quiet by default. Warnings (second argument true) always show, the rest only when
--- "Meldungen in der Reaper-Konsole" is on in Reaper_E16_Einstellungen.lua (ExtState seren_E16/console = 1).
-local function msg(s, always)
-  if always or r.GetExtState("seren_E16", "console") == "1" then r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
+-- Console: silent (v8.18). Nothing is printed unless "Meldungen in der Reaper-Konsole" is on in
+-- Reaper_E16_Einstellungen.lua (ExtState seren_E16/console = 1) - warnings included.
+local function msg(s)
+  if r.GetExtState("seren_E16", "console") == "1" then r.ShowConsoleMsg("[MultiEQ] " .. s .. "\n") end
 end
 
 -- ---------------------------------------------------------------- helpers
@@ -159,6 +161,7 @@ local function db(v) return v > 0 and 20 * log(v, 10) or -150 end
 -- targets or a special ("nav", "master"), tap1 / tap2 / tap3 / long = actions, label, row (1 = top).
 local S_DB, S_MUL, S_MS = { m = "db" }, { m = "mul", off = 0 }, { m = "mul", off = 1 }
 local S_DEG, S_TOG, S_CYC, S_PRE = { m = "lin" }, { m = "tog" }, { m = "cyc" }, { m = "pre" }
+local S_ANG = { m = "lin", wrap = true }        -- v8.18: a full-circle angle (azimuth, yaw): turning past +-180 degrees carries on on the other side
 local function T(plug, inst, key, n, spec) return { plug = plug, inst = inst, key = key, n = n or 1, spec = spec } end
 
 local OMNI_ROW = { { "thr", S_DB, "Thr" }, { "ratio", S_MUL, "Rat" }, { "att", S_MS, "Att" }, { "rel", S_MS, "Rel" },
@@ -231,20 +234,20 @@ local function build()
     end
     -- the same on every layer
     t[8] = { turn = nil, tap1 = "bypass", long = "layer", label = "Omni A" }
-    t[15] = { tap1 = "solo", pturn = { T(ROT, 1, "yaw", 1, S_DEG) }, label = "Solo", plabel = "Yaw" }
+    t[15] = { tap1 = "solo", pturn = { T(ROT, 1, "yaw", 1, S_ANG) }, label = "Solo", plabel = "Yaw" }
     t[16] = { turn = "nav", pturn = "master", tap1 = "mute", label = "Spur" }
     LAYOUT[L] = t
   end
   local L1, L2, L3 = LAYOUT[1], LAYOUT[2], LAYOUT[3]
   L1[4] = dir4()
-  if mixed then L1[3].hturn, L1[3].hlabel = { T(DIR, 1, "az", 1, S_DEG) }, "Azim" end
+  if mixed then L1[3].hturn, L1[3].hlabel = { T(DIR, 1, "az", 1, S_ANG) }, "Azim" end
   L1[8].turn, L1[8].pturn, L1[8].hturn = { T(OMNI, 1, "thr", 1, S_DB) }, { T(OMNI, 1, "gain", 1, S_DB) }, { T(OMNI, 1, "ratio", 1, S_MUL) }
   L1[8].label, L1[8].plabel, L1[8].hlabel = "Omni Thr", "Omni Makeup", "Omni Ratio"
   -- Omni layer: 6/14 = makeup (2x = look-ahead), 7 press = A look-ahead, 8 turn = A makeup
   L2[7] = { tap1 = T(OMNI, 1, "look", 1, S_TOG), show = T(OMNI, 1, "look", 1, S_TOG), label = "A Look" }
   L2[6].tap2, L2[14].tap2 = T(OMNI, 1, "look", 1, S_TOG), T(OMNI, 2, "look", 1, S_TOG)
   L2[8].turn, L2[8].label = { T(OMNI, 1, "gain", 1, S_DB) }, "A Makeup"
-  L3[7] = { turn = { T(DIR, 1, "az", 1, S_DEG) }, pturn = { T(DIR, 1, "w", 1, S_DEG) }, tap2 = T(DIR, 1, "listen", 1, S_CYC),
+  L3[7] = { turn = { T(DIR, 1, "az", 1, S_ANG) }, pturn = { T(DIR, 1, "w", 1, S_DEG) }, tap2 = T(DIR, 1, "listen", 1, S_CYC),
     label = "Azim", plabel = "Width" }
   L3[8].turn, L3[8].label = { T(DIR, 1, "pre", 1, S_DB) }, "PreGain"
   L3[15].turn, L3[15].label = { T(DIR, 1, "el", 1, S_DEG) }, "Elev"
@@ -433,15 +436,16 @@ end
 
 -- compressors: move the knob itself; if the plugin's value (its text) doesn't change, a bigger step
 -- The plugin may round to its own steps: read back what it took, and step further until it moved.
-local function stepNorm(q, p, d, m)
+local function stepNorm(q, p, d, m, wrap)
   local n0 = norm(q, p)
   local dn = d * m * COMP_FINE
   for k = 1, 40 do
-    local n = clamp(n0 + dn * k, 0, 1)
+    local n = n0 + dn * k
+    if wrap then n = n % 1 else n = clamp(n, 0, 1) end   -- wrap: -180 <-> +180 degrees, no stop
     setNorm(q, p, n)
     local now = norm(q, p)
-    if abs(now - n0) > 1e-6 and (now - n0) * d > 0 then return end
-    if n <= 0 or n >= 1 then break end
+    if abs(now - n0) > 1e-6 and (wrap or (now - n0) * d > 0) then return end
+    if not wrap and (n <= 0 or n >= 1) then break end
   end
 end
 
@@ -901,7 +905,7 @@ local function turn(dev, e, d, now)
       elseif p then
         if t.spec.m == "tog" then setNorm(q, p, d > 0 and 1 or 0)
         elseif t.spec.m == "cyc" then cycle(q, p)
-        else stepNorm(q, p, d, m) end
+        else stepNorm(q, p, d, m, t.spec.wrap) end
         showWindow(q)
       end
     end
@@ -1112,7 +1116,24 @@ local function learnConflicts()
   end
 end
 
+-- v8.18: the E16 output is switched off/on once at start (midi_reinit = what the "Reset all MIDI devices" button does).
+-- Not twice within 20 s (the Twister hub, the Puzzle script and this one may start together).
+local function resetMidiOnce(match)
+  if not RESET_MIDI_AT_START or r.GetExtState("seren_E16", "midireset") == "0" or not r.midi_reinit then return end
+  local present
+  for i = 0, r.GetNumMIDIOutputs() - 1 do
+    local ok, n = r.GetMIDIOutputName(i, "")
+    if ok and n:find(match, 1, true) then present = true break end
+  end
+  if not present then return end
+  local last = tonumber(r.GetExtState("seren_midi", "reinit")) or -1e9
+  if r.time_precise() - last < 20 then return end
+  r.SetExtState("seren_midi", "reinit", tostring(r.time_precise()), false)
+  r.midi_reinit()
+end
+
 local function init()
+  resetMidiOnce(E16_MATCH)
   mftIn = find(r.GetNumMIDIInputs, r.GetMIDIInputName, MFT_MATCH)
   mftOut = find(r.GetNumMIDIOutputs, r.GetMIDIOutputName, MFT_MATCH)
   local e16In

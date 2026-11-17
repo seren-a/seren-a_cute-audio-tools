@@ -2,7 +2,7 @@
 import os, sys, tempfile
 from lupa import lua54
 HERE = os.path.dirname(os.path.abspath(__file__))
-E16_GUI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'Reaper_E16_Einstellungen.lua')
+E16_GUI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', '..', '..', '3_Reaper', 'Reaper_E16_Einstellungen.lua')
 OXI_GUI = sys.argv[2] if len(sys.argv) > 2 else None
 fails = 0
 def check(c, m):

@@ -227,6 +227,13 @@ y0 = R.eval("ROTM.params[2].v")
 pturn(15, 1)
 check(R.eval("ROTM.params[2].v") > y0, '15 drücken + drehen = SceneRotator Yaw')
 check(R.eval("TRACKS[1].vals == nil or (TRACKS[1].vals.I_SOLO or 0) == 0"), 'drücken + drehen auf 15 schaltet kein Solo')
+# v8.18: Yaw dreht ueber +-180 Grad durch (kein Anschlag)
+R.execute("ROTM.params[2].v = 0.9995")
+pturn(15, 1)
+check(R.eval("ROTM.params[2].v") < 0.2, f'Yaw: ueber +180 hinaus geht es bei -180 weiter ({R.eval("ROTM.params[2].v"):.4f})')
+R.execute("ROTM.params[2].v = 0.0005")
+pturn(15, -1)
+check(R.eval("ROTM.params[2].v") > 0.8, f'Yaw: unter -180 geht es bei +180 weiter ({R.eval("ROTM.params[2].v"):.4f})')
 
 # ================= v5.3: compressor layers, encoder 7/8/15/16 =================
 con = g.CONSOLE or ''

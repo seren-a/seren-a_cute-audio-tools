@@ -62,6 +62,11 @@ reaper.GetTrackColor = function(tr) return tr.color or 0 end
 reaper.ColorFromNative = function(c) return (c >> 16) & 255, (c >> 8) & 255, c & 255 end
 reaper.SetOnlyTrackSelected = function(tr) for _, t in ipairs(TRACKS) do t.sel = (t == tr) end end
 reaper.Track_GetPeakInfo = function(tr, ch) return tr.peak or 0 end
+reaper.__shown = {}
+reaper.TrackFX_GetFloatingWindow = function(tr, f) return reaper.__shown[tostring(tr) .. ":" .. f] and 1 or nil end
+reaper.TrackFX_Show = function(tr, f, m) reaper.__shown[tostring(tr) .. ":" .. f] = (m == 3) or nil end
+reaper.ValidatePtr = function() return true end
+reaper.ShowConsoleMsg = reaper.ShowConsoleMsg or function(m) io.stderr:write(m) end
 reaper.TrackFX_SetParamNormalized = function(tr, f, p, v) tr.fx[f + 1].params[p + 1].v = v; return true end
 reaper.GetMediaTrackInfo_Value = function(tr, k)
   if k == "IP_TRACKNUMBER" then for i, t in ipairs(TRACKS) do if t == tr then return i end end end

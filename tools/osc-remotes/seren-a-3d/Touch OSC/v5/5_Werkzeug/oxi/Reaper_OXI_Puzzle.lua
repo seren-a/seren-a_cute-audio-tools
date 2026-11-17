@@ -2,7 +2,7 @@
 -- Grid: 8 tracks x up to 16 items ("Puzzle"), 4 encoders with switchable states, on-device menu (PAGE),
 -- settings window: Reaper_OXI_Einstellungen.lua (same ExtState). Protocol after DrivenByMoss (OXI One).
 local r = reaper
-local VERSION = "v8.12.3"
+local VERSION = "v8.18"
 local EXT = "seren_OXI"
 
 ---------------------------------------------------------------------------------------------------
@@ -166,6 +166,7 @@ local DEFAULTS = {
   s1 = "_SWS_TAKESCHANMODE0", s2 = "_SWS_TAKESCHANMODE3", s3 = "normtrack", s4 = "zoomitem",
   d1 = "copyfx", d2 = "copysends", d3 = "", d4 = "",
   l1 = "pastefx", l2 = "replacesends", l3 = "removefx", l4 = "removesends",
+  midiReset = "1",           -- v8.18: at start switch the MIDI outputs off and on once (REAPER "Reset all MIDI devices"), if the OXI is connected
 }
 local cfg = {}
 local function loadCfg()
@@ -201,6 +202,15 @@ local function findPort(count, getName)
     local ok, n = getName(i, "")
     if ok and n:lower():find(want, 1, true) then return i, n end
   end
+end
+-- v8.18: the OXI output is switched off/on once at start. REAPER has no switch for a single output,
+-- midi_reinit() is what "Reset all MIDI devices" does. Not twice within 20 s (the E16 script does the same).
+local function resetMidiOnce()
+  if cfg.midiReset == "0" or not r.midi_reinit or not findPort(r.GetNumMIDIOutputs, r.GetMIDIOutputName) then return end
+  local last = tonumber(r.GetExtState("seren_midi", "reinit")) or -1e9
+  if r.time_precise() - last < 20 then return end
+  r.SetExtState("seren_midi", "reinit", tostring(r.time_precise()), false)
+  r.midi_reinit()
 end
 local function send(msg) if oxiOut then r.SendMIDIMessageToHardware(oxiOut, msg) end end
 
@@ -1335,6 +1345,7 @@ local function main()
   view.state = s
   view.mode = pageList()[1]
   startT = r.time_precise()
+  resetMidiOnce()
   connect()
   if not oxiIn or not oxiOut then
     r.ShowConsoleMsg("seren.a OXI Puzzle " .. VERSION .. ": OXI nicht gefunden (Name enthält '" .. cfg.port ..

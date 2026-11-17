@@ -169,7 +169,7 @@ local function note(ch, n) sendMIDI({ 0x90 + ch, n, 127 }, MIDI_OUT); sendMIDI({
 
 grSend = function(b) sendMIDI(b, MIDI_OUT) end
 local viewLoaded, viewSent, viewAsked, viewT = false, nil, false, 0
-local function viewExtra() return { mode = mode, lay = layout, pano = panoOn and 1 or 0 } end
+local function viewExtra() return { mode = mode, lay = layout, pano = panoOn and 1 or 0, big = RM.big and 1 or 0 } end
 local function viewTick()                          -- v8.15: einmal fragen, dann Änderungen nach Reaper (höchstens 1× pro s)
   if src.name ~= 'REAPER' then return end
   local t = getMillis()
@@ -242,6 +242,7 @@ local function onSysex(m)
       if kv.mode then mode = kv.mode end
       if kv.lay then layout = kv.lay; relayout = true; cache = {} end
       if kv.pano then panoOn = kv.pano == '1'; relayout = true; cache = {} end
+      if kv.big then RM.big = kv.big == '1'; relayout = true end
       if cfgChanged then cfgChanged() end
       viewSent = cfgState(viewExtra())
     end
@@ -887,11 +888,12 @@ cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sen
 
 local lastT, lastRender = 0, 0
 VS.id = 2                                        -- v8.15: Ansicht in Reaper merken
-VS.extra = function() return { m = mode, lay = layout, pano = panoOn and 1 or 0 } end
+VS.extra = function() return { m = mode, lay = layout, pano = panoOn and 1 or 0, big = RM.big and 1 or 0 } end
 VS.applyExtra = function(key, v)
   if key == 'm' and (v == 'iem' or v == 'me' or v == 'mp' or v == 'room') then mode = v end
   if key == 'lay' and GEO[v] then layout = v; relayout = true; cache = {} end
   if key == 'pano' then panoOn = (v == '1'); relayout = true; cache = {} end
+  if key == 'big' then RM.big = (v == '1'); relayout = true end
 end
 function update()
   viewTick()

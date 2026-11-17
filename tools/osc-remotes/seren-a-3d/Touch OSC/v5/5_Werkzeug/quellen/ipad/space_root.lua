@@ -148,7 +148,7 @@ local function note(ch, n)
 end
 grSend = function(b) sendMIDI(b, MIDI_OUT) end
 local viewLoaded, viewSent, viewAsked, viewT = false, nil, false, 0
-local function viewExtra() return { mode = mode, n32 = n32 and 1 or 0 } end
+local function viewExtra() return { mode = mode, n32 = n32 and 1 or 0, big = RM.big and 1 or 0 } end
 local function viewTick()                          -- v8.15: einmal fragen, dann Änderungen nach Reaper (höchstens 1× pro s)
   if src.name ~= 'REAPER' then return end
   local t = getMillis()
@@ -212,6 +212,7 @@ local function onSysex(m)
       local kv = cfgApplyState(table.concat(t))
       if kv.mode then mode = kv.mode end
       if kv.n32 then n32 = kv.n32 == '1' end
+      if kv.big then RM.big = kv.big == '1' end
       if cfgChanged then cfgChanged() end
       viewSent = cfgState(viewExtra())
     end
@@ -761,10 +762,11 @@ cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sen
 
 local lastT, lastRender = 0, 0
 VS.id = 1                                        -- v8.15: Ansicht in Reaper merken
-VS.extra = function() return { m = mode, n32 = n32 and 1 or 0 } end
+VS.extra = function() return { m = mode, n32 = n32 and 1 or 0, big = RM.big and 1 or 0 } end
 VS.applyExtra = function(key, v)
   if key == 'm' and (v == 'iem' or v == 'me' or v == 'mp' or v == 'room') then mode = v end
   if key == 'n32' then n32 = (v == '1') end
+  if key == 'big' then RM.big = (v == '1'); dirty = true end
 end
 function update()
   viewTick()

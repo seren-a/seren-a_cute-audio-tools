@@ -1,4 +1,4 @@
-# seren.a OXI Puzzle (v8.12.3) – OXI One MkII in Reaper
+# seren.a OXI Puzzle (v8.18) – OXI One MkII in Reaper
 
 Zwei Skripte in `3_Reaper/OXI/`:
 

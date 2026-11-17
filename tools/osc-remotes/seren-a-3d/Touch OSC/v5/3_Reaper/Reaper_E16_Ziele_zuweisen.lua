@@ -15,4 +15,4 @@ for i = 0, math.min(n, 32) - 1 do
 end
 r.SetProjExtState(0, "seren_E16", "targets", table.concat(guids, ","))
 r.SetExtState("seren_E16", "rev", tostring(r.time_precise()), false)
-r.ShowConsoleMsg("[E16] Ziele: " .. table.concat(names, " · ") .. "\n")
+if r.GetExtState("seren_E16", "console") == "1" then r.ShowConsoleMsg("[E16] Ziele: " .. table.concat(names, " · ") .. "\n") end
