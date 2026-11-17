@@ -94,6 +94,7 @@ public:
 
     juce::AudioProcessorParameter* getOrderParameter() const { return orderParam; }
     juce::AudioProcessorParameter* getSplOffsetParameter() const { return splOffsetParam; }
+    juce::AudioProcessorParameter* getMeterParameter(int i) const { return meterParams[i]; }
     MeterSnapshot snapshot() const;
     void computePsychoNow(bool force = false);  // fuer Worker-Thread / Tests
 

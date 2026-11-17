@@ -77,6 +77,15 @@ int main() {
     CHECK(s.wOnlyLufs > -17.0 && s.wOnlyLufs < -13.0);
     CHECK(std::isfinite(s.truePeakDbtp) && s.truePeakDbtp < 0.0);
     CHECK(s.maxMomentaryLufs >= s.integratedLufs - 1.0);
+
+    // Read-only Output-Parameter (Host pollt getValue()) muessen mitlaufen
+    auto* outInt = proc.getMeterParameter(0);  // integrated_lufs
+    CHECK(outInt != nullptr);
+    CHECK(outInt->getCategory() == juce::AudioProcessorParameter::analysisMeter);
+    CHECK(!outInt->isAutomatable());
+    CHECK(outInt->getValue() > 0.0f);  // -13 LUFS im Bereich -120..0 => 0 < v01 < 1
+    std::printf("outParam integrated: text=%s value01=%.3f\n",
+                outInt->getText(outInt->getValue(), 32).toRawUTF8(), outInt->getValue());
     // Soundscape-Plausibilitaet: 1-kHz-artiges Omni-Signal bei 94 dB SPL cal
     CHECK(std::isfinite(s.lAeq) && s.lAeq > 60.0 && s.lAeq < 100.0);
     CHECK(std::isfinite(s.n10) && s.n10 > 0.0);
