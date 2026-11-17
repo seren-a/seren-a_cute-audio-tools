@@ -133,7 +133,7 @@ def build(W, H, with64=False, split=False):
     # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
     k2 = []
     TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
-    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall")] + ([("sp", "split")] if split else [])
+    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall"), ("en", "Energie")] + ([("sp", "split")] if split else [])
     TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
     y = y0
     k2.append(_lbl(None, (x1, y, col_w, 26 * s), "REITER zeigen", 14 * s, "#7af5ff")); y += 30 * s

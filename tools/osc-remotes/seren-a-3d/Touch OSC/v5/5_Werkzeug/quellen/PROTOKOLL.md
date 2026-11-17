@@ -178,3 +178,15 @@ OXI E16, Szene MultiEQ (E16_MultiEQ.lua, MultiEQ.oxie16): Seite 1 = MultiEQ, Sei
   gemutete Sends = 0.
 - Erkannt werden Plugins mit „FdnReverb“ bzw. „mcfx_convolver“/„mcfx convolver“ im FX-Namen. Weitere Hall-Arten (z. B. SPARTA) sind in `HALL_KINDS` am Anfang
   von `Reaper_3D.lua` ergänzbar.
+
+## v8.22 – Energie-Reiter (Reaper)
+- **Gerät → DAW: `0x18 3 0`** (Art 3 = Energie, Instanz immer 0): Reiter „energy“ gewählt. Die DAW behält die normale Spurliste (wie bei Art 0) und beginnt, die Karte zu senden. Art 0 beendet es.
+- **DAW → Gerät: cmd 29 `<Status> <Skala> <Peak+64> <Bereich dB> <Ordnung 0–3> <Gesamt 0–127> <Spurname>`** (bei Änderung): Status 0 = kein JSFX gefunden, 1 = läuft, 2 = keine Daten
+  (Zähler steht länger als 1,5 s); Skala 0 = Standard (0 dB / 35 dB), 1 = aus den Reglern des IEM EnergyVisualizer; Peak in dB + 64 (−60…+20); Bereich 10–80 dB;
+  Gesamt 0–127 = −60…0 dB (Mittel des W-Kanals, dB RMS).
+- **DAW → Gerät: cmd 28 `<Zeile 0–11> <24 Werte 0–127>`**: eine Zeile der Karte, Werte 0–127 = −80…+10 dB. Zeile 0 = oben (Elevation +82,5°), Spalte 0 = links (Azimut +172,5°, nach rechts fallend); Feldmitte
+  Azimut = 180° − (Spalte + 0,5) × 15°, Elevation = 90° − (Zeile + 0,5) × 15°. Gesendet werden nur geänderte Zeilen, höchstens alle 80 ms.
+- **JSFX `seren-a_3D_Energy.jsfx`** → Reaper_3D.lua über `gmem` („seren3D_energy“): je Slot (1–7) ein Block ab `Slot × 512`: `[0]` Zähler, `[1]` Ordnung, `[2]` Mittel-dB, ab `[8]` die 288 Zellen in dB.
+  Das JSFX summiert die 16 × 16 Kovarianz der Kanäle (ACN/SN3D), glättet sie über die Mittelungszeit und bildet je Zelle E(d) = Y(d)ᵀ S Y(d) / (Ordnung + 1)²;
+  eine ebene Welle mit Sinus-Pegel 0 dBFS ergibt in ihrer Richtung −3 dB (RMS). Reaper_3D.lua sucht das JSFX („seren.a 3d energy“) auf der gewählten Spur, dann auf dem Master, dann auf jeder Spur
+  und liest den EnergyVisualizer („energyvisualizer“) derselben Spur für die Skala.

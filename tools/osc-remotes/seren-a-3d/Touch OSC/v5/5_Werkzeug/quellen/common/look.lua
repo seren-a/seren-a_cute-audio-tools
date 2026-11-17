@@ -6,7 +6,7 @@ local LOOK = {
   colors = 'tosc',      -- 'tosc' = Pastell-Palette, 'daw' = Spurfarben
   theme = 'synth',      -- 'synth' (seren.a), 'nuendo', 'cute', 'girly', 'pastel' (v8.19, Farben aus den gleichnamigen VS-Code-Themes)
   mode = 'iem',         -- v8.19: Reiter, dessen Spurauswahl gerade gilt (LOOK.show zeigt auf showBy[mode])
-  tabs = { iem = true, me = true, mp = true, room = true, fdn = true, mcfx = true, sp = true },
+  tabs = { iem = true, me = true, mp = true, room = true, fdn = true, mcfx = true, en = true, sp = true },
   split = { iem = true, me = true, mp = true, room = true },   -- v8.21: Split-Ansicht (Monitor): welche Felder    -- v8.19: welche Reiter sichtbar sind (Config, Seite 2)
   label = 'num',        -- v8.19: statt der Nummer: 'num' | 'name' (Spurname, gekürzt) | 'preset' (Preset, gekürzt)
   extra = {},           -- v8.19: Zusatzzeilen je Spurtyp: extra.audio = { subs = true, sends = true } ...
@@ -71,11 +71,11 @@ local function meterColor(pos) local th = theme(); return (pos >= 0.9) and th.me
 
 -- Spurtypen je Reiter (v8.19). oa3 = Audiospur mit 3OA (16 Kanäle oder „3OA“ im Namen, erkennt die DAW).
 TYPE_ORDER = { 'audio', 'oa3', 'fx', 'group', 'instr' }
-TAB_ORDER = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'sp' }   -- v8.20: + Hall-Reiter (Sends in einen FDN-/mcfx-Hall)
+TAB_ORDER = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en', 'sp' }   -- v8.20: + Hall-Reiter (Sends in einen FDN-/mcfx-Hall)
 TAB_FILT = { 'iem', 'me', 'mp', 'room' }                       -- Reiter mit eigener Spurauswahl (Hall-Reiter zeigen Sends)
 SPLIT_MODES = { 'iem', 'me', 'mp', 'room' }                    -- v8.21: Felder der Split-Ansicht (Reihenfolge = Lage)
 HAS_SPLIT = false                                              -- nur die Monitore haben den Reiter „split“
-HALL_KIND = { fdn = 1, mcfx = 2 }                              -- Art, die das DAW-Skript im Hall-Reiter anzeigt
+HALL_KIND = { fdn = 1, mcfx = 2, en = 3 }                              -- Art, die das DAW-Skript im Hall-Reiter anzeigt
 LOOK.showBy = {}
 for _, m in ipairs(TAB_ORDER) do LOOK.showBy[m] = { audio = true, oa3 = true, fx = true, group = true, instr = true } end
 LOOK.show = LOOK.showBy.iem

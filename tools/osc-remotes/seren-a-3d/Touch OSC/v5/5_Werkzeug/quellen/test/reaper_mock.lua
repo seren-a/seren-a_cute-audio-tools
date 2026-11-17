@@ -93,3 +93,11 @@ PEXT = {}
 reaper.GetProjExtState = function(p, s, k) local v = PEXT[s .. "/" .. k]; return v and 1 or 0, v or "" end
 reaper.SetProjExtState = function(p, s, k, v) PEXT[s .. "/" .. k] = v end
 reaper.GetParentTrack = function(tr) return tr.parent end
+-- v8.22: energy tab (gmem, master track, plain parameter values)
+MASTER = MASTER or { name = 'MASTER', guid = '{M}', sel = false, info = {}, peak = 0, fx = {} }
+reaper.GetMasterTrack = function() return MASTER end
+reaper.TrackFX_GetParam = function(tr, f, p) local q = tr.fx[f + 1].params[p + 1]; return q and (q.raw or q.v) or 0, 0, 0 end
+GMEM = {}
+reaper.gmem_attach = function(n) GMEM_NAME = n end
+reaper.gmem_read = function(i) return GMEM[i] or 0 end
+reaper.gmem_write = function(i, v) GMEM[i] = v end

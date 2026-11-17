@@ -14,8 +14,8 @@ function hallText(m, from)
   return table.concat(t)
 end
 function sendDb(v) return -60 + (v / 127) * 72 end
-function hallSendText(o)
-  if not o or o.sv == nil then return '' end
+function hallSendText(o, m)
+  if m == 'en' or not o or o.sv == nil then return '' end
   if o.smute then return 'Send stumm' end
   return string.format('Send %+.1f dB', sendDb(o.sv))
 end
@@ -56,6 +56,7 @@ end
 local HC_PARTS = { '_sb', '_s', '_z', '_lb', '_l', '_h', '_n', '_d' }
 local function hclamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
 function hallRender(E)
+  if E.mode == 'en' then return energyRender(E) end          -- v8.22: Energie-Reiter (energy.lua)
   local C, setText, setVisible, setColor, obj, present = E.C, E.setText, E.setVisible, E.setColor, E.obj, E.present
   local th = theme()
   setText('hall_title', '✧ ' .. HALLCAP[E.mode] .. ' ✧')

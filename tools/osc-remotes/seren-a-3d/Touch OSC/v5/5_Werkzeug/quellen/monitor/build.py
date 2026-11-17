@@ -14,6 +14,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "common"))
 import config_ui  # noqa: E402
 import hall_ui  # noqa: E402
+import energy_ui  # noqa: E402
 import sphere_ui  # noqa: E402
 import room_ui  # noqa: E402
 
@@ -98,10 +99,11 @@ def pill(name, frame, caption, size=16):
 
 
 HDR_X0, HDR_GAP = 222, 3          # muss zu HDR_X0/HDR_GAP in monitor_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
-HDR = [("mode_iem", 56, "space", 13), ("mode_me", 52, "multi", 13), ("mode_mp", 58, "panner", 13),
-       ("mode_room", 50, "room", 13), ("mode_fdn", 44, "fdn", 13), ("mode_mcfx", 52, "mcfx", 13), ("mode_sp", 48, "split", 13),
-       ("lay_16", 38, "16", 13), ("lay_32v", 42, "32v", 13), ("lay_32h", 42, "32h", 13), ("lay_32r", 42, "4×8", 13), ("lay_64", 38, "64", 13),
-       ("pano_btn", 80, "horizont", 13), ("col_btn", 96, "tosc farben", 13), ("cfg_btn", 42, "⚙", 19), ("log_btn", 44, "log", 13)]
+HDR = [("mode_iem", 50, "space", 12), ("mode_me", 46, "multi", 12), ("mode_mp", 54, "panner", 12),
+       ("mode_room", 44, "room", 12), ("mode_fdn", 38, "fdn", 12), ("mode_mcfx", 46, "mcfx", 12), ("mode_en", 50, "energy", 12),
+       ("mode_sp", 42, "split", 12),
+       ("lay_16", 34, "16", 12), ("lay_32v", 38, "32v", 12), ("lay_32h", 38, "32h", 12), ("lay_32r", 38, "4×8", 12), ("lay_64", 34, "64", 12),
+       ("pano_btn", 70, "horizont", 12), ("col_btn", 84, "tosc farben", 12), ("cfg_btn", 38, "⚙", 18), ("log_btn", 40, "log", 12)]
 
 
 def header():
@@ -230,7 +232,7 @@ def build():
     if HD:
         assert rootlua.count("local HD = false") == 1
         rootlua = rootlua.replace("local HD = false", "local HD = true")
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
+    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
         "\n" + rootlua
     k = header()
     for i in (1, 2, 3, 4):
@@ -242,6 +244,8 @@ def build():
     cx, cy, cw, ch = CA[1]
     k.append(hall_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
                            PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.20: Hall-Reiter (Ansicht 16: Anzeige links, Sends rechts)
+    k.append(energy_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
+                             PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.22: Energie-Reiter
     for i in range(1, MAXO + 1):          # width: left/right edge of a StereoEncoder
         for side in ("wl", "wr"):
             k.append(box((-100, -100, 12, 12), PINK, name=f"{side}{i}", shape=Shape.CIRCLE))

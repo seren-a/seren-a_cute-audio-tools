@@ -238,6 +238,8 @@ local HALL_KINDS = {
   { key = "mcfx", pat = { "mcfx_convolver", "mcfx convolver" } },
 }
 local HALL = { kind = 0, inst = 0, list = {}, sends = {} }
+local EN_KIND = 3                                   -- v8.22: tab "energy" (kind 3) = normal track list + energy map of one track
+local function hallOn() return HALL.kind ~= 0 and HALL.kind ~= EN_KIND end
 local function hallFind(kind)
   local out, pats = {}, HALL_KINDS[kind].pat
   for i = 0, r.CountTracks(0) - 1 do
@@ -365,7 +367,7 @@ local function isVcaLead(tr)
 end
 local function buildVis()
   buildGroups()
-  if HALL.kind ~= 0 then vis = hallBuild(); return end
+  if hallOn() then vis = hallBuild(); return end
   vis = {}
   for i = 0, r.CountTracks(0) - 1 do
     local tr = r.GetTrack(0, i)
@@ -522,7 +524,7 @@ local function readInput()
       end
     elseif viewInSet[e[2]] and #e[1] >= 7 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 24 then
       local b = { e[1]:byte(1, 7) }                     -- F0 7D 4F 18 <kind 0-n> <instance> F7: reverb tab (kind 0 = tracks)
-      if b[2] == 0x7D and b[3] == 0x4F and b[5] <= #HALL_KINDS and (b[5] ~= HALL.kind or b[6] ~= HALL.inst) then
+      if b[2] == 0x7D and b[3] == 0x4F and (b[5] <= #HALL_KINDS or b[5] == EN_KIND) and (b[5] ~= HALL.kind or b[6] ~= HALL.inst) then
         HALL.kind, HALL.inst = b[5], b[6]
         bank = 0; sent = {}; level = {}; lastScan = -1e9
         ov({ 5, 0 })
@@ -655,8 +657,78 @@ local function sendHallHeader()
   local lv = inst and lvOf(peakOf(inst.tr)) or 0
   if sent.hl == nil or abs(lv - sent.hl) >= 1 or (lv == 0 and sent.hl ~= 0) then sent.hl = lv; ov({ 25, lv }) end
 end
+-- v8.22: energy tab. The JSFX "seren.a 3D Energy" (3_Reaper/JSFX) writes an energy map (12 rows x 24 columns of dB values, azimuth x
+-- elevation) into the shared memory block "seren3D_energy"; here it is read and sent to the surfaces (cmd 28 map row, cmd 29 header).
+-- Scale (peak level / dynamic range) comes from an IEM EnergyVisualizer on the same track if there is one. The picture of that plug-in
+-- itself cannot be read from a script - the map is computed independently from the track's channels.
+local EN_ROWS, EN_COLS, EN_DB0, EN_DB1 = 12, 24, -80, 10
+local EN_GM, EN_SLOTSZ, EN_HEAD = "seren3D_energy", 512, 8
+local EN = { fx = nil, scanT = -1e9, beat = nil, beatT = -1e9, pushT = -1e9 }
+local function enTrackFx(tr)
+  local jsfx, viz
+  for fx = 0, r.TrackFX_GetCount(tr) - 1 do
+    local _, fn = r.TrackFX_GetFXName(tr, fx, "")
+    local n = fn:lower()
+    if not jsfx and n:find("seren.a 3d energy", 1, true) then jsfx = fx end
+    if not viz and n:find("energyvisualizer", 1, true) then viz = fx end
+  end
+  return jsfx, viz
+end
+local function enFind()                             -- JSFX on the selected track, else the master, else any track
+  local cand, sel = {}, r.GetSelectedTrack(0, 0)
+  if sel then cand[#cand + 1] = sel end
+  cand[#cand + 1] = r.GetMasterTrack(0)
+  for i = 0, r.CountTracks(0) - 1 do cand[#cand + 1] = r.GetTrack(0, i) end
+  for _, tr in ipairs(cand) do
+    local jsfx, viz = enTrackFx(tr)
+    if jsfx then return { tr = tr, fx = jsfx, viz = viz } end
+  end
+end
+local function enNumber(txt) return tonumber(((txt or ""):gsub("\226\136\146", "-")):match("-?%d+%.?%d*")) end
+local function enScale(f)                           -- peak level and dynamic range of the EnergyVisualizer (else 0 dB / 35 dB)
+  if not (f and f.viz) then return 0, 35, 0 end
+  local peak, range
+  for p = 0, r.TrackFX_GetNumParams(f.tr, f.viz) - 1 do
+    local _, nm = r.TrackFX_GetParamName(f.tr, f.viz, p, "")
+    local l = nm:lower()
+    local _, txt = r.TrackFX_GetFormattedParamValue(f.tr, f.viz, p, "")
+    if (l:find("peak", 1, true) or l:find("position", 1, true)) and not peak then peak = enNumber(txt)
+    elseif (l:find("dynamic", 1, true) or l == "range") and not range then range = enNumber(txt) end
+  end
+  if peak and range then return math.max(-60, math.min(20, peak)), math.max(10, math.min(80, range)), 1 end
+  return 0, 35, 0
+end
+local function enByte(db) return floor(math.max(0, math.min(1, (db - EN_DB0) / (EN_DB1 - EN_DB0))) * 127 + 0.5) end
+function sendEnergy()
+  local now = r.time_precise()
+  if now - EN.scanT > 1.0 then EN.scanT = now; EN.fx = enFind() end
+  local f = EN.fx
+  if not f then once("enh", "none", function() ov({ 29, 0, 0, 64, 35, 0, 0 }) end); return end
+  r.gmem_attach(EN_GM)
+  local slot = math.max(1, math.min(7, floor((r.TrackFX_GetParam(f.tr, f.fx, 0) or 1) + 0.5)))
+  local base = slot * EN_SLOTSZ
+  local beat = r.gmem_read(base)
+  if beat ~= EN.beat then EN.beat, EN.beatT = beat, now end
+  local st = (now - EN.beatT < 1.5) and 1 or 2
+  local peak, range, src = enScale(f)
+  local ord = floor(r.gmem_read(base + 1) + 0.5)
+  local tot = floor(math.max(0, math.min(1, ((r.gmem_read(base + 2) or -90) + 60) / 60)) * 127 + 0.5)   -- mean energy dB RMS -> 0..127 = -60..0 dB
+  local name = trackName(f.tr)
+  if f.tr == r.GetMasterTrack(0) then name = "Master" end
+  once("enh", st .. "," .. src .. "," .. peak .. "," .. range .. "," .. ord .. "," .. tot .. "," .. name, function()
+    ov({ 29, st, src, floor(peak + 64.5), floor(range + 0.5), math.max(0, math.min(3, ord)), tot }, name)
+  end)
+  if st ~= 1 or now - EN.pushT < 0.08 then return end
+  EN.pushT = now
+  for row = 0, EN_ROWS - 1 do
+    local v = { 28, row }
+    for c = 0, EN_COLS - 1 do v[#v + 1] = enByte(r.gmem_read(base + EN_HEAD + row * EN_COLS + c)) end
+    once("enr" .. row, table.concat(v, ",", 3), function() ov(v) end)
+  end
+end
 local function sendOverview()
-  if HALL.kind ~= 0 then sendHallHeader() end
+  if hallOn() then sendHallHeader() end
+  if HALL.kind == EN_KIND then sendEnergy() end
   for k = 1, N do
     local t = tracks[k]
     local o = k - 1
@@ -699,7 +771,7 @@ local function sendOverview()
     end
     once("s" .. k, isSel, function() send3(0x9E, o, isSel and 127 or 0) end)
     local lv = 0
-    if t and HALL.kind ~= 0 then                  -- reverb tab: level that arrives at the reverb (source peak x send fader)
+    if t and hallOn() then                        -- reverb tab: level that arrives at the reverb (source peak x send fader)
       local sd = HALL.sends[bank * 16 + k] or { vol = 1, mute = false }
       local inst = HALL.list[HALL.inst + 1]
       if inst and sd.idx then                    -- live: the send fader and mute follow without waiting for the next scan
@@ -880,7 +952,7 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.20 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.22 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
   if not viewIn then ov({ 8 }, "bridge|Achtung: Bridge-Eingang in Reaper aus - Bewegen vom Geraet geht nicht") end
   r.atexit(function() ov({ 7 }); ov({ 4 }, "") end)
   loop()

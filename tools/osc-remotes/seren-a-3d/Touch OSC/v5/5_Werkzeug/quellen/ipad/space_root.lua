@@ -223,7 +223,7 @@ local function onSysex(m)
   if vsSysex(m) then cfgPaint(); dirty = true; return end
   local cmd = m[4]
   src.t = ms()
-  if hallSysex(m, obj, N) then dirty = true; return end        -- v8.20: 24 Kopf, 25 Gesamtpegel, 26 Send, 27 Preset
+  if hallSysex(m, obj, N) or energySysex(m) then dirty = true; return end        -- v8.20: 24 Kopf, 25 Gesamtpegel, 26 Send, 27 Preset
   local k = m[5] and (m[5] + 1)
   if cmd == 1 and k and k <= N then obj[k].name = sysexText(m, 6)
   elseif cmd == 2 and k and k <= N and m[8] then obj[k].col = { m[6] / 127, m[7] / 127, m[8] / 127 }
@@ -239,7 +239,7 @@ local function onSysex(m)
       src.switchT = getMillis()
     end
     src.name = (s ~= '') and s or nil
-    HL.sentKey = nil                                  -- v8.20: neue DAW: Hall-Auswahl noch einmal schicken
+    HL.sentKey = nil; energyReset()                   -- v8.20: neue DAW: Hall-Auswahl noch einmal schicken
     if src.name then monAdd('◆ verbunden: ' .. src.name, 'src') end
   elseif cmd == 5 and m[5] then
     if m[5] ~= bank then
@@ -563,7 +563,7 @@ local function render()
   elseif mode == 'iem' then setText('bank', 'Spuren ' .. rangeText())
   elseif mode == 'mp' then setText('bank', 'MultiPanner 1–16')
   elseif mode == 'room' then setText('bank', 'dearVR · Spuren ' .. rangeText())
-  elseif hallMode(mode) ~= 0 then setText('bank', HALLCAP[mode] .. ' · Sends ' .. rangeText())
+  elseif hallMode(mode) ~= 0 then setText('bank', HALLCAP[mode] .. (mode == 'en' and ' · Spuren ' or ' · Sends ') .. rangeText())
   else setText('bank', meInfo.count > 0 and ('✧ ' .. meInfo.name) or 'kein MultiEncoder') end
   local c0 = cur[mode]
   if c0 and not present(c0) then cur[mode] = nil end
@@ -605,7 +605,7 @@ local function render()
       setText('r' .. i .. '_name', name)
       local vals = ''
       if on then
-        if hallMode(mode) ~= 0 then vals = hallSendText(o)
+        if hallMode(mode) ~= 0 then vals = hallSendText(o, mode)
         elseif mode == 'mp' then vals = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then vals = RM.fmtPos(o)
         elseif mode == 'me' then vals = 'Az ' .. fmtDeg(me[k].az) .. '  El ' .. fmtDeg(me[k].el)
@@ -688,7 +688,7 @@ local function render()
   setVisible('det_g', not bigRoom() and not hm)
   setColor('n32_btn_bg', n32 and theme().accent2 or theme().pill, 1)
   setVisible('bg_top_mp', mode == 'mp'); setVisible('bg_pano_mp', mode == 'mp')
-  setVisible('hall_g', hm)
+  setVisible('hall_g', hm and mode ~= 'en'); setVisible('en_g', mode == 'en')
   setVisible('mon_overlay', logOpen)
 end
 
@@ -757,6 +757,7 @@ local function onButton(name)
     if cfgButton(name) then if GR.assign then cfgOpen = false end; dirty = true; return end
   end
   if RM.button(name) then dirty = true; return end
+  if energyButton(name) then dirty = true; return end
   if name == 'col_btn' then LOOK.colors = (LOOK.colors == 'daw') and 'tosc' or 'daw'; cfgPaint(); dirty = true; return end
   if name == 'cfg_btn' then cfgOpen = not cfgOpen; logOpen = false; cfgPaint(); dirty = true; return end
   if name == 'n32_btn' then n32 = not n32; dirty = true; return end
@@ -812,10 +813,10 @@ cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sen
 -- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, log, Farben, ⚙, 32, DAW);
 -- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.
 HDR_X0, HDR_GAP = 252, 4
-HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'log_btn', 'col_btn', 'cfg_btn', 'n32_btn' }
+HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'mode_en', 'log_btn', 'col_btn', 'cfg_btn', 'n32_btn' }
 local tabSig = nil
 function layoutTabs()
-  local sig = tabsMask() .. ',' .. hallTabsMask()
+  local sig = tabsMask() .. ',' .. hallTabsMask() .. ',' .. (LOOK.tabs.en ~= false and 1 or 0)
   if sig == tabSig then return end
   tabSig = sig
   local x = HDR_X0

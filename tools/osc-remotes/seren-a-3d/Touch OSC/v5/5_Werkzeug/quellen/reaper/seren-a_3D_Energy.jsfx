@@ -1,0 +1,160 @@
+desc:seren.a 3D Energy (Ambisonics-Energiekarte fuer die Touch-Oberflaeche)
+//tags: analysis ambisonics visualization
+//author: seren.a
+//version: 8.22
+// Liest bis zu 16 Ambisonics-Kanaele (ACN / SN3D, bis 3. Ordnung), rechnet daraus eine Energiekarte
+// (24 x 12 Raster, Azimut/Elevation, 15 Grad pro Zelle) und gibt sie ueber gmem an Reaper_3D.lua weiter.
+// Das Audiosignal wird UNVERAENDERT durchgereicht. Pro Instanz einen eigenen Slot (1-7) waehlen.
+// Die Karte ist unabhaengig vom IEM EnergyVisualizer: das Bild des Plugins kann nicht ausgelesen werden.
+
+options:gmem=seren3D_energy
+options:no_meter
+
+slider1:1<1,7,1>Slot (pro Instanz eigener Wert)
+slider2:0<0,3,1{automatisch (nach Kanalzahl),1. Ordnung,2. Ordnung,3. Ordnung}>Ordnung
+slider3:100<20,1000,10>Mittelung (ms)
+
+in_pin:ACN 0 (W)
+in_pin:ACN 1 (Y)
+in_pin:ACN 2 (Z)
+in_pin:ACN 3 (X)
+in_pin:ACN 4
+in_pin:ACN 5
+in_pin:ACN 6
+in_pin:ACN 7
+in_pin:ACN 8
+in_pin:ACN 9
+in_pin:ACN 10
+in_pin:ACN 11
+in_pin:ACN 12
+in_pin:ACN 13
+in_pin:ACN 14
+in_pin:ACN 15
+out_pin:ACN 0 (W)
+out_pin:ACN 1 (Y)
+out_pin:ACN 2 (Z)
+out_pin:ACN 3 (X)
+out_pin:ACN 4
+out_pin:ACN 5
+out_pin:ACN 6
+out_pin:ACN 7
+out_pin:ACN 8
+out_pin:ACN 9
+out_pin:ACN 10
+out_pin:ACN 11
+out_pin:ACN 12
+out_pin:ACN 13
+out_pin:ACN 14
+out_pin:ACN 15
+
+@init
+ROWS = 12; COLS = 24; CELLS = ROWS * COLS;
+HEAD = 8; SLOTSZ = 512;
+// Speicher: Y[zelle*16+k] ab 0, Sacc ab 4700, Ssm ab 5000, Vektor ab 5300
+YB = 0; SACC = 4700; SSM = 5000; VEC = 5300;
+s3 = sqrt(3); s5_8 = sqrt(5/8); s3_8 = sqrt(3/8); s15 = sqrt(15); s15_2 = sqrt(15)/2; s3_2 = sqrt(3)/2;
+
+// Raster vorberechnen: reelle Kugelflaechenfunktionen, ACN-Reihenfolge, SN3D-Normierung
+c = 0;
+while (c < CELLS) (
+  row = floor(c / COLS); col = c - row * COLS;
+  az = (180 - (col + 0.5) * 15) * $pi / 180;
+  el = (90 - (row + 0.5) * 15) * $pi / 180;
+  x = cos(el) * cos(az); y = cos(el) * sin(az); z = sin(el);
+  x2 = x*x; y2 = y*y; z2 = z*z;
+  o = c * 16;
+  YB[o+0]  = 1;
+  YB[o+1]  = y;
+  YB[o+2]  = z;
+  YB[o+3]  = x;
+  YB[o+4]  = s3 * x * y;
+  YB[o+5]  = s3 * y * z;
+  YB[o+6]  = 0.5 * (3*z2 - 1);
+  YB[o+7]  = s3 * x * z;
+  YB[o+8]  = s3_2 * (x2 - y2);
+  YB[o+9]  = s5_8 * y * (3*x2 - y2);
+  YB[o+10] = s15 * x * y * z;
+  YB[o+11] = s3_8 * y * (5*z2 - 1);
+  YB[o+12] = 0.5 * z * (5*z2 - 3);
+  YB[o+13] = s3_8 * x * (5*z2 - 1);
+  YB[o+14] = s15_2 * z * (x2 - y2);
+  YB[o+15] = s5_8 * x * (x2 - 3*y2);
+  c += 1;
+);
+i = 0; while (i < 256) ( SACC[i] = 0; SSM[i] = 0; i += 1; );
+nacc = 0; tcount = 0; beat = 0; first = 1;
+
+@slider
+slot = max(1, min(7, floor(slider1 + 0.5)));
+
+@block
+// Ordnung bestimmen
+nc = num_ch;
+ord = slider2 > 0 ? slider2 : (nc >= 16 ? 3 : (nc >= 9 ? 2 : (nc >= 4 ? 1 : 0)));
+ord > 3 ? ( ord = 3; );
+(ord + 1) * (ord + 1) > nc ? ( ord = (nc >= 16 ? 3 : (nc >= 9 ? 2 : (nc >= 4 ? 1 : 0))); );
+NCH = (ord + 1) * (ord + 1);
+base = slot * SLOTSZ;
+
+tcount += samplesblock;
+(nacc > 0 && tcount >= srate / 30) ? (
+  dt = tcount / srate; tcount = 0;
+  a = exp(-dt / max(0.005, slider3 * 0.001));       // Glaettung ueber die Mittelungszeit
+  // Kovarianz glaetten (untere Dreiecksmatrix gespeichert -> beide Haelften fuellen)
+  i = 0;
+  while (i < NCH) (
+    j = 0;
+    while (j <= i) (
+      v = SACC[i*16+j] / nacc;
+      first ? ( SSM[i*16+j] = v; ) : ( SSM[i*16+j] = a * SSM[i*16+j] + (1 - a) * v; );
+      SSM[j*16+i] = SSM[i*16+j];
+      SACC[i*16+j] = 0;
+      j += 1;
+    );
+    i += 1;
+  );
+  first = 0; nacc = 0;
+  norm = 1 / ((ord + 1) * (ord + 1));                // ebene Welle aus der Richtung d -> E(d) = Leistung
+  c = 0;
+  while (c < CELLS) (
+    yo = c * 16;
+    e = 0;
+    i = 0;
+    while (i < NCH) (
+      t = 0; j = 0;
+      while (j < NCH) ( t += SSM[i*16+j] * YB[yo+j]; j += 1; );
+      e += YB[yo+i] * t;
+      i += 1;
+    );
+    db = 10 * log10(max(1e-10, e * norm));
+    gmem[base + HEAD + c] = max(-100, db);
+    c += 1;
+  );
+  gmem[base + 1] = ord;
+  gmem[base + 2] = 10 * log10(max(1e-10, SSM[0]));   // Mittelwert (omni, W) in dB RMS
+  beat += 1; gmem[base] = beat;
+);
+
+@sample
+// Abtastwerte holen, untere Dreiecksmatrix aufsummieren
+(
+  i = 0;
+  while (i < NCH) ( VEC[i] = spl(i); i += 1; );
+  i = 0;
+  while (i < NCH) (
+    vi = VEC[i]; j = 0;
+    while (j <= i) ( SACC[i*16+j] += vi * VEC[j]; j += 1; );
+    i += 1;
+  );
+  nacc += 1;
+);
+
+@gfx 260 70
+gfx_clear = 0;
+gfx_r = 0.9; gfx_g = 0.9; gfx_b = 0.95;
+gfx_x = 8; gfx_y = 8;
+gfx_drawstr(sprintf(#, "seren.a 3D Energy   Slot %d   Ordnung %d (%d Kanaele)", slot, ord, NCH));
+gfx_x = 8; gfx_y = 26;
+gfx_drawstr(sprintf(#, "Mittel %.1f dB   Takt %d", gmem[base + 2], gmem[base]));
+gfx_x = 8; gfx_y = 44;
+gfx_drawstr(nc < 4 ? "Spur braucht mind. 4 Kanaele (besser 16)" : "Daten laufen an Reaper_3D.lua");

@@ -273,7 +273,7 @@ local function onSysex(m)
   if vsSysex(m) then cfgPaint(); dirty = true; return end
   local cmd = m[4]
   src.t = ms()
-  if hallSysex(m, obj, MAXO) then dirty = true; return end       -- v8.20: 24 Kopf, 25 Gesamtpegel, 26 Send, 27 Preset
+  if hallSysex(m, obj, MAXO) or energySysex(m) then dirty = true; return end       -- v8.20: 24 Kopf, 25 Gesamtpegel, 26 Send, 27 Preset
   local k = m[5] and (m[5] + 1)
   if cmd == 1 and k and k <= MAXO then obj[k].name = sysexText(m, 6)
   elseif cmd == 2 and k and k <= MAXO and m[8] then obj[k].col = { m[6] / 127, m[7] / 127, m[8] / 127 }
@@ -289,7 +289,7 @@ local function onSysex(m)
     end
     if s ~= '' and s ~= src.name then moved, quietUntil = {}, ms() + 2500 end   -- (neu) verbunden: Abgleich
     src.name = (s ~= '') and s or nil
-    HL.sentKey = nil                                  -- v8.20: neue DAW: Hall-Auswahl noch einmal schicken
+    HL.sentKey = nil; energyReset()                   -- v8.20: neue DAW: Hall-Auswahl noch einmal schicken
     if src.name then monAdd('◆ verbunden: ' .. src.name, 'src') end
   elseif cmd == 5 and m[5] then
     if m[5] ~= bank then bank = m[5]; moved, quietUntil = {}, ms() + 2500; for i = 1, MAXO do obj[i].seenEnc, obj[i].seenRot, obj[i].seenMp, obj[i].sel, obj[i].seenDv = false, false, false, false, false end; cur.iem = nil; cur.room = nil end
@@ -797,7 +797,7 @@ local function renderCells()
       local val = ''
       if on then
         if mode == 'sp' then val = spMember(k)
-        elseif hallMode(mode) ~= 0 then val = hallSendText(o)
+        elseif hallMode(mode) ~= 0 then val = hallSendText(o, mode)
         elseif mode == 'mp' then val = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then val = RM.fmtPos(o)
         elseif mode == 'me' then val = 'Az ' .. fmtDeg(me[k].az) .. ' El ' .. fmtDeg(me[k].el)
@@ -889,7 +889,7 @@ local function render()
   local sm = panoOn and 's' or ''
   local hm = hallMode(mode) ~= 0
   setVisible('circ' .. gi .. sm, mode ~= 'mp' and mode ~= 'room' and not hm and mode ~= 'sp'); setVisible('sq' .. gi .. sm, mode == 'mp')
-  setVisible('hall_g', hm)
+  setVisible('hall_g', hm and mode ~= 'en'); setVisible('en_g', mode == 'en')
   setVisible('pano' .. gi, panoOn and mode ~= 'room' and not hm and mode ~= 'sp')
   setColor('pano' .. gi .. '_fill', th.panel, CFG64.panoAlpha)
   setText('pano' .. gi .. '_title', mode == 'mp' and 'rückansicht · X × Z' or 'horizont · azimut × elevation')
@@ -1013,6 +1013,7 @@ local function onButton(name)
     if cfgButton(name) then if GR.assign then cfgOpen = false end; dirty = true; return end
   end
   if RM.button(name) then dirty = true; return end
+  if energyButton(name) then dirty = true; return end
   if name == 'bank_prev' then BK.press(-1); note(15, 2); return end
   if name == 'bank_next' then BK.press(1); note(15, 3); return end
   local mm = name:match('^mode_(%w+)$')
@@ -1047,11 +1048,11 @@ cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sen
 -- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, Ansichten, horizont, Farben, ⚙, log);
 -- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.
 HDR_X0, HDR_GAP = 222, 3
-HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'mode_sp', 'lay_16', 'lay_32v', 'lay_32h', 'lay_32r', 'lay_64',
+HDR_ORDER = { 'mode_iem', 'mode_me', 'mode_mp', 'mode_room', 'mode_fdn', 'mode_mcfx', 'mode_en', 'mode_sp', 'lay_16', 'lay_32v', 'lay_32h', 'lay_32r', 'lay_64',
               'pano_btn', 'col_btn', 'cfg_btn', 'log_btn' }
 local tabSig = nil
 function layoutTabs()
-  local sig = tabsMask() .. ',' .. hallTabsMask() .. ',' .. (LOOK.tabs.sp ~= false and 1 or 0)
+  local sig = tabsMask() .. ',' .. hallTabsMask() .. ',' .. (LOOK.tabs.sp ~= false and 1 or 0) .. ',' .. (LOOK.tabs.en ~= false and 1 or 0)
   if sig == tabSig then return end
   tabSig = sig
   local x = HDR_X0

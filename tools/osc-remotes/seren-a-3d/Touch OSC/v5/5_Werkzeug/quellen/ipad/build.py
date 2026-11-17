@@ -14,6 +14,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "common"))
 import config_ui  # noqa: E402
 import hall_ui  # noqa: E402
+import energy_ui  # noqa: E402
 import room_ui  # noqa: E402
 import sphere_ui  # noqa: E402
 W, H = 1366, 1024
@@ -86,9 +87,9 @@ def mode_pill(name, frame, caption, size=18):
 
 
 HDR_X0, HDR_GAP = 252, 4          # muss zu HDR_X0/HDR_GAP in space_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
-HDR = [("mode_iem", 66, "space", 15), ("mode_me", 62, "multi", 15), ("mode_mp", 72, "panner", 15),
-       ("mode_room", 58, "room", 15), ("mode_fdn", 50, "fdn", 15), ("mode_mcfx", 58, "mcfx", 15),
-       ("log_btn", 44, "log", 14), ("col_btn", 90, "tosc farben", 12), ("cfg_btn", 42, "⚙", 22),
+HDR = [("mode_iem", 58, "space", 14), ("mode_me", 54, "multi", 14), ("mode_mp", 64, "panner", 14),
+       ("mode_room", 50, "room", 14), ("mode_fdn", 44, "fdn", 14), ("mode_mcfx", 52, "mcfx", 14), ("mode_en", 58, "energy", 14),
+       ("log_btn", 44, "log", 14), ("col_btn", 82, "tosc farben", 12), ("cfg_btn", 42, "⚙", 22),
        ("n32_btn", 42, "32", 15)]
 
 
@@ -291,7 +292,7 @@ def build():
     root = doc.root
     root.name = "seren.a IEM space"
     common = HERE.parent / "common"
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
+    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
         "\n" + (HERE / "space_root.lua").read_text()
     k = header()
     k += [top_view(), pano_view(),
@@ -300,6 +301,8 @@ def build():
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO): top view in TOP, side view in PANO
     k.append(hall_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
                            DIM=DIM, PANEL=PANEL, PANEL2=PANEL2, BG=BG))   # v8.20: Hall-Reiter (über den Ansichten, unter den Zieh-Flächen)
+    k.append(energy_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
+                             DIM=DIM, PANEL=PANEL, PANEL2=PANEL2, BG=BG))   # v8.22: Energie-Reiter
     k.append(box(TOP, BG, name="top_area", bg=False))
     k.append(box(PANO, BG, name="pano_area", bg=False))
     k += detail()
