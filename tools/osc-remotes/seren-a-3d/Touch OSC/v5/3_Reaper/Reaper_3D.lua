@@ -678,7 +678,7 @@ local function enTrackFx(tr)
   for fx = 0, r.TrackFX_GetCount(tr) - 1 do
     local _, fn = r.TrackFX_GetFXName(tr, fx, "")
     local n = fn:lower()
-    if not jsfx and n:find("seren.a 3d energy", 1, true) then jsfx = fx end
+    if not jsfx and (n:find("seren.a 3d energy", 1, true) or n:find("seren-a_3d_energy", 1, true) or n:find("3d energy", 1, true)) then jsfx = fx end   -- v8.22.5: auch Dateiname
     if not viz and n:find("energyvisualizer", 1, true) then viz = fx end
   end
   return jsfx, viz
@@ -998,7 +998,7 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.22.2 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.22.5 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
   if r.Audio_IsRunning and r.Audio_IsRunning() == 0 then        -- v8.22: ohne laufendes Audio-Geraet (z. B. Dante nicht da) reagiert Reapers MIDI-Eingang evtl. nicht
     ov({ 8 }, "audio|Achtung: Reaper-Audio laeuft nicht (Geraet fehlt?) - Eingaben vom Geraet kommen evtl. nicht an")
     r.ShowConsoleMsg("seren.a 3D: Reaper-Audio laeuft nicht (Geraet fehlt?) - Skript wartet, Eingaben vom Geraet kommen evtl. nicht an\n")

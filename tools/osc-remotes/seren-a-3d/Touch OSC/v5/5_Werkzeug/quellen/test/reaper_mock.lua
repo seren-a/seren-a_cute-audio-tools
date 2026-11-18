@@ -107,6 +107,6 @@ reaper.GetResourcePath = function() return RESPATH end
 reaper.RecursiveCreateDirectory = function(d) os.execute('mkdir -p "' .. d .. '"'); return 1 end
 reaper.TrackFX_AddByName = function(tr, name, rec, inst)
   if not name:lower():find("seren%-a_3d_energy") then return -1 end
-  tr.fx[#tr.fx + 1] = { name = 'JS: seren.a 3D Energy (Ambisonics-Energiekarte fuer die Touch-Oberflaeche)', params = { { name = 'Slot', v = 1, raw = 1, fmt = function() return '1' end } } }
+  tr.fx[#tr.fx + 1] = { name = 'JS: seren-a/seren-a_3D_Energy.jsfx', params = { { name = 'Slot', v = 1, raw = 1, fmt = function() return '1' end } } }
   return #tr.fx - 1
 end
