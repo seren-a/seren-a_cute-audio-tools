@@ -708,9 +708,46 @@ local function enScale(f)                           -- peak level and dynamic ra
   return 0, 35, 0
 end
 local function enByte(db) return floor(math.max(0, math.min(1, (db - EN_DB0) / (EN_DB1 - EN_DB0))) * 127 + 0.5) end
+-- v8.22.2: no JSFX yet, but an IEM EnergyVisualizer (selected track, else master, else any track): install the JSFX into REAPER's
+-- Effects folder (copy from 3_Reaper next to this script) and insert it on that track - once per track, so it works without extra steps.
+EN_AUTO = {}
+function enAutoAdd()
+  local cand, sel = {}, r.GetSelectedTrack(0, 0)
+  if sel then cand[#cand + 1] = sel end
+  cand[#cand + 1] = r.GetMasterTrack(0)
+  for i = 0, r.CountTracks(0) - 1 do cand[#cand + 1] = r.GetTrack(0, i) end
+  local tr
+  for _, t in ipairs(cand) do local _, viz = enTrackFx(t); if viz then tr = t; break end end
+  if not tr or EN_AUTO[tostring(tr)] then return end
+  EN_AUTO[tostring(tr)] = true
+  local dir = r.GetResourcePath() .. "/Effects/seren-a"
+  local dst = dir .. "/seren-a_3D_Energy.jsfx"
+  local fh = io.open(dst, "r")
+  if fh then fh:close() else
+    local src = ((debug.getinfo(1, "S").source or ""):match("^@(.*[/\\])") or "") .. "seren-a_3D_Energy.jsfx"
+    local i = io.open(src, "rb")
+    if not i then ov({ 8 }, "energy|JSFX seren-a_3D_Energy.jsfx nicht neben Reaper_3D.lua gefunden"); return end
+    local data = i:read("*a"); i:close()
+    r.RecursiveCreateDirectory(dir, 0)
+    local o = io.open(dst, "wb")
+    if not o then ov({ 8 }, "energy|JSFX konnte nicht nach REAPER/Effects kopiert werden"); return end
+    o:write(data); o:close()
+  end
+  local idx = r.TrackFX_AddByName(tr, "JS:seren-a/seren-a_3D_Energy.jsfx", false, -1)
+  if idx and idx >= 0 then
+    local nm = tr == r.GetMasterTrack(0) and "Master" or trackName(tr)
+    ov({ 8 }, "energy|seren.a 3D Energy automatisch auf " .. nm .. " eingefuegt")
+    r.ShowConsoleMsg("seren.a 3D: JSFX 'seren.a 3D Energy' auf " .. nm .. " eingefuegt (fuer den Energie-Reiter)\n")
+  else
+    ov({ 8 }, "energy|JSFX liess sich nicht einfuegen - bitte von Hand: FX > JS: seren.a 3D Energy")
+  end
+end
 function sendEnergy()
   local now = r.time_precise()
-  if now - EN.scanT > 1.0 then EN.scanT = now; EN.fx = enFind() end
+  if now - EN.scanT > 1.0 then
+    EN.scanT = now; EN.fx = enFind()
+    if not EN.fx then enAutoAdd(); EN.fx = enFind() end
+  end
   local f = EN.fx
   if not f then once("enh", "none", function() ov({ 29, 0, 0, 64, 35, 0, 0 }) end); return end
   r.gmem_attach(EN_GM)
@@ -961,7 +998,7 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.22.1 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.22.2 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
   if r.Audio_IsRunning and r.Audio_IsRunning() == 0 then        -- v8.22: ohne laufendes Audio-Geraet (z. B. Dante nicht da) reagiert Reapers MIDI-Eingang evtl. nicht
     ov({ 8 }, "audio|Achtung: Reaper-Audio laeuft nicht (Geraet fehlt?) - Eingaben vom Geraet kommen evtl. nicht an")
     r.ShowConsoleMsg("seren.a 3D: Reaper-Audio laeuft nicht (Geraet fehlt?) - Skript wartet, Eingaben vom Geraet kommen evtl. nicht an\n")
