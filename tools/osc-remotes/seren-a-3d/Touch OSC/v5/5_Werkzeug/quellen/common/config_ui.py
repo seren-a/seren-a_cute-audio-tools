@@ -18,6 +18,8 @@ def _lbl(name, frame, text, size, color=TXT, align=AlignH.LEFT):
                 text_align_v=AlignV.MIDDLE, background=False, outline=False)
     if name:
         c.name = name
+    else:                                           # v8.22.2: Config folgt der Palette (Rollen für applyTheme)
+        c.name = {TXT: "th_text", DIM: "th_dim", "#7af5ff": "th_acc2", "#ff6fc7": "th_accent"}.get(color, "th_text")
     c.value("text").default = text
     c.set("interactive", False)
     return c
@@ -44,6 +46,7 @@ def build(W, H, with64=False, split=False):
     g = t.group(name="cfg_overlay", frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
     g.visible = False
     bgbox = t.box(frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
+    bgbox.name = "th_cfgbg"
     bgbox.set("interactive", False)
     k = []
     s = min(W / 1280, H / 1024)

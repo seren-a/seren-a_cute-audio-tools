@@ -92,6 +92,13 @@ local function C(name)
   return c or nil
 end
 local cache = {}
+function numContrast(n, col)                             -- v8.22.2: Schrift hell oder dunkel je nach Helligkeit der Spurfarbe
+  local w = (0.299 * col[1] + 0.587 * col[2] + 0.114 * col[3]) < 0.5
+  if cache['n' .. n] == w then return end
+  cache['n' .. n] = w
+  local c = ctl[n]; if c == nil then c = root:findByName(n, true); ctl[n] = c or false end
+  if c then c.textColor = w and Color(1, 0.97, 0.99, 1) or Color(0.12, 0.05, 0.22, 1) end
+end
 local function setText(name, s)
   if cache['t' .. name] == s then return end
   local c = C(name); if c then c.values.text = s; cache['t' .. name] = s end
@@ -119,6 +126,8 @@ local function unscale(v, r) return clamp((v - r[1]) / (r[2] - r[1]), 0, 1) end
 local function fmtDeg(v) if abs(v) < 0.05 then v = 0 end return string.format('%+.0f°', v) end
 local function fmtMp(v) return string.format('%+.0f', v) end
 local function hasBit(f, b) return floor(f / b) % 2 == 1 end
+-- v8.22.2: Spur nur mit SceneRotator (z. B. 3OA-Bett): erscheint in „space“ als Punkt in Blickrichtung des Rotators (Yaw/Pitch)
+function rotOnly(o) return not (hasBit(o.flags, 1) or o.seenEnc) and (hasBit(o.flags, 8) or o.seenRot) end
 
 local function trackNo(k)                       -- echte Spurnummer (Reaper schickt sie seit v8.4), sonst Bankplatz
   local o = obj[k]
@@ -136,7 +145,7 @@ local function present(k)
     return o.name ~= ''
   end
   if o.name ~= '' and not typeShown(o.flags, o) then return false end
-  if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
+  if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc or rotOnly(o) end
   if mode == 'room' then return o.seenDv end
   return hasBit(o.flags, 2) or o.seenMp
 end
@@ -423,6 +432,7 @@ local function posTop(k)
   local f = CA()
   if mode == 'mp' then return toSq(f, obj[k].x, obj[k].y) end
   local t = (mode == 'me') and me[k] or obj[k]
+  if mode ~= 'me' and rotOnly(t) then return toTop(f, t.yaw, t.pitch) end
   return toTop(f, t.az, t.el)
 end
 local function posPano(k)
@@ -433,6 +443,7 @@ local function posPano(k)
   local f = PO()
   if mode == 'mp' then return toSq(f, obj[k].x, obj[k].z) end
   local t = (mode == 'me') and me[k] or obj[k]
+  if mode ~= 'me' and rotOnly(t) then return toPano(f, t.yaw, t.pitch) end
   return toPano(f, t.az, t.el)
 end
 
@@ -791,7 +802,7 @@ local function renderCells()
       local isCur = (k == cu)
       if grid then setColor(cn .. '_bg', isCur and th.rowCur or col, isCur and 0.95 or CFG64.gridAlpha * (on and 0.75 or 0.3))
       else setColor(cn .. '_bg', isCur and th.rowCur or th.row, on and 1 or 0.5) end
-      setColor(cn .. '_num', col, on and 1 or 0.3)
+      setColor(cn .. '_num', col, on and 1 or 0.3); numContrast(cn .. '_num', col)   -- v8.22.2: Nummer hell auf dunkler Spurfarbe
       local numTxt = labelFor(o, tostring((mode ~= 'me') and trackNo(k) or k), grid and 3 or 4)
       setText(cn .. '_num', numTxt); setText(cn .. '_numb', grid and numTxt or '')
       local name = nameOf(k)
@@ -804,6 +815,7 @@ local function renderCells()
         elseif mode == 'mp' then val = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then val = RM.fmtPos(o)
         elseif mode == 'me' then val = 'Az ' .. fmtDeg(me[k].az) .. ' El ' .. fmtDeg(me[k].el)
+        elseif rotOnly(o) then val = 'Yaw ' .. fmtDeg(o.yaw) .. ' Pitch ' .. fmtDeg(o.pitch)
         else val = 'Az ' .. fmtDeg(o.az) .. ' El ' .. fmtDeg(o.el) end
         if mode ~= 'me' and lvVal[k] and layout ~= '32h' then val = val .. '  ' .. lvFormat(lvVal[k]) end
       end
@@ -909,6 +921,9 @@ local function applyTheme()
   local th = theme()
   themeApplied = LOOK.theme
   root.color = Color(th.bg[1], th.bg[2], th.bg[3], 1)
+  for _, c in ipairs(root:findAllByName('th_cfgbg', true) or {}) do c.color = Color(th.bg[1], th.bg[2], th.bg[3], 1) end   -- v8.22.2: Config folgt der Palette
+  local ov = root:findByName('cfg_overlay', true); if ov then ov.color = Color(th.bg[1], th.bg[2], th.bg[3], 1) end
+  for _, c in ipairs(root:findAllByName('th_acc2', true) or {}) do c.textColor = Color(th.accent2[1], th.accent2[2], th.accent2[3], 1) end
   for role, f in pairs({ th_text = 1, th_dim = 0.62, th_accent = -1 }) do      -- v8.19: Schriften folgen der Palette
     for _, c in ipairs(root:findAllByName(role, true) or {}) do
       if f == -1 then c.textColor = Color(th.accent[1], th.accent[2], th.accent[3], 1)
@@ -942,6 +957,10 @@ local function moveTo(k, a, b, rear)
     local t = me[k]
     if a and abs(a - t.az) >= 0.05 then t.az = a; t.hold.az = now; sendMe(k, 0, unscale(a, DEG)) end
     if b and abs(b - t.el) >= 0.05 then t.el = b; t.hold.el = now; sendMe(k, 1, unscale(b, DEG)) end
+  elseif rotOnly(obj[k]) then                   -- v8.22.2: Rotator-Spur: Ziehen dreht Yaw/Pitch
+    local t = obj[k]
+    if a and abs(a - t.yaw) >= 0.05 then t.yaw = a; t.hold.yaw = now; sendObj(1, k, 0, unscale(a, DEG)) end
+    if b and abs(b - t.pitch) >= 0.05 then t.pitch = b; t.hold.pitch = now; sendObj(1, k, 1, unscale(b, DEG)) end
   else
     local t = obj[k]
     if a and abs(a - t.az) >= 0.05 then t.az = a; t.hold.az = now; sendObj(0, k, 0, unscale(a, DEG)) end
@@ -1046,7 +1065,7 @@ function onReceiveNotify(key, value)
   elseif key == 'cfgf' then cfgFader(value) end
 end
 
-cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sendFilter(); relayout = true; dirty = true end
+cfgChanged = function() sendFilter(); relayout = true; dirty = true end
 
 -- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, Ansichten, horizont, Farben, ⚙, log);
 -- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.

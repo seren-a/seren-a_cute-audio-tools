@@ -90,6 +90,8 @@ local function fmtDeg(v) if abs(v) < 0.05 then v = 0 end return string.format('%
 local function fmtMp(v) return string.format('%+.0f', v) end
 local function fmtDb(v) return string.format('%+.1f dB', v) end
 local function hasBit(f, b) return floor(f / b) % 2 == 1 end
+-- v8.22.2: Spur nur mit SceneRotator (z. B. 3OA-Bett): erscheint in „space“ als Punkt in Blickrichtung des Rotators (Yaw/Pitch)
+function rotOnly(o) return not (hasBit(o.flags, 1) or o.seenEnc) and (hasBit(o.flags, 8) or o.seenRot) end
 
 local function present(k)
   if k > win() then return false end
@@ -99,7 +101,7 @@ local function present(k)
     return o.name ~= ''
   end
   if mode ~= 'me' and o.name ~= '' and not typeShown(o.flags, o) then return false end
-  if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
+  if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc or rotOnly(o) end
   if mode == 'mp' then return hasBit(o.flags, 2) or o.seenMp end
   if mode == 'room' then return o.seenDv end
   return k <= meInfo.count
@@ -475,8 +477,10 @@ local function renderDots()
       else
         local t = (mode == 'me') and me[k] or obj[k]
         local lower
-        x, y, lower = toTop(tf, t.az, t.el); placeDot('d', k, x, y, lvl, isCur, col, lower)
-        x, y = toPano(pf, t.az, t.el); placeDot('e', k, x, y, lvl, isCur, col)
+        local az, el = t.az, t.el
+        if mode ~= 'me' and rotOnly(t) then az, el = t.yaw, t.pitch end
+        x, y, lower = toTop(tf, az, el); placeDot('d', k, x, y, lvl, isCur, col, lower)
+        x, y = toPano(pf, az, el); placeDot('e', k, x, y, lvl, isCur, col)
       end
     end
     -- Breite: linke/rechte Kante der Stereobasis (StereoEncoder), gleiche Höhe
@@ -612,6 +616,7 @@ local function render()
         elseif mode == 'mp' then vals = 'X ' .. fmtMp(o.x) .. ' Y ' .. fmtMp(o.y) .. ' Z ' .. fmtMp(o.z)
         elseif mode == 'room' then vals = RM.fmtPos(o)
         elseif mode == 'me' then vals = 'Az ' .. fmtDeg(me[k].az) .. '  El ' .. fmtDeg(me[k].el)
+        elseif rotOnly(o) then vals = 'Yaw ' .. fmtDeg(o.yaw) .. '  Pitch ' .. fmtDeg(o.pitch)
         else vals = 'Az ' .. fmtDeg(o.az) .. '  El ' .. fmtDeg(o.el) end
       end
       if on and mode ~= 'me' and lvVal[k] then vals = vals .. '  ' .. lvFormat(lvVal[k]) end
@@ -709,6 +714,10 @@ local function moveTo(a, b, rear)
     local part = rear and 'z' or 'y'
     if b and abs(b - o[part]) >= 0.05 then o[part] = b; o.hold[part] = now; send14(ch, k, rear and 2 or 1, unscale(b, MPR)) end
     monAdd('→ Objekt ' .. k .. ' X ' .. fmtMp(o.x) .. ' ' .. (rear and 'Z ' or 'Y ') .. fmtMp(o[part]), 'out:mp' .. k)
+  elseif mode ~= 'me' and rotOnly(obj[k]) then  -- v8.22.2: Rotator-Spur: Ziehen dreht Yaw/Pitch
+    local t, ch = obj[k], chFor(6, k)
+    if a and abs(a - t.yaw) >= 0.05 then t.yaw = a; t.hold.yaw = now; send14(ch, k, 0, unscale(a, DEG)) end
+    if b and abs(b - t.pitch) >= 0.05 then t.pitch = b; t.hold.pitch = now; send14(ch, k, 1, unscale(b, DEG)) end
   else
     local t = (mode == 'me') and me[k] or obj[k]
     local ch = (mode == 'me') and chFor(8, k) or chFor(12, k)
@@ -803,6 +812,9 @@ local function applyTheme()
   for _, c in ipairs(root:findAllByName('th_panel', true) or {}) do
     c.color = Color(th.panel[1], th.panel[2], th.panel[3], (c.color and c.color.a) or 1)
   end
+  for _, c in ipairs(root:findAllByName('th_cfgbg', true) or {}) do c.color = Color(th.bg[1], th.bg[2], th.bg[3], 1) end   -- v8.22.2: Config folgt der Palette
+  local ov = root:findByName('cfg_overlay', true); if ov then ov.color = Color(th.bg[1], th.bg[2], th.bg[3], 1) end
+  for _, c in ipairs(root:findAllByName('th_acc2', true) or {}) do c.textColor = Color(th.accent2[1], th.accent2[2], th.accent2[3], 1) end
   for role, f in pairs({ th_text = 1, th_dim = 0.62, th_accent = -1 }) do      -- v8.19: Schriften folgen der Palette
     for _, c in ipairs(root:findAllByName(role, true) or {}) do
       if f == -1 then c.textColor = Color(th.accent[1], th.accent[2], th.accent[3], 1)
@@ -811,7 +823,7 @@ local function applyTheme()
   end
   dirty = true
 end
-cfgChanged = function() if themeApplied ~= LOOK.theme then applyTheme() end; sendFilter(); dirty = true end
+cfgChanged = function() sendFilter(); dirty = true end
 
 -- v8.19/8.20: Reiter ein-/ausblenden (Config, Seite 2): die Kopfzeile rückt zusammen (Reiter, log, Farben, ⚙, 32, DAW);
 -- ist der aktuelle Reiter weg, gilt der erste sichtbare. Breiten bleiben, wie sie gebaut sind.

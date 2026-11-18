@@ -141,9 +141,11 @@ local function cfgPaint()
   local function pill(name, on)
     local c = cfgCtl(name .. '_bg')
     if c then
-      local a = on and th.accent or { 0.18, 0.086, 0.35 }          -- die Config bleibt dunkel, egal welche Palette
+      local a = on and th.accent or th.pill                         -- v8.22.2: Config folgt der Palette
       c.color = Color(a[1], a[2], a[3], 1)
     end
+    local l = cfgCtl(name .. '_lbl')
+    if l then local tx = on and (th.onText or th.text) or th.text; l.textColor = Color(tx[1], tx[2], tx[3], 1) end
   end
   for _, key in ipairs(SCALE_ORDER) do pill('cfg_sc_' .. key, LV.scale == key) end
   pill('cfg_md_peak', LV.mode == 'peak'); pill('cfg_md_rms', LV.mode == 'rms'); pill('cfg_aes', LV.aes17)
