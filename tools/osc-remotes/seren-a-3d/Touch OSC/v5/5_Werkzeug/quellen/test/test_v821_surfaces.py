@@ -74,7 +74,7 @@ for lv in ('lua51', 'lua54'):
         sel(v, 'mode_sp'); v.sent(); v.tick(1200, 6)
         vs = [x for x in v.sent() if x[:4] == [0xF0, 0x7D, 0x4F, 0x0E]]
         st = ''.join(chr(c) for c in vs[-1][5:-1]) if vs else ''
-        check('mode=sp' in st and 'lay=32v' in st and 'spl=7' in st, f'{lv}/{nm}: Ansicht merkt split, alte Ansicht und Felder ({st!r})')
+        check('mode=sp' in st and 'lay=32v' in st and 'spl=23' in st, f'{lv}/{nm}: Ansicht merkt split, alte Ansicht und Felder (v8.22.7: + Energie = 16) ({st!r})')
         # Config: Reiter split ausblenden
         sel(v, 'cfg_btn'); sel(v, 'cfg_page'); sel(v, 'cfg_tab_sp'); sel(v, 'cfg_close'); v.tick(16, 4)
         check(not v.c['mode_sp']['visible'] and v.c['mode_iem']['visible'], f'{lv}/{nm}: Reiter split lässt sich ausblenden')

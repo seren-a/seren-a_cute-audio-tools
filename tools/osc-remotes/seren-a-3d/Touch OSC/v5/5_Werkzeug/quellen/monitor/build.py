@@ -208,7 +208,7 @@ def dot(k, size=30):
 def split_quads():
     """v8.21: vier Felder der Split-Ansicht (Zeichnung wird zur Laufzeit gesetzt, Frames hier nur Platzhalter)."""
     k = []
-    for i in (1, 2, 3, 4):
+    for i in (1, 2, 3, 4, 5):                  # v8.22.7: Feld 5 = Energie
         n = f"spq{i}"
         parts = [box((0, 0, 10, 10), PANEL, name=n + "_bg", radius=16),
                  lbl(n + "_title", (0, 0, 10, 10), "", 14, PINK),
@@ -220,7 +220,21 @@ def split_quads():
         for c in parts:
             c.set("visible", False)
         k += parts
+    # v8.22.7: Energie im Split: grobe Karte 12 x 6 (Rahmen/Felder setzt das Skript), Untertitel
+    g = t_group_spe()
+    k.append(g)
+    sub = lbl("spe_sub", (0, 0, 10, 10), "", 12, DIM)
+    sub.set("visible", False)
+    k.append(sub)
     return k
+
+
+def t_group_spe():
+    cells = [box((0, 0, 10, 10), PANEL2, name=f"se{r}_{c}") for r in range(6) for c in range(12)]
+    cells.append(box((0, 0, 10, 10), PINK, name="spe_frame", bg=False, outline=True, radius=4))
+    g = t.group(name="spe_g", frame=(0, 0, 10, 10), color=BG, background=False, outline=False, visible=False)
+    g.add(*cells)
+    return g
 
 
 def build():

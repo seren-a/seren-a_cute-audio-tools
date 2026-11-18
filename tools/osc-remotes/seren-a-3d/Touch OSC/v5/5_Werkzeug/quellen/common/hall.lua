@@ -41,6 +41,7 @@ function hallSelect(m, daw, send)
   local kind = hallMode(m)
   local inst = (kind ~= 0) and HL.want or 0
   if kind == HALL_KIND.en then inst = (EN and EN.srcSel) or 0 end   -- v8.22.6: Energie: 0 gewählte Spur, 1 Master
+  if m == 'sp' and LOOK.split.en ~= false then kind, inst = HALL_KIND.en, (EN and EN.srcSel) or 0 end   -- v8.22.7: Split mit Energie-Feld: Daten holen (Spurliste bleibt die normale)
   local key = kind .. ',' .. inst
   if key == HL.sentKey then return end
   HL.sentKey = key

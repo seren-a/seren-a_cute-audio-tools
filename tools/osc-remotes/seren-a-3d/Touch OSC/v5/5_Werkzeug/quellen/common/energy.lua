@@ -116,3 +116,43 @@ function energyRender(E)
   local c = C('en_auto_lbl')
   if c then local tc = EN.manual and th.text or { 0.14, 0.06, 0.25 }; c.textColor = Color(tc[1], tc[2], tc[3], 1) end
 end
+
+-- v8.22.7: Energie als Feld der Split-Ansicht (Monitor): grobe Karte 12 x 6 (je 2 x 2 Felder der 24 x 12, das lauteste zählt)
+ES = { key = nil, drawn = nil, drawnTh = nil, drawT = -1e9 }
+function energySplitRender(E, f, q)
+  local setVisible, setColor, setFrame, setText = E.setVisible, E.setColor, E.setFrame, E.setText
+  local th = theme()
+  setVisible('spe_g', true); setVisible('spe_sub', true)
+  local fk = string.format('%.0f,%.0f,%.0f,%.0f', f.x, f.y, f.w, f.h)
+  if ES.key ~= fk then                                 -- Rahmen und Felder nur bei neuer Lage setzen; gezeichnet wird im nächsten Frame
+    ES.key = fk; ES.drawn = nil; ES.drawT = -1e9
+    setFrame('spe_g', f.x, f.y, f.w, f.h)
+    local cw, ch = f.w / 12, f.h / 6
+    for r = 0, 5 do for c = 0, 11 do setFrame('se' .. r .. '_' .. c, c * cw + 0.5, r * ch + 0.5, cw - 1, ch - 1) end end
+    setFrame('spe_frame', 0, 0, f.w, f.h)
+    setFrame('spe_sub', q.x + 12, f.y + f.h + 2, q.w - 24, 18)
+    return
+  end
+  local t = E.t or 0
+  if ES.drawn == EN.ver and ES.drawnTh == th and t - ES.drawT < 1000 then return end
+  if t - ES.drawT < 100 and ES.drawnTh == th then return end
+  ES.drawn, ES.drawnTh, ES.drawT = EN.ver, th, t
+  setText('spe_sub', energySub())
+  setColor('spe_frame', th.accent, 1)
+  local pk, rg = energyScale()
+  local lo = pk - rg
+  local live = EN.st ~= 0
+  local E0 = {}
+  for r = 0, 5 do
+    local ra, rb = live and EN.rows[2 * r + 1] or E0, live and EN.rows[2 * r + 2] or E0
+    for c = 0, 11 do                                   -- je 2 x 2 Felder: das lauteste (billiger als Leistungsmittel; TouchOSC „Too many cycles“)
+      local j = 2 * c + 1
+      local v = ra[j]
+      local w = ra[j + 1]; if w and (not v or w > v) then v = w end
+      w = rb[j]; if w and (not v or w > v) then v = w end
+      w = rb[j + 1]; if w and (not v or w > v) then v = w end
+      local p = v and eclamp((cellDb(v) - lo) / rg, 0, 1) or 0
+      setColor('se' .. r .. '_' .. c, energyColor(p, th), v and 1 or 0.5)
+    end
+  end
+end

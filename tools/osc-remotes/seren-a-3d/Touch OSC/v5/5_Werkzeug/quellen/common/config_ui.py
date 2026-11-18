@@ -168,10 +168,11 @@ def build(W, H, with64=False, split=False):
     if split:       # v8.21: Split-Ansicht (Monitor): welche Felder
         y = y0
         k2.append(_lbl(None, (x3, y, col_w, 26 * s), "SPLIT-ANSICHT zeigt", 14 * s, "#7af5ff")); y += 30 * s
-        k2.append(_lbl(None, (x3, y, col_w, 40 * s), "vier Felder (space · multi · panner · room), eine gemeinsame Spurliste", 11 * s, DIM)); y += 42 * s
-        for i, (key, cap) in enumerate(TABS):
+        k2.append(_lbl(None, (x3, y, col_w, 40 * s), "bis zu fünf Felder (space · multi · panner · room · Energie), eine gemeinsame Spurliste", 11 * s, DIM)); y += 42 * s
+        SPT = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room"), ("en", "Energie")]   # v8.22.7: + Energie
+        for i, (key, cap) in enumerate(SPT):
             k2 += _btn("cfg_sp_" + key, x3 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
-        y += 2 * (bh + gap) + 4 * s
+        y += 3 * (bh + gap) + 4 * s
         k2.append(_lbl(None, (x3, y, col_w, 60 * s), "Spurtypen und „nur mit Plugin“ gelten im Split für alle Felder gemeinsam (alle Typen).", 11 * s, DIM))
     p1 = t.group(name="cfg_p1", frame=(0, 0, W, H), color="#0a0414", background=False, outline=False)
     p1.add(*k)

@@ -152,7 +152,7 @@ end
 function spAny(k)                               -- Spur gehört in irgendein Feld (multi = eigene Eingänge, zählt nicht)
   local sv, r = mode, false
   for _, m in ipairs(SPLIT_MODES) do
-    if m ~= 'me' and LOOK.split[m] ~= false then mode = m; if present(k) then r = true end end
+    if m ~= 'me' and m ~= 'en' and LOOK.split[m] ~= false then mode = m; if present(k) then r = true end end
   end
   mode = sv
   return r
@@ -160,7 +160,7 @@ end
 function spMember(k)                            -- in der Liste: in welchen Feldern die Spur vorkommt
   local sv, t = mode, {}
   for _, m in ipairs(SPLIT_MODES) do
-    if m ~= 'me' and LOOK.split[m] ~= false then mode = m; if present(k) then t[#t + 1] = TAB_CAP[m] end end
+    if m ~= 'me' and m ~= 'en' and LOOK.split[m] ~= false then mode = m; if present(k) then t[#t + 1] = TAB_CAP[m] end end
   end
   mode = sv
   return table.concat(t, ' · ')
@@ -657,18 +657,30 @@ local function dotsLoop(kmax)
 end
 
 -- v8.21: Split-Ansicht -------------------------------------------------------------------------------------------
-local SPQ_TITLE = { iem = 'space · IEM-Draufsicht', me = 'multi · MultiEncoder', mp = 'panner · MultiPanner X × Y', room = 'room · dearVR PRO' }
+local SPQ_TITLE = { iem = 'space · IEM-Draufsicht', me = 'multi · MultiEncoder', mp = 'panner · MultiPanner X × Y', room = 'room · dearVR PRO', en = 'Energie · Azimut × Elevation' }
 function spqHide()
-  for i = 1, 4 do
+  for i = 1, 5 do
     for _, sfx in ipairs({ '_bg', '_title', '_c1', '_r1', '_r2', '_r3', '_hx', '_hy', '_sqb' }) do setVisible('spq' .. i .. sfx, false) end
   end
+  setVisible('spe_g', false); setVisible('spe_sub', false)   -- v8.22.7
 end
 function spQuads()                              -- Felder der Split-Ansicht: Modus + Rahmen + quadratisches Zeichenfeld
   local a = CAfull()
-  local list = {}
-  for _, m in ipairs(SPLIT_MODES) do if LOOK.split[m] ~= false then list[#list + 1] = m end end
+  local list, withEn = {}, false
+  for _, m in ipairs(SPLIT_MODES) do
+    if LOOK.split[m] ~= false then if m == 'en' then withEn = true else list[#list + 1] = m end end
+  end
   local n = #list
-  if n == 0 then return {} end
+  local eq = nil                                -- v8.22.7: Energie als Streifen über die ganze Breite unten (Karte 2:1)
+  if withEn then
+    local g = 8
+    local eh = (n == 0) and a.h or min(a.h * 0.36, (a.w - 24) / 2 + 40)
+    local ey = a.y + a.h - eh
+    local mw = min(a.w - 24, 2 * (eh - 56))   -- Platz für Titel oben und Quelle unten
+    eq = { m = 'en', x = a.x, y = ey, w = a.w, h = eh, f = { x = a.x + (a.w - mw) / 2, y = ey + 30, w = mw, h = mw / 2 } }
+    a = { x = a.x, y = a.y, w = a.w, h = a.h - eh - g }
+  end
+  if n == 0 then return eq and { eq } or {} end
   local cols = (n == 1) and 1 or 2
   local rows = math.ceil(n / cols)
   local g = 8
@@ -680,6 +692,7 @@ function spQuads()                              -- Felder der Split-Ansicht: Mod
     local s = min(cw - 8, rh - 32)
     qs[i] = { m = m, x = x, y = y, w = cw, h = rh, f = { x = x + (cw - s) / 2, y = y + 28 + (rh - 28 - s) / 2, w = s, h = s } }
   end
+  if eq then qs[#qs + 1] = eq end
   return qs
 end
 local function renderSplit()
@@ -711,15 +724,21 @@ local function renderSplit()
       setVisible(pre .. '_sqb', true); setFrame(pre .. '_sqb', f.x, f.y, f.w, f.h); setColor(pre .. '_sqb', th.row, 1)
       setVisible(pre .. '_hx', true); setFrame(pre .. '_hx', cx - 0.5, f.y, 1, f.h); setColor(pre .. '_hx', th.line, 0.8)
       setVisible(pre .. '_hy', true); setFrame(pre .. '_hy', f.x, cy - 0.5, f.w, 1); setColor(pre .. '_hy', th.line, 0.8)
+    elseif q.m == 'en' then                      -- v8.22.7: grobe Energiekarte
+      energySplitRender({ C = C, setText = setText, setVisible = setVisible, setColor = setColor, setFrame = setFrame, t = ms() }, f, q)
     end
   end
-  for i, q in ipairs(qs) do                     -- Punkte: je Feld sein eigener 16er-Block der Punkt-Steuerelemente
-    mode, SPL.f, SPL.off = q.m, q.f, (i - 1) * 16
+  local blk = 0
+  for _, q in ipairs(qs) do                     -- Punkte: je Feld sein eigener 16er-Block der Punkt-Steuerelemente
+   if q.m ~= 'en' then                          -- v8.22.7: das Energie-Feld hat keine Punkte
+    mode, SPL.f, SPL.off = q.m, q.f, blk * 16
+    blk = blk + 1
     if q.m == 'room' then
       renderRoom()
       for _, n in ipairs(RM.ZOOM_CTL) do setVisible(n, false) end
     end
     dotsLoop(16)
+   end
   end
   mode, SPL.f, SPL.off = keep, nil, 0
 end
@@ -1022,7 +1041,7 @@ local function onXY(name, touchStart)
     end
   end
   local q = SPL.dq
-  if not q then return end
+  if not q or q.m == 'en' then return end       -- v8.22.7: Energie-Feld: nichts zu ziehen
   local sv = mode
   mode, SPL.f, SPL.sel = q.m, q.f, true
   onXY0(name, touchStart)

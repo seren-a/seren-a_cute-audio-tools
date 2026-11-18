@@ -7,7 +7,7 @@ local LOOK = {
   theme = 'synth',      -- 'synth' (seren.a), 'nuendo', 'cute', 'girly', 'pastel' (v8.19, Farben aus den gleichnamigen VS-Code-Themes)
   mode = 'iem',         -- v8.19: Reiter, dessen Spurauswahl gerade gilt (LOOK.show zeigt auf showBy[mode])
   tabs = { iem = true, me = true, mp = true, room = true, fdn = true, mcfx = true, en = true, sp = true },
-  split = { iem = true, me = true, mp = true, room = true },   -- v8.21: Split-Ansicht (Monitor): welche Felder    -- v8.19: welche Reiter sichtbar sind (Config, Seite 2)
+  split = { iem = true, me = true, mp = true, room = true, en = true },   -- v8.21: Split-Ansicht (Monitor): welche Felder    -- v8.19: welche Reiter sichtbar sind (Config, Seite 2)
   label = 'num',        -- v8.19: statt der Nummer: 'num' | 'name' (Spurname, gekürzt) | 'preset' (Preset, gekürzt)
   extra = {},           -- v8.19: Zusatzzeilen je Spurtyp: extra.audio = { subs = true, sends = true } ...
   show = nil,           -- (s. u.) Spurtypen des aktuellen Reiters: audio, oa3 (3OA), fx, group, instr
@@ -74,7 +74,7 @@ TYPE_ORDER = { 'audio', 'oa3', 'fx', 'group', 'instr' }
 TAB_ORDER = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en', 'sp' }   -- v8.20: + Hall-Reiter (Sends in einen FDN-/mcfx-Hall)
 TAB_FILT = { 'iem', 'me', 'mp', 'room' }                       -- Reiter mit eigener Spurauswahl (Hall-Reiter zeigen Sends)
 TAB_SHOW = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en' }   -- v8.22.3: Spurtypen je Reiter, jetzt auch FDN/mcfx/Energie
-SPLIT_MODES = { 'iem', 'me', 'mp', 'room' }                    -- v8.21: Felder der Split-Ansicht (Reihenfolge = Lage)
+SPLIT_MODES = { 'iem', 'me', 'mp', 'room', 'en' }                    -- v8.21: Felder der Split-Ansicht (Reihenfolge = Lage)
 HAS_SPLIT = false                                              -- nur die Monitore haben den Reiter „split“
 HALL_KIND = { fdn = 1, mcfx = 2, en = 3 }                              -- Art, die das DAW-Skript im Hall-Reiter anzeigt
 LOOK.showBy = {}
