@@ -99,19 +99,19 @@ function typeShownIn(m, flags, o) local sh = LOOK.showBy[m] or LOOK.show; return
 
 -- Beschriftung statt der Nummer (v8.19): Nummer, Spurname oder Preset, gekürzt auf n Zeichen
 function abbr(s, n)
-  s = tostring(s or '')
-  if #s <= n then return s end
+  s = sxEnc(tostring(s or ''))                    -- v8.22.6: ein Byte je Zeichen, damit Umlaute beim Kürzen ganz bleiben
+  if #s <= n then return sxDec(s) end
   local t = s:gsub('[%s_%-%.]+', ' ')
   if #t > n then                                  -- Wörter: Anfangsbuchstaben + letzte Ziffern
     local words, ini = {}, ''
     for w in t:gmatch('%S+') do words[#words + 1] = w end
     if #words > 1 then
       for i, w in ipairs(words) do ini = ini .. (i == #words and w:sub(1, math.max(1, n - #ini)) or w:sub(1, 1)) end
-      if #ini <= n then return ini end
+      if #ini <= n then return sxDec(ini) end
     end
-    t = t:gsub('[aeiouäöü]', function() return '' end, math.max(0, #t - n))   -- Vokale hinten weglassen
+    t = t:gsub('[aeiou\4\5\6]', function() return '' end, math.max(0, #t - n))   -- Vokale hinten weglassen
   end
-  return t:sub(1, n)
+  return sxDec(t:sub(1, n))
 end
 function labelFor(o, numText, n)
   if LOOK.label == 'name' and o and o.name and o.name ~= '' then return abbr(o.name, n) end

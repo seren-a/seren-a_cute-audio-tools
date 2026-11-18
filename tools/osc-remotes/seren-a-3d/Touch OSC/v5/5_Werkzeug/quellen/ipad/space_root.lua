@@ -188,7 +188,7 @@ local function sysexText(m, from)
   local t = {}
   for i = from, #m - 1 do
     local c = m[i]
-    if c >= 32 and c <= 126 then t[#t + 1] = string.char(c) end
+    local ch = sxChar(c); if ch then t[#t + 1] = ch end
   end
   return table.concat(t)
 end
@@ -589,7 +589,7 @@ local function render()
       local isCur = (k == cu)
       setColor('sel' .. i .. '_bg', col, isCur and 1 or (on and 0.35 or 0.08))
       setVisible('sel' .. i .. '_ring', isCur)
-      setText('sel' .. i .. '_name', on and nameOf(k):sub(1, 9) or '')
+      setText('sel' .. i .. '_name', on and sxDec(sxEnc(nameOf(k)):sub(1, 9)) or '')
       setText('sel' .. i .. '_num', labelFor(o, tostring(numOf(k)), 4))
       for _, part in ipairs({ '_num', '_name' }) do
         local c = C('sel' .. i .. part)
@@ -689,7 +689,7 @@ local function render()
   setColor('cfg_btn_bg', cfgOpen and theme().accent2 or theme().pill, 1)
   setColor('col_btn_bg', LOOK.colors == 'daw' and theme().accent2 or theme().pill, 1)
   setText('col_btn_lbl', LOOK.colors == 'daw' and 'spurfarben' or 'tosc farben')
-  setVisible('cfg_overlay', cfgOpen)
+  do local o = C('cfg_overlay'); if o and o.visible ~= cfgOpen then o.visible = cfgOpen end end   -- v8.22.6: direkt, ohne Zwischenspeicher (nach dem Verlassen von TouchOSC passte der nicht mehr)
   local hm = hallMode(mode) ~= 0
   setVisible('bg_top', mode ~= 'mp' and mode ~= 'room' and not hm); setVisible('bg_pano', mode ~= 'mp' and mode ~= 'room' and not n32 and not hm)
   setVisible('tiles32', n32 and not bigRoom() and not hm); setVisible('pano_xy', not n32 and not hm); setVisible('top_xy', not hm)
@@ -764,14 +764,14 @@ local function onDrag(name)
 end
 
 local function onButton(name)
+  if name == 'cfg_close' then cfgOpen = false; dirty = true; local o = C('cfg_overlay'); if o then o.visible = false end; return end   -- v8.22.6: „fertig“ schließt immer
   if cfgOpen and name ~= 'cfg_btn' then
-    if name == 'cfg_close' then cfgOpen = false; dirty = true; return end
     if cfgButton(name) then if GR.assign then cfgOpen = false end; dirty = true; return end
   end
   if RM.button(name) then dirty = true; return end
   if energyButton(name) then dirty = true; return end
   if name == 'col_btn' then LOOK.colors = (LOOK.colors == 'daw') and 'tosc' or 'daw'; cfgPaint(); dirty = true; return end
-  if name == 'cfg_btn' then cfgOpen = not cfgOpen; logOpen = false; cfgPaint(); dirty = true; return end
+  if name == 'cfg_btn' then local o = C('cfg_overlay'); cfgOpen = not (o and o.visible); if o then o.visible = cfgOpen end; logOpen = false; cfgPaint(); dirty = true; return end
   if name == 'n32_btn' then n32 = not n32; dirty = true; return end
   if name == 'bank_prev' then BK.press(-1); note(15, 2); if n32 then note(15, 2) end; return end   -- 32: zwei DAW-Bänke
   if name == 'bank_next' then BK.press(1); note(15, 3); if n32 then note(15, 3) end; return end

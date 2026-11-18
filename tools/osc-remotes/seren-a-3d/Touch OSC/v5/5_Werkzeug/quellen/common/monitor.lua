@@ -4,6 +4,21 @@
 -- und was rausgeht (→). Werte derselben Sache ersetzen ihre Zeile, damit
 -- die Liste beim Ziehen nicht vollläuft. Textfeld: 'mon_text'.
 --------------------------------------------------------------------------
+-- v8.22.6: Umlaute/ß/Akzente kommen als Steuerbytes 1-31 (SysEx ist 7 Bit), siehe SX_MAP in Reaper_3D.lua
+SX_HI = { [1] = 'Ä', [2] = 'Ö', [3] = 'Ü', [4] = 'ä', [5] = 'ö', [6] = 'ü', [7] = 'ß', [8] = 'é', [11] = 'è', [12] = 'à',
+  [14] = 'ê', [15] = 'ç', [16] = '–', [17] = '°', [18] = '·', [19] = '’', [20] = 'ñ', [21] = 'á', [22] = 'ó', [23] = 'í', [24] = 'ú',
+  [25] = 'É', [26] = '…', [27] = 'â', [28] = 'ô', [29] = 'î', [30] = 'û', [31] = 'ë' }
+function sxChar(c) if c >= 32 and c <= 126 then return string.char(c) end return SX_HI[c] end
+function sxEnc(s)                                 -- UTF-8 -> ein Byte je Zeichen (zum Kürzen)
+  if not s:find('[\128-\255]') then return s end
+  for c, u in pairs(SX_HI) do s = s:gsub(u, string.char(c)) end
+  return (s:gsub('[\128-\255]', ''))
+end
+function sxDec(s)                                 -- zurück zu UTF-8
+  if not s:find('[\1-\8\11\12\14-\31]') then return s end
+  return (s:gsub('[\1-\8\11\12\14-\31]', function(ch) return SX_HI[ch:byte()] or '' end))
+end
+DAW_VER = false                                   -- v8.22.6: Version des DAW-Skripts (aus „hello|3D vX aktiv“)
 local MON = { lines = {}, keyed = {}, max = 14, found = {}, foundMax = 40, dirty = false, lastDraw = 0 }
 
 local function monAdd(text, key)
@@ -24,7 +39,7 @@ local function monSysexText(m, from)
   local t = {}
   for i = from, #m - 1 do
     local c = m[i]
-    if c >= 32 and c <= 126 then t[#t + 1] = string.char(c) end
+    local ch = sxChar(c); if ch then t[#t + 1] = ch end
   end
   return table.concat(t)
 end
@@ -35,6 +50,7 @@ end
 local function monFound(raw)
   local key, text = raw:match('^([^|]*)|(.*)$')
   if not key then key, text = raw, raw end
+  if key == 'hello' then DAW_VER = text:match('(v[%d%.]+)') or DAW_VER end
   local F = MON.found
   for i, f in ipairs(F) do
     if f.key == key then

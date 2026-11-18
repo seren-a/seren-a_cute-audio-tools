@@ -8,7 +8,7 @@
 -- Oberfläche -> DAW: 0x18 3 0 (wie die Hall-Reiter: Reiter „energy“ gewählt, die DAW fängt an zu senden)
 --------------------------------------------------------------------------
 EN_ROWS, EN_COLS, EN_DB0, EN_DB1 = 12, 24, -80, 10
-EN = { ver = 0, drawn = nil, st = 0, src = 0, peak = 0, range = 35, ord = 0, tot = 0, name = '', rows = {}, manual = false, mpeak = 0, mrange = 35 }
+EN = { srcSel = 0, ver = 0, drawn = nil, st = 0, src = 0, peak = 0, range = 35, ord = 0, tot = 0, name = '', rows = {}, manual = false, mpeak = 0, mrange = 35 }
 HALLCAP.en = 'Energie'
 function energyReset() EN.st, EN.rows, EN.name = 0, {}, ''; EN.ver = EN.ver + 1 end
 function energySysex(m)
@@ -48,12 +48,13 @@ function energyButton(name)                               -- true, wenn es eine 
   elseif name == 'en_rg_dn' then manual(); EN.mrange = eclamp(EN.mrange - 5, 10, 80)
   elseif name == 'en_rg_up' then manual(); EN.mrange = eclamp(EN.mrange + 5, 10, 80)
   elseif name == 'en_auto' then EN.manual = false
+  elseif name == 'en_src0' or name == 'en_src1' then EN.srcSel = (name == 'en_src1') and 1 or 0   -- v8.22.6: Quelle
   else return false end
   EN.ver = EN.ver + 1; EN.force = true
   return true
 end
 function energySub()
-  if EN.st == 0 then return 'kein „seren.a 3D Energy“ auf der gewählten Spur oder dem Master' end
+  if EN.st == 0 then return EN.srcSel == 1 and 'kein „seren.a 3D Energy“ auf dem Master' or 'kein „seren.a 3D Energy“ auf der gewählten Spur oder dem Master' end
   local s = 'Spur ' .. (EN.name ~= '' and EN.name or '?')
   if EN.st == 2 then return s .. '  ·  keine Daten (Wiedergabe oder Eingang?)' end
   return s .. '  ·  ' .. EN.ord .. '. Ordnung'
@@ -106,6 +107,12 @@ function energyRender(E)
   local src = EN.manual and 'manuell' or (EN.src == 1 and 'aus dem IEM EnergyVisualizer' or 'Standard (kein EnergyVisualizer auf der Spur)')
   setText('en_scale', 'Skala: ' .. src)
   setColor('en_auto_bg', EN.manual and th.pill or th.accent, 1)
+  for i = 0, 1 do                                         -- v8.22.6: Quelle gewählte Spur / Master
+    local on = (EN.srcSel == i)
+    setColor('en_src' .. i .. '_bg', on and th.accent or th.pill, 1)
+    local lc = C('en_src' .. i .. '_lbl')
+    if lc then local tc = on and { 0.14, 0.06, 0.25 } or th.text; lc.textColor = Color(tc[1], tc[2], tc[3], 1) end
+  end
   local c = C('en_auto_lbl')
   if c then local tc = EN.manual and th.text or { 0.14, 0.06, 0.25 }; c.textColor = Color(tc[1], tc[2], tc[3], 1) end
 end

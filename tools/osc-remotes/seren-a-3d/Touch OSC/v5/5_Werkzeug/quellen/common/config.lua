@@ -70,7 +70,7 @@ local function grSysex(m)
   end
   if m[4] == 18 and m[6] and m[5] < 12 then
     local t = {}
-    for i = 7, #m - 1 do if m[i] >= 32 and m[i] <= 126 then t[#t + 1] = string.char(m[i]) end end
+    for i = 7, #m - 1 do local ch = sxChar(m[i]); if ch then t[#t + 1] = ch end end
     GR.list[m[5] + 1] = { flags = m[6], name = table.concat(t) }
     return true
   end

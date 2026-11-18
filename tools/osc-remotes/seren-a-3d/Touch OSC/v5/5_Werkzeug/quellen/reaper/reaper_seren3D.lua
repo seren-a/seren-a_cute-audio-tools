@@ -13,6 +13,7 @@
 -- Parameters are recognised by name ("Azimuth Angle", "Master azimuth angle", "Yaw Angle" ...);
 -- nothing else is ever touched. The VST MultiPanner exists only in Nuendo.
 
+HELLO = "hello|3D v8.22.6 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config"
 local VIEW_MATCH = "TouchOSC Bridge"   -- part of the TouchOSC Bridge port name
 local N          = 64                  -- tracks sent at once (iPad shows 16 of them, the 5:4 monitor up to 64)
 local VISIBLE_ONLY = true               -- only tracks visible in the arrange view (TCP)
@@ -41,7 +42,15 @@ local logged = {}
 local lastState, lastScan, lastResync, lastSeq = nil, -1e9, -1e9, nil
 
 -- out ---------------------------------------------------------------------------------------------
-local function ascii7(s, n) return ((s or ""):gsub("[^\32-\126]", "")):sub(1, n or 96) end
+-- v8.22.6: Umlaute/ß/Akzente als Steuerbytes 1-31 (SysEx ist 7 Bit); die Oberflächen machen daraus wieder UTF-8 (sxChar in monitor.lua)
+local SX_MAP = { ["Ä"] = 1, ["Ö"] = 2, ["Ü"] = 3, ["ä"] = 4, ["ö"] = 5, ["ü"] = 6, ["ß"] = 7, ["é"] = 8, ["è"] = 11, ["à"] = 12,
+  ["ê"] = 14, ["ç"] = 15, ["–"] = 16, ["°"] = 17, ["·"] = 18, ["’"] = 19, ["ñ"] = 20, ["á"] = 21, ["ó"] = 22, ["í"] = 23, ["ú"] = 24,
+  ["É"] = 25, ["…"] = 26, ["â"] = 27, ["ô"] = 28, ["î"] = 29, ["û"] = 30, ["ë"] = 31 }
+local function ascii7(s, n)
+  s = s or ""
+  if s:find("[\128-\255]") then for u, c in pairs(SX_MAP) do s = s:gsub(u, string.char(c)) end end
+  return (s:gsub("[^\1-\8\11\12\14-\126]", "")):sub(1, n or 96)
+end
 local function sysex(id, head, text, n)
   local t = { "\240\125" .. string.char(id) }
   for _, b in ipairs(head) do t[#t + 1] = string.char(b) end
@@ -527,6 +536,7 @@ local function readInput()
       if b[2] == 0x7D and b[3] == 0x4F and (b[5] <= #HALL_KINDS or b[5] == EN_KIND) then
         if b[5] ~= HALL.kind or b[6] ~= HALL.inst then bank = 0 end
         HALL.kind, HALL.inst = b[5], b[6]
+        EN_RESCAN = true                                -- v8.22.6: Energie: Quelle (0 gewählte Spur, 1 Master) neu suchen
         sent = {}; level = {}; lastScan = -1e9          -- v8.22: auch bei gleichem Stand neu antworten (zweite Oberfläche wählt denselben Reiter)
         ov({ 5, bank })
       end
@@ -685,6 +695,11 @@ local function enTrackFx(tr)
 end
 local function enFind()                             -- JSFX on the selected track, else the master, else any track
   local cand, sel = {}, r.GetSelectedTrack(0, 0)
+  if HALL.inst == 1 then                            -- v8.22.6: Quelle „Master“ fest gewählt
+    local jsfx, viz = enTrackFx(r.GetMasterTrack(0))
+    if jsfx then return { tr = r.GetMasterTrack(0), fx = jsfx, viz = viz } end
+    return nil
+  end
   if sel then cand[#cand + 1] = sel end
   cand[#cand + 1] = r.GetMasterTrack(0)
   for i = 0, r.CountTracks(0) - 1 do cand[#cand + 1] = r.GetTrack(0, i) end
@@ -713,11 +728,12 @@ local function enByte(db) return floor(math.max(0, math.min(1, (db - EN_DB0) / (
 EN_AUTO = {}
 function enAutoAdd()
   local cand, sel = {}, r.GetSelectedTrack(0, 0)
-  if sel then cand[#cand + 1] = sel end
+  if sel and HALL.inst ~= 1 then cand[#cand + 1] = sel end
   cand[#cand + 1] = r.GetMasterTrack(0)
-  for i = 0, r.CountTracks(0) - 1 do cand[#cand + 1] = r.GetTrack(0, i) end
+  if HALL.inst ~= 1 then for i = 0, r.CountTracks(0) - 1 do cand[#cand + 1] = r.GetTrack(0, i) end end
   local tr
   for _, t in ipairs(cand) do local _, viz = enTrackFx(t); if viz then tr = t; break end end
+  if not tr and HALL.inst == 1 then tr = r.GetMasterTrack(0) end   -- v8.22.6: „Master“ gewählt: dort einfügen, auch ohne EnergyVisualizer
   if not tr or EN_AUTO[tostring(tr)] then return end
   EN_AUTO[tostring(tr)] = true
   local dir = r.GetResourcePath() .. "/Effects/seren-a"
@@ -744,7 +760,8 @@ function enAutoAdd()
 end
 function sendEnergy()
   local now = r.time_precise()
-  if now - EN.scanT > 1.0 then
+  if now - EN.scanT > 1.0 or EN_RESCAN then
+    EN_RESCAN = false
     EN.scanT = now; EN.fx = enFind()
     if not EN.fx then enAutoAdd(); EN.fx = enFind() end
   end
@@ -921,7 +938,7 @@ local function frame()
   end
   if now - lastResync > RESYNC then
     lastResync = now; sent = {}
-    ov({ 4 }, "REAPER"); ov({ 5, bank }); ov({ 12, N }); ov({ 16, FILT.types, FILT.plug }); sendGroups()
+    ov({ 4 }, "REAPER"); ov({ 8 }, HELLO); ov({ 5, bank }); ov({ 12, N }); ov({ 16, FILT.types, FILT.plug }); sendGroups()
   end
   sendOverview()
   sendSelected()
@@ -998,7 +1015,7 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.22.5 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, HELLO)
   if r.Audio_IsRunning and r.Audio_IsRunning() == 0 then        -- v8.22: ohne laufendes Audio-Geraet (z. B. Dante nicht da) reagiert Reapers MIDI-Eingang evtl. nicht
     ov({ 8 }, "audio|Achtung: Reaper-Audio laeuft nicht (Geraet fehlt?) - Eingaben vom Geraet kommen evtl. nicht an")
     r.ShowConsoleMsg("seren.a 3D: Reaper-Audio laeuft nicht (Geraet fehlt?) - Skript wartet, Eingaben vom Geraet kommen evtl. nicht an\n")

@@ -10,7 +10,7 @@ HALLCAP = { fdn = 'FDN-Reverb', mcfx = 'mcfx-Convolver' }
 function hallMode(m) return HALL_KIND[m] or 0 end
 function hallText(m, from)
   local t = {}
-  for i = from, #m - 1 do if m[i] >= 32 and m[i] <= 126 then t[#t + 1] = string.char(m[i]) end end
+  for i = from, #m - 1 do local ch = sxChar(m[i]); if ch then t[#t + 1] = ch end end
   return table.concat(t)
 end
 function sendDb(v) return -60 + (v / 127) * 72 end
@@ -40,6 +40,7 @@ function hallSelect(m, daw, send)
   if daw ~= 'REAPER' then return end
   local kind = hallMode(m)
   local inst = (kind ~= 0) and HL.want or 0
+  if kind == HALL_KIND.en then inst = (EN and EN.srcSel) or 0 end   -- v8.22.6: Energie: 0 gewählte Spur, 1 Master
   local key = kind .. ',' .. inst
   if key == HL.sentKey then return end
   HL.sentKey = key

@@ -233,7 +233,7 @@ end
 --------------------------------------------------------------------------
 local function sysexText(m, from)
   local t = {}
-  for i = from, #m - 1 do local c = m[i]; if c >= 32 and c <= 126 then t[#t + 1] = string.char(c) end end
+  for i = from, #m - 1 do local ch = sxChar(m[i]); if ch then t[#t + 1] = ch end end
   return table.concat(t)
 end
 local function clearAll()
@@ -912,7 +912,7 @@ local function render()
   local ca, po = CA(), PO()                    -- Zieh-/Tipp-Flächen folgen der Ansicht (Room „groß“)
   setFrame('top_xy', ca.x, ca.y, ca.w, ca.h); setFrame('pano_xy', po.x, po.y, po.w, po.h)
   setVisible('mon_overlay', logOpen)
-  setVisible('cfg_overlay', cfgOpen)
+  do local o = C('cfg_overlay'); if o and o.visible ~= cfgOpen then o.visible = cfgOpen end end   -- v8.22.6: direkt, ohne Zwischenspeicher (nach dem Verlassen von TouchOSC passte der nicht mehr)
   renderCells()
 end
 
@@ -1030,8 +1030,8 @@ local function onXY(name, touchStart)
 end
 
 local function onButton(name)
+  if name == 'cfg_close' then cfgOpen = false; dirty = true; local o = C('cfg_overlay'); if o then o.visible = false end; return end   -- v8.22.6: „fertig“ schließt immer
   if cfgOpen and name ~= 'cfg_btn' then
-    if name == 'cfg_close' then cfgOpen = false; dirty = true; return end
     if cfgButton(name) then if GR.assign then cfgOpen = false end; dirty = true; return end
   end
   if RM.button(name) then dirty = true; return end
@@ -1046,7 +1046,7 @@ local function onButton(name)
   if name:match('^lay_') then layout = name:sub(5); relayout = true; cache = {}; return end
   if name == 'pano_btn' then panoOn = not panoOn; relayout = true; cache = {}; return end
   if name == 'col_btn' then LOOK.colors = (LOOK.colors == 'daw') and 'tosc' or 'daw'; cfgPaint(); dirty = true; return end
-  if name == 'cfg_btn' then cfgOpen = not cfgOpen; logOpen = false; cfgPaint(); dirty = true; return end
+  if name == 'cfg_btn' then local o = C('cfg_overlay'); cfgOpen = not (o and o.visible); if o then o.visible = cfgOpen end; logOpen = false; cfgPaint(); dirty = true; return end
   if name == 'log_btn' then logOpen = not logOpen; cfgOpen = false; monDraw(true); dirty = true; return end
   local slot = tonumber(name:match('^c(%d+)_tap$') or '')
   local k = slot and slotK[slot]

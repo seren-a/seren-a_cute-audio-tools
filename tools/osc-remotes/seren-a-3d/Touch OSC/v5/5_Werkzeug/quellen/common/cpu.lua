@@ -10,20 +10,22 @@ function CPU.parse(m)                   -- true, wenn es cmd 15 war
 end
 
 function CPU.text(dawName)
+  local v = DAW_VER and ('  ·  3D ' .. DAW_VER) or ''   -- v8.22.6: Version des DAW-Skripts
+  if not LOOK.cpu then return DAW_VER and ('3D ' .. DAW_VER) or '' end
   if getMillis() - CPU.t > 10000 then
-    return (dawName == 'NUENDO') and 'CPU –  (Nuendo meldet keine Auslastung)' or 'CPU –'
+    return ((dawName == 'NUENDO') and 'CPU –  (Nuendo meldet keine Auslastung)' or 'CPU –') .. v
   end
   local s = (CPU.sys <= 100) and ('CPU ' .. CPU.sys .. ' %') or 'CPU –'
   if CPU.app <= 100 then s = s .. '  ·  ' .. ((dawName and dawName ~= '') and dawName or 'DAW') .. ' ' .. CPU.app .. ' %' end
   if CPU.xrun > 0 then s = s .. '  ·  Aussetzer!' end
-  return s
+  return s .. v
 end
 
 -- dim = Grundfarbe (Text der Palette), hot = Warnfarbe (meterHot)
 function CPU.render(dawName, dim, hot)
   local c = root:findByName('cpu_lbl', true)
   if not c then return end
-  if not LOOK.cpu then
+  if not LOOK.cpu and not DAW_VER then
     if CPU.shown ~= false then c.visible = false; CPU.shown = false end
     return
   end

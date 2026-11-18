@@ -57,6 +57,11 @@ def build(t, box, lbl, tap, frame, PINK="#ff6ec7", PINK_DD="#4a1d5e", CYAN="#5ef
     xa = xv + bw + 24
     k.append(box((xa, y3, 90, bh), PANEL2, name="en_auto_bg", radius=12)); k.append(lbl("en_auto_lbl", (xa, y3, 90, bh), "auto", 15, TXT, C)); k.append(tap("en_auto", (xa, y3, 90, bh)))
     k.append(lbl("en_scale", (24, y3 + bh + 6, w - 48, 20), "", 13, DIM))
+    y4 = y3 + bh + 34                                  # v8.22.6: Quelle der Karte: gewählte Spur oder fest der Master
+    k.append(lbl(None, (24, y4, 70, bh), "Quelle", 14, DIM))
+    for i, (cap, bw2) in enumerate((("gewählte Spur", 150), ("Master", 110))):
+        xq = 24 + 74 + (0 if i == 0 else 150 + 8)
+        k.append(box((xq, y4, bw2, bh), PANEL2, name=f"en_src{i}_bg", radius=12)); k.append(lbl(f"en_src{i}_lbl", (xq, y4, bw2, bh), cap, 14, TXT, C)); k.append(tap(f"en_src{i}", (xq, y4, bw2, bh)))
     k.append(lbl(None, (24, h - 52, w - 48, 20),
                  "Karte = Energie je Richtung (Azimut × Elevation), vom JSFX „seren.a 3D Energy“ aus den Kanälen der Spur gerechnet.", 12, DIM))
     k.append(lbl(None, (24, h - 30, w - 48, 20),
