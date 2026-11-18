@@ -67,8 +67,8 @@ local dirty = true
 local ctl = {}
 local function C(name)
   local c = ctl[name]
-  if c == nil then c = root:findByName(name, true); if c then ctl[name] = c end end
-  return c
+  if c == nil then c = root:findByName(name, true); ctl[name] = c or false end   -- v8.22.2: auch „nicht da“ merken (sonst sucht TouchOSC jeden Frame neu)
+  return c or nil
 end
 local function setText(name, s)
   local c = C(name)
@@ -858,7 +858,7 @@ function update()
   vsTick(t, function(b) sendMIDI(b, MIDI_OUT) end)
   local dt = (lastT > 0) and (t - lastT) / 1000 or 0.016
   lastT = t
-  if themeApplied ~= LOOK.theme then applyTheme() end
+  if themeApplied ~= LOOK.theme then applyTheme(); return end   -- v8.22.2: Palette und Zeichnen je in einem eigenen Frame (TouchOSC: „Too many cycles“)
   layoutTabs()
   if hallMode(mode) == 0 and LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true end
   hallSelect(mode, src.name, function(b) sendMIDI(b, MIDI_OUT) end)

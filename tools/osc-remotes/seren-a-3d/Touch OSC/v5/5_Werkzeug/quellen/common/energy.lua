@@ -8,20 +8,21 @@
 -- Oberfläche -> DAW: 0x18 3 0 (wie die Hall-Reiter: Reiter „energy“ gewählt, die DAW fängt an zu senden)
 --------------------------------------------------------------------------
 EN_ROWS, EN_COLS, EN_DB0, EN_DB1 = 12, 24, -80, 10
-EN = { st = 0, src = 0, peak = 0, range = 35, ord = 0, tot = 0, name = '', rows = {}, manual = false, mpeak = 0, mrange = 35 }
+EN = { ver = 0, drawn = nil, st = 0, src = 0, peak = 0, range = 35, ord = 0, tot = 0, name = '', rows = {}, manual = false, mpeak = 0, mrange = 35 }
 HALLCAP.en = 'Energie'
-function energyReset() EN.st, EN.rows, EN.name = 0, {}, '' end
+function energyReset() EN.st, EN.rows, EN.name = 0, {}, ''; EN.ver = EN.ver + 1 end
 function energySysex(m)
   local cmd = m[4]
   if cmd == 28 and m[5] and m[5] < EN_ROWS and m[5 + EN_COLS] then
     local r = {}
     for c = 1, EN_COLS do r[c] = m[5 + c] end
-    EN.rows[m[5] + 1] = r
+    EN.rows[m[5] + 1] = r; EN.ver = EN.ver + 1
     return true
   elseif cmd == 29 and m[10] then
     EN.st, EN.src, EN.peak, EN.range, EN.ord, EN.tot = m[5], m[6], m[7] - 64, math.max(1, m[8]), m[9], m[10] / 127
     EN.name = hallText(m, 11)
     if EN.st == 0 then EN.rows = {} end
+    EN.ver = EN.ver + 1; EN.force = true
     return true
   end
   return false
@@ -48,6 +49,7 @@ function energyButton(name)                               -- true, wenn es eine 
   elseif name == 'en_rg_up' then manual(); EN.mrange = eclamp(EN.mrange + 5, 10, 80)
   elseif name == 'en_auto' then EN.manual = false
   else return false end
+  EN.ver = EN.ver + 1; EN.force = true
   return true
 end
 function energySub()
@@ -59,6 +61,11 @@ end
 function energyRender(E)
   local C, setText, setVisible, setColor = E.C, E.setText, E.setVisible, E.setColor
   local th = theme()
+  local t = E.t or 0                                        -- v8.22.2: nur bei neuen Daten/Palette neu zeichnen, höchstens 10x pro Sekunde
+  if EN.drawn == EN.ver and EN.drawnTh == th and t - (EN.drawT or -1e9) < 1000 then return end   -- (TouchOSC: „Too many cycles“)
+  if t - (EN.drawT or -1e9) < 100 and not EN.force then return end
+  EN.force = false
+  EN.drawn, EN.drawnTh, EN.drawT = EN.ver, th, t
   setText('en_title', '✧ Energie ✧')
   setText('en_sub', energySub())
   local pk, rg = energyScale()

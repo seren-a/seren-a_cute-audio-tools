@@ -27,6 +27,8 @@ class View:
     def run(self, code): return self.L.execute(code)
     def tick(self, ms=16, n=1):
         for _ in range(n): self.run(f"clock = clock + {ms}; update()")
+        # v8.22.2: Palette, Layout und Zeichnen laufen in getrennten Frames (TouchOSC „Too many cycles“) -> zwei Folge-Frames ohne Zeit
+        for _ in range(2): self.run("update()")
     def midi(self, *b):
         self.run("onReceiveMIDI({" + ",".join(str(int(x)) for x in b) + "}, {true})")
     def text(self, n): return self.c[n]['values']['text']

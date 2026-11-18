@@ -88,8 +88,8 @@ local slotK, kSlot = {}, {}
 local ctl = {}
 local function C(name)
   local c = ctl[name]
-  if c == nil then c = root:findByName(name, true); if c then ctl[name] = c end end
-  return c
+  if c == nil then c = root:findByName(name, true); ctl[name] = c or false end   -- v8.22.2: auch „nicht da“ merken (sonst sucht TouchOSC jeden Frame neu)
+  return c or nil
 end
 local cache = {}
 local function setText(name, s)
@@ -1097,7 +1097,7 @@ function update()
   vsTick(t, function(b) sendMIDI(b, MIDI_OUT) end)
   local dt = (lastT > 0) and (t - lastT) / 1000 or 0.016
   lastT = t
-  if themeApplied ~= LOOK.theme then applyTheme() end
+  if themeApplied ~= LOOK.theme then applyTheme(); return end   -- v8.22.2: Palette, Layout und Zeichnen je in einem eigenen Frame (TouchOSC: „Too many cycles“)
   layoutTabs()
   local hm = hallMode(mode) ~= 0                -- v8.20: im Hall-Reiter gilt die 16er-Ansicht (Hall-Anzeige links, Sends rechts)
   local spl = (mode == 'sp')                    -- v8.21: ebenso im Split (4 Felder links, Liste rechts), ohne Horizont
@@ -1109,7 +1109,7 @@ function update()
   elseif not (hm or spl) and HL.layoutBefore then layout = HL.layoutBefore; HL.layoutBefore = nil; relayout = true; cache = {} end
   if not hm and LOOK.mode ~= mode then lookMode(mode); sendFilter(); dirty = true; relayout = true end
   hallSelect(mode, src.name, function(b) sendMIDI(b, MIDI_OUT) end)
-  if relayout then doLayout() end
+  if relayout then doLayout(); return end
   for k = 1, min(win, MAXO) do
     local v, pos, glow, hp = lvStep(k, obj[k].lvlIn, dt, t)
     lvVal[k], lvPos[k], lvGlow[k], lvHold[k] = v, pos, glow, hp
