@@ -234,8 +234,8 @@ end
 -- v8.20: reverb tabs. A surface in a reverb tab (FDN, mcfx ...) shows the SENDS that feed one reverb instance instead
 -- of tracks: the object slots carry the source tracks, the send fader (cmd 26) and the live level that arrives at the reverb.
 local HALL_KINDS = {
-  { key = "fdn", pat = { "fdnreverb" } },
-  { key = "mcfx", pat = { "mcfx_convolver", "mcfx convolver" } },
+  { key = "fdn", pat = { "fdnreverb", "fdn reverb", "fdn_reverb", "fdn-reverb" } },
+  { key = "mcfx", pat = { "mcfx_convolver", "mcfx convolver", "mcfx-convolver", "mcfx_conv" } },
 }
 local HALL = { kind = 0, inst = 0, list = {}, sends = {} }
 local EN_KIND = 3                                   -- v8.22: tab "energy" (kind 3) = normal track list + energy map of one track
@@ -524,10 +524,11 @@ local function readInput()
       end
     elseif viewInSet[e[2]] and #e[1] >= 7 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 24 then
       local b = { e[1]:byte(1, 7) }                     -- F0 7D 4F 18 <kind 0-n> <instance> F7: reverb tab (kind 0 = tracks)
-      if b[2] == 0x7D and b[3] == 0x4F and (b[5] <= #HALL_KINDS or b[5] == EN_KIND) and (b[5] ~= HALL.kind or b[6] ~= HALL.inst) then
+      if b[2] == 0x7D and b[3] == 0x4F and (b[5] <= #HALL_KINDS or b[5] == EN_KIND) then
+        if b[5] ~= HALL.kind or b[6] ~= HALL.inst then bank = 0 end
         HALL.kind, HALL.inst = b[5], b[6]
-        bank = 0; sent = {}; level = {}; lastScan = -1e9
-        ov({ 5, 0 })
+        sent = {}; level = {}; lastScan = -1e9          -- v8.22: auch bei gleichem Stand neu antworten (zweite Oberfläche wählt denselben Reiter)
+        ov({ 5, bank })
       end
     elseif viewInSet[e[2]] and #e[1] >= 6 and e[1]:byte(1) == 0xF0 and e[1]:byte(4) == 11 then
       local b = { e[1]:byte(1, 6) }                     -- F0 7D 4F 0B <types> <plug> F7: track filter from a surface
@@ -647,6 +648,14 @@ local function sendHallHeader()
   local name = inst and trackName(inst.tr) or ""
   once("hh", kind .. "," .. HALL.inst .. "," .. #HALL.list .. "," .. name, function()
     ov({ 24, kind, HALL.inst, math.min(127, #HALL.list) }, name)
+  end)
+  once("hlog", kind .. "," .. #HALL.list .. "," .. #vis .. "," .. HALL.inst, function()      -- v8.22: LOG der Oberflächen sagt, was gefunden wurde
+    local what = HALL_KINDS[kind].key == "fdn" and "FDN-Reverb" or "mcfx-Convolver"
+    if #HALL.list == 0 then
+      ov({ 8 }, "hall|" .. what .. ": kein Plugin im Projekt gefunden (FX-Name muss " .. HALL_KINDS[kind].pat[1] .. " enthalten)")
+    else
+      ov({ 8 }, "hall|" .. what .. ": " .. #HALL.list .. " Instanz(en), gewaehlt '" .. name .. "' mit " .. #vis .. " Sends")
+    end
   end)
   local pre = ""
   if inst then
@@ -952,7 +961,11 @@ if not viewOut then
 else
   lastSeq = r.MIDI_GetRecentInputEvent(0)
   ov({ 7 })
-  ov({ 8 }, "hello|3D v8.22 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  ov({ 8 }, "hello|3D v8.22.1 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config")
+  if r.Audio_IsRunning and r.Audio_IsRunning() == 0 then        -- v8.22: ohne laufendes Audio-Geraet (z. B. Dante nicht da) reagiert Reapers MIDI-Eingang evtl. nicht
+    ov({ 8 }, "audio|Achtung: Reaper-Audio laeuft nicht (Geraet fehlt?) - Eingaben vom Geraet kommen evtl. nicht an")
+    r.ShowConsoleMsg("seren.a 3D: Reaper-Audio laeuft nicht (Geraet fehlt?) - Skript wartet, Eingaben vom Geraet kommen evtl. nicht an\n")
+  end
   if not viewIn then ov({ 8 }, "bridge|Achtung: Bridge-Eingang in Reaper aus - Bewegen vom Geraet geht nicht") end
   r.atexit(function() ov({ 7 }); ov({ 4 }, "") end)
   loop()

@@ -131,7 +131,10 @@ local function present(k)
   if mode == 'me' then return k <= meInfo.count end
   if k > win then return false end
   local o = obj[k]
-  if hallMode(mode) ~= 0 then return o.name ~= '' end             -- v8.20: Hall-Reiter: jeder Send ist ein Platz
+  if hallMode(mode) ~= 0 then                                       -- v8.20: Hall-Reiter: jeder Send ist ein Platz
+    if mode ~= 'en' and HL.kind ~= hallMode(mode) then return false end   -- v8.22: erst anzeigen, wenn die DAW diesen Hall-Reiter beantwortet hat (sonst blinkt die alte Liste kurz auf)
+    return o.name ~= ''
+  end
   if o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'room' then return o.seenDv end
@@ -530,8 +533,8 @@ local function doLayout()
     if inLayout then layoutCell(k) end
     layoutDot('d', k, s)
   end
-  for _, n in ipairs({ 'circ1', 'circ2', 'circ3', 'sq1', 'sq2', 'sq3', 'pano1', 'pano2', 'pano3',
-                       'circ1s', 'circ2s', 'circ3s', 'sq1s', 'sq2s', 'sq3s' }) do setVisible(n, false) end
+  for _, n in ipairs({ 'circ1', 'circ2', 'circ3', 'circ4', 'sq1', 'sq2', 'sq3', 'sq4', 'pano1', 'pano2', 'pano3', 'pano4',
+                       'circ1s', 'circ2s', 'circ3s', 'circ4s', 'sq1s', 'sq2s', 'sq3s', 'sq4s' }) do setVisible(n, false) end
   spqHide()
   local ca = CA()
   setFrame('top_xy', ca.x, ca.y, ca.w, ca.h)

@@ -121,9 +121,9 @@ function extraText(o, typ)
   local e = LOOK.extra[typ]
   if not e or not o then return '' end
   local t = {}
-  if e.subs then t[#t + 1] = '↳ ' .. (o.subs or 0) .. ' Sub' end
-  if e.sends then t[#t + 1] = '← ' .. (o.sends or 0) .. ' Send' end
-  return table.concat(t, '\n')
+  if e.subs then t[#t + 1] = '↳' .. (o.subs or 0) end
+  if e.sends then t[#t + 1] = '←' .. (o.sends or 0) end
+  return table.concat(t, '  ')   -- v8.22: eine kurze Zeile (der Zeilenumbruch kam in TouchOSC nicht an: beides lief in einer Zeile ineinander)
 end
 
 local function iconFor(iconName, trackName)

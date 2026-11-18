@@ -43,6 +43,7 @@ function hallSelect(m, daw, send)
   local key = kind .. ',' .. inst
   if key == HL.sentKey then return end
   HL.sentKey = key
+  HL.kind = -1                                  -- v8.22: Liste erst zeigen, wenn die DAW (cmd 24) diesen Reiter beantwortet hat
   send({ 0xF0, 0x7D, 0x4F, 0x18, kind, inst, 0xF7 })
 end
 function hallSub()

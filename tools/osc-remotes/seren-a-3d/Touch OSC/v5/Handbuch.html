@@ -298,7 +298,7 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
     <div class="knob" id="logoKnob" aria-hidden="true"></div>
     <h1><b>3D</b>Handbuch <span class="kaomoji" aria-hidden="true">(｡•ᴗ•｡)♡</span></h1>
   </div>
-  <p class="sub">seren.a 3D <b>v8.22</b> · 18.11.26 · TouchOSC-Oberflächen und DAW-Skripte für IEM StereoEncoder, MultiEncoder, SceneRotator, VST MultiPanner und dearVR PRO. Häkchen bleiben auf diesem Gerät gespeichert, Werte in den Pillen lassen sich antippen und kopieren.</p>
+  <p class="sub">seren.a 3D <b>v8.22.1</b> · 18.11.26 · TouchOSC-Oberflächen und DAW-Skripte für IEM StereoEncoder, MultiEncoder, SceneRotator, VST MultiPanner und dearVR PRO. Häkchen bleiben auf diesem Gerät gespeichert, Werte in den Pillen lassen sich antippen und kopieren.</p>
   <div class="skins" role="group" aria-label="Look">
     <span>Look</span>
     <button data-s="auto">Auto</button>
@@ -385,8 +385,8 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
   </div>
   <ol class="steps">
     <li><input type="checkbox" id="en1"><div><div class="t">JSFX ablegen</div><p><code>3_Reaper/seren-a_3D_Energy.jsfx</code> in den Reaper-Ordner <b>Effects</b> legen (Reaper: Optionen › Resource-Pfad anzeigen › Effects).</p></div></li>
-    <li><input type="checkbox" id="en2"><div><div class="t">Auf die Ambisonics-Spur legen</div><p>Als FX auf die Spur mit den 16 Kanälen („JS: seren.a 3D Energy“), dort, wo das Ambisonics-Signal liegt (vor dem Decoder). Die Spur braucht 16 Kanäle (mindestens 4 für 1. Ordnung). Pro Instanz einen eigenen <b>Slot</b> (1–7) einstellen.</p></div></li>
-    <li><input type="checkbox" id="en3"><div><div class="t">Skript neu starten, Reiter wählen</div><p><code>Reaper_3D.lua</code> neu starten (LOG: <code>3D v8.22 aktiv</code>), dann in der Oberfläche den Reiter <b>energy</b> wählen. Die Karte füllt sich, sobald Audio durch die Spur läuft.</p></div></li>
+    <li><input type="checkbox" id="en2"><div><div class="t">Auf die Ambisonics-Spur legen</div><p>Einmal als FX auf den <b>Master</b> („JS: seren.a 3D Energy“), oder auf die Spur mit den 16 Kanälen – dort, wo das Ambisonics-Signal liegt (vor dem Decoder). Die Spur bzw. der Master braucht 16 Kanäle (mindestens 4 für 1. Ordnung). Der <b>Slot</b> bleibt auf 1; er ist nur nötig, wenn das JSFX mehrfach im Projekt liegt (dann bekommt jede Instanz einen eigenen Wert von 1–7).</p></div></li>
+    <li><input type="checkbox" id="en3"><div><div class="t">Skript neu starten, Reiter wählen</div><p><code>Reaper_3D.lua</code> neu starten (LOG: <code>3D v8.22.1 aktiv</code>), dann in der Oberfläche den Reiter <b>energy</b> wählen. Die Karte füllt sich, sobald Audio durch die Spur läuft.</p></div></li>
   </ol>
   <div class="tip warn"><b>Wichtig zu wissen:</b> Das <b>Bild des IEM EnergyVisualizer lässt sich nicht auslesen</b>. Die Karte wird vom JSFX selbst aus den Kanälen gerechnet und kann deshalb im Detail vom Plugin abweichen (Projektion rechteckig statt der des Plugins, andere Glättung und Normierung). Übernommen werden nur Peak und Dynamic Range aus dessen Reglern, damit die Skala gleich liegt. Mittelungszeit und Ordnung stehen am JSFX. Nur Reaper. <b>Bisher nur in der Simulation getestet</b> (die Mathematik des JSFX ist gegen eine Referenz geprüft), nicht in Reaper selbst.</div>
 
@@ -434,7 +434,7 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
   <h3>Auf v8.22 aktualisieren</h3>
   <ol class="steps">
     <li><input type="checkbox" id="v8a"><div><div class="t">Ordner v5 ersetzen</div><p>Neue Dateien nach <code>Touch OSC/v5</code>. Die alten <code>IEM-*.tosc</code> (Ordner <code>IEM_3-Ansichten</code>) löschen.</p></div></li>
-    <li><input type="checkbox" id="v8b"><div><div class="t">Reaper</div><p><code>3_Reaper/Reaper_3D.lua</code> ersetzen und neu starten (neu in v8.22: Energie-Reiter). LOG: <code>3D v8.22 aktiv (Reaper) …</code>. Für den Energie-Reiter außerdem <code>3_Reaper/seren-a_3D_Energy.jsfx</code> in den Reaper-Ordner Effects legen (siehe oben).</p></div></li>
+    <li><input type="checkbox" id="v8b"><div><div class="t">Reaper</div><p><code>3_Reaper/Reaper_3D.lua</code> ersetzen und neu starten (neu in v8.22: Energie-Reiter). LOG: <code>3D v8.22.1 aktiv (Reaper) …</code>. Für den Energie-Reiter außerdem <code>3_Reaper/seren-a_3D_Energy.jsfx</code> in den Reaper-Ordner Effects legen (siehe oben).</p></div></li>
     <li><input type="checkbox" id="v8c"><div><div class="t">TouchOSC</div><p>Die Oberflächen aus <code>1_Oberflaechen/3D-Space-Viewer</code> auf iPad und Monitor laden. Die Voreinstellung bleibt erhalten; neue Reiter erscheinen von selbst.</p></div></li>
     <li><input type="checkbox" id="v8d"><div><div class="t">Prüfen</div><p>Hall-Reiter: Reaper-Projekt mit FDN-Reverb und Sends öffnen, Reiter FDN wählen. Split: Monitor › Reiter split. Energie: JSFX auf der 16-Kanal-Spur, Wiedergabe starten, Reiter energy. Geht etwas nicht: LOG ansehen (siehe Fehlersuche).</p></div></li>
   </ol>
@@ -704,7 +704,7 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
     <li><input type="checkbox" id="r1"><div><div class="t">MIDI-Geräte</div><p>Einstellungen › MIDI Devices: TouchOSC Bridge <b>Ausgang an</b>, <b>Eingang an</b> („nur Steuerung“).</p></div></li>
     <li><input type="checkbox" id="r2"><div><div class="t">Skript laden</div><p>Actions › Show action list › New action › Load ReaScript › <code>Reaper_3D.lua</code>, einmal starten. Eine alte Aktion auf <code>seren-a_v3/…</code> neu laden.</p></div></li>
     <li><input type="checkbox" id="r3"><div><div class="t">Twister dazu (optional)</div><p><code>Reaper_Twister.lua</code> als zweites ReaScript starten, Twister In/Out an. Beide laufen nebeneinander.</p></div></li>
-    <li><input type="checkbox" id="r4"><div><div class="t">Kontrolle</div><p>LOG zeigt <code>3D v8.22 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config</code> und pro Spur mit mehreren Plugins eine Zeile wie <code>Spur 3 Plugins: StereoEncoder FX1 (aus), MultiEncoder FX2 *</code>.</p></div></li>
+    <li><input type="checkbox" id="r4"><div><div class="t">Kontrolle</div><p>LOG zeigt <code>3D v8.22.1 aktiv (Reaper) - Plugins in beliebigem FX-Slot, Spurfilter in der Config</code> und pro Spur mit mehreren Plugins eine Zeile wie <code>Spur 3 Plugins: StereoEncoder FX1 (aus), MultiEncoder FX2 *</code>.</p></div></li>
   </ol>
   <h3>Schalter oben im Skript</h3>
   <div class="vals">
@@ -909,8 +909,10 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
     <tr><td>„dearVR PRO: Position nicht erkannt“</td><td>Positions-Parameter nicht unter den ersten 16 (Nuendo) bzw. andere Namen. Die Zeile nennt die gefundenen Namen; bitte schicken.</td></tr>
     <tr><td>FDN-/mcfx-Reiter zeigt „–“ oder bleibt leer</td><td>Nur Reaper. Es muss ein FDN Reverb bzw. mcfx-Convolver im Projekt liegen, und Spuren müssen Sends dorthin haben. LOG ansehen; Art und Instanz meldet die Oberfläche beim Wählen des Reiters.</td></tr>
     <tr><td>Energie-Reiter: „kein seren.a 3D Energy auf der gewählten Spur oder dem Master“</td><td>Nur Reaper. Das JSFX <code>seren-a_3D_Energy.jsfx</code> muss im Reaper-Ordner Effects liegen und als FX auf einer Spur (oder dem Master) sein; <code>Reaper_3D.lua</code> neu starten. Die Spur wird alle Sekunde neu gesucht.</td></tr>
-    <tr><td>Energie-Reiter: „keine Daten“ oder Karte steht still</td><td>Das JSFX bekommt kein Signal oder läuft nicht: Wiedergabe starten, Spur mit mindestens 4 (besser 16) Kanälen, FX nicht umgangen. Zwei Instanzen mit demselben <b>Slot</b> stören sich: jeder Instanz einen eigenen Slot (1–7) geben.</td></tr>
+    <tr><td>Energie-Reiter: „keine Daten“ oder Karte steht still</td><td>Das JSFX bekommt kein Signal oder läuft nicht: Wiedergabe starten, Spur mit mindestens 4 (besser 16) Kanälen, FX nicht umgangen. Liegt das JSFX mehrfach im Projekt, brauchen die Instanzen verschiedene <b>Slots</b> (1–7); mit einer Instanz bleibt der Slot 1.</td></tr>
     <tr><td>Energie-Karte sieht anders aus als der EnergyVisualizer</td><td>Erwartet: die Karte wird vom JSFX gerechnet, das Bild des Plugins lässt sich nicht auslesen. Peak und Bereich folgen den Reglern des Plugins, wenn es auf derselben Spur liegt; sonst mit − / + anpassen.</td></tr>
+    <tr><td>FDN-/mcfx-Reiter bleibt leer</td><td>Das LOG nennt beim Wählen des Reiters, was Reaper gefunden hat (z. B. „kein Plugin im Projekt gefunden“ oder „1 Instanz(en) … mit 3 Sends“). Gezeigt werden die Spuren, die per Send in die Hall-Spur laufen.</td></tr>
+    <tr><td>Skript läuft nicht, wenn das Audio-Gerät fehlt (z. B. Dante an der Hochschule)</td><td>Beobachtet: ohne laufendes Audio-Gerät laufen manche Skripte nicht (vermutlich weil Reaper MIDI-Eingaben dann nicht verarbeitet). Fehlt das Gerät, in Reaper unter Einstellungen › Audio ein vorhandenes Gerät wählen (oder ein Dummy-/Integriertes Gerät). Das Skript meldet es seit v8.22.1 im LOG und in der Reaper-Konsole.</td></tr>
     <tr><td>Reiter „split“ fehlt</td><td>Nur Monitor 5:4 und HD. Config Seite 2 › Reiter zeigen › split einschalten.</td></tr>
     <tr><td>„◆ Achtung: … senden gleichzeitig“</td><td>Zwei DAW-Skripte laufen. Nur eins laufen lassen.</td></tr>
   </table></div>
@@ -983,7 +985,8 @@ figure.shot figcaption{font-size:13px; color:var(--muted)}
   <h3>Verlauf</h3>
   <div class="tblwrap"><table>
     <tr><th>Version</th><th>Datum</th><th>Wichtigste Neuerung</th></tr>
-    <tr><td><b>v8.22</b></td><td>18.11.26</td><td>Energie-Reiter (Reaper): Energiekarte einer Ambisonics-Spur über das JSFX „seren.a 3D Energy“, Skala aus dem EnergyVisualizer</td></tr>
+    <tr><td><b>v8.22.1</b></td><td>18.11.26</td><td>Fehlerkorrekturen: doppelte Ansicht nach 4×8, Hall-Reiter blinkte, Sub/Sends-Zeile, LOG zum Hall-Reiter, Warnung bei fehlendem Reaper-Audio</td></tr>
+    <tr><td>v8.22</td><td>18.11.26</td><td>Energie-Reiter (Reaper): Energiekarte einer Ambisonics-Spur über das JSFX „seren.a 3D Energy“, Skala aus dem EnergyVisualizer</td></tr>
     <tr><td>v8.21</td><td>17.11.26</td><td>Split-Ansicht (Monitor, vier Felder, gemeinsame Liste); Oberflächen heißen <code>3D-Space-Monitor-iPad / -5zu4 / -HD</code></td></tr>
     <tr><td>v8.20</td><td>17.11.26</td><td>Hall-Reiter FDN und mcfx (Sends, Gesamtpegel, Preset, Instanzen)</td></tr>
     <tr><td>v8.19</td><td>17.11.26</td><td>Neue Paletten, Name/Preset statt Nummer, 3OA-Spuren, Zusatzzeilen, Reiter in der Config</td></tr>

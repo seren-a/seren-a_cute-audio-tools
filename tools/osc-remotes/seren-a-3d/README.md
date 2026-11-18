@@ -5,14 +5,14 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 ---
 
-## 1. Was gehört wohin (Stand v8.22)
+## 1. Was gehört wohin (Stand v8.22.1)
 
 ### Reaper – Aktionsliste (ReaScript laden)
 
 | Skript | liegt in | wofür | läuft |
 | --- | --- | --- | --- |
 | `Reaper_3D.lua` | `Touch OSC/v5/3_Reaper/` | 3D-Oberflächen: Panner, Objekt-Übersicht, iPad, Monitor | dauerhaft |
-| `seren-a_3D_Energy.jsfx` | `Touch OSC/v5/3_Reaper/` → in den Reaper-Ordner `Effects` | Energie-Reiter der 3D-Oberflächen: rechnet die Energiekarte aus den 16 Ambisonics-Kanälen (als FX auf die Spur, pro Instanz eigener Slot 1–7) | als FX auf der Spur |
+| `seren-a_3D_Energy.jsfx` | `Touch OSC/v5/3_Reaper/` → in den Reaper-Ordner `Effects` | Energie-Reiter der 3D-Oberflächen: rechnet die Energiekarte aus den 16 Ambisonics-Kanälen (einmal als FX auf den Master oder die 16-Kanal-Spur; Slot bleibt 1) | als FX auf der Spur |
 | `Reaper_Twister.lua` | `Touch OSC/v5/3_Reaper/` | Twister Bänke 1–3 und die Twister View | dauerhaft |
 | `Reaper_E16_Twister.lua` | `Touch OSC/v5/3_Reaper/` | E16 (alle Seiten) und Twister Bank 4: MultiEQ, Kompressoren, Hall, Sends | dauerhaft |
 | `Reaper_E16_Einstellungen.lua` | `Touch OSC/v5/3_Reaper/` | Einstellungsfenster für E16/Twister | bei Bedarf |
@@ -43,9 +43,9 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datei | Gerät | Version im Layout |
 | --- | --- | --- |
-| `3D-Space-Viewer/3D-Space-Monitor-iPad.tosc` | iPad | v8.22 · 18.11.26 |
-| `3D-Space-Viewer/3D-Space-Monitor-5zu4.tosc` | Monitor 5:4 | v8.22 · 18.11.26 |
-| `3D-Space-Viewer/3D-Space-Monitor-HD.tosc` | Monitor Full HD 1920 × 1080 | v8.22 · 18.11.26 |
+| `3D-Space-Viewer/3D-Space-Monitor-iPad.tosc` | iPad | v8.22.1 · 18.11.26 |
+| `3D-Space-Viewer/3D-Space-Monitor-5zu4.tosc` | Monitor 5:4 | v8.22.1 · 18.11.26 |
+| `3D-Space-Viewer/3D-Space-Monitor-HD.tosc` | Monitor Full HD 1920 × 1080 | v8.22.1 · 18.11.26 |
 | `Handy_Objekt-Uebersicht/Objekt-Uebersicht.tosc` | Handy quer | v8.4 · 07.11.26 |
 | `Handy_Pan/…` (6 Varianten) | Handy | v6.1 |
 | `Handy_Twister-View/Twister_View(_quer).tosc` | Handy | v6.1 |
@@ -68,7 +68,8 @@ Diese Datei ist der Einstieg. Ich halte sie bei jeder Änderung aktuell: Was woh
 
 | Datum, Uhrzeit | Version | Was | Neu einspielen |
 | --- | --- | --- | --- |
-| 18.11.26 | **v8.22** | **Energie-Reiter „energy“** (iPad, Monitor 5:4, Monitor HD; nur Reaper): Energie je Richtung einer Ambisonics-Spur als Karte Azimut × Elevation, Ring am Maximum, Gesamtpegel, Farbleiste; gerechnet vom neuen JSFX `seren-a_3D_Energy.jsfx`; Skala (Peak, Dynamic Range) aus dem IEM EnergyVisualizer derselben Spur, sonst 0 dB / 35 dB, − / + von Hand; Config Seite 2: Reiter Energie ein/aus. Das Bild des Plugins lässt sich nicht auslesen, die Karte ist eine eigene Rechnung | alle drei Oberflächen neu öffnen, `Reaper_3D.lua` neu starten, `seren-a_3D_Energy.jsfx` in den Reaper-Ordner Effects legen und auf die 16-Kanal-Spur setzen (eigener Slot je Instanz) |
+| 18.11.26 | **v8.22.1** | Fehler behoben: doppelte Ansicht nach „4×8“ (Monitor), Hall-Reiter blinkte mit alter Liste, Sub/Sends-Zusatzzeile lief zusammen; LOG nennt, was der Hall-Reiter gefunden hat; Warnung, wenn Reapers Audio nicht läuft; JSFX-Slot bleibt 1 | alle drei Oberflächen und `Reaper_3D.lua` neu einspielen |
+| 18.11.26 | **v8.22** | **Energie-Reiter „energy“** (iPad, Monitor 5:4, Monitor HD; nur Reaper): Energie je Richtung einer Ambisonics-Spur als Karte Azimut × Elevation, Ring am Maximum, Gesamtpegel, Farbleiste; gerechnet vom neuen JSFX `seren-a_3D_Energy.jsfx`; Skala (Peak, Dynamic Range) aus dem IEM EnergyVisualizer derselben Spur, sonst 0 dB / 35 dB, − / + von Hand; Config Seite 2: Reiter Energie ein/aus. Das Bild des Plugins lässt sich nicht auslesen, die Karte ist eine eigene Rechnung | alle drei Oberflächen neu öffnen, `Reaper_3D.lua` neu starten, `seren-a_3D_Energy.jsfx` in den Reaper-Ordner Effects legen und auf die 16-Kanal-Spur setzen (Slot bleibt 1) |
 | 17.11.26 | **v8.21** | **Split-Ansicht** (Reiter „split“, Monitor 5:4 + HD): vier Felder space · multi · panner · room mit gemeinsamer Spurliste, je Feld in der Config schaltbar; Oberflächen umbenannt: Ordner `3D-Space-Viewer`, Dateien `3D-Space-Monitor-iPad / -5zu4 / -HD.tosc` | Monitor 5:4 und HD neu laden (alte `IEM-*.tosc` löschen); iPad nur für die Config-Voreinstellung; `Reaper_3D.lua` unverändert |
 | 17.11.26 | **v8.20** | Hall-Reiter **FDN** und **mcfx** (iPad, Monitor 5:4, Monitor HD): Sends in einen Hall-Plugin als Plätze, Gesamtpegel, Preset, je Send Send-Fader + Pegel am Hall, Instanz-Chips; Config Seite 2: Reiter FDN-Hall/mcfx-Hall ein/aus; Kopfzeile enger. Pegel am Hall wird gerechnet (Quellspur × Send-Fader) | alle drei Oberflächen neu öffnen, `Reaper_3D.lua` neu starten (nur Reaper; bei mehreren offenen Oberflächen gewinnt der zuletzt gewählte Reiter) |
 | 17.11.26, 22:10 | **v8.19** | Drei neue Paletten (Cute Pink, Girly Pop Dark, Dark Pastel Pink), alle Texte folgen der Palette; statt Nummer wahlweise Spurname oder Preset; 3OA-Spuren als eigener Typ; Zusatzzeilen (Subspuren, Sends); Config Seite 2: Reiter ein/aus und je Reiter eigene Spurtypen; die drei Ansichten liegen im Ordner `IEM_3-Ansichten` | alle drei Oberflächen neu öffnen (jetzt aus `IEM_3-Ansichten`), `Reaper_3D.lua` neu starten (Filter-Schlüssel neu: alter Filter wird einmal auf „alles“ zurückgesetzt) |

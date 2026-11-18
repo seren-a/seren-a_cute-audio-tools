@@ -4,13 +4,14 @@ desc:seren.a 3D Energy (Ambisonics-Energiekarte fuer die Touch-Oberflaeche)
 //version: 8.22
 // Liest bis zu 16 Ambisonics-Kanaele (ACN / SN3D, bis 3. Ordnung), rechnet daraus eine Energiekarte
 // (24 x 12 Raster, Azimut/Elevation, 15 Grad pro Zelle) und gibt sie ueber gmem an Reaper_3D.lua weiter.
-// Das Audiosignal wird UNVERAENDERT durchgereicht. Pro Instanz einen eigenen Slot (1-7) waehlen.
+// Das Audiosignal wird UNVERAENDERT durchgereicht. Einmal auf dem Master (oder der 16-Kanal-Spur) reicht: Slot bleibt 1.
+// Nur wenn das JSFX mehrfach im Projekt liegt, bekommt jede Instanz einen eigenen Slot (1-7).
 // Die Karte ist unabhaengig vom IEM EnergyVisualizer: das Bild des Plugins kann nicht ausgelesen werden.
 
 options:gmem=seren3D_energy
 options:no_meter
 
-slider1:1<1,7,1>Slot (pro Instanz eigener Wert)
+slider1:1<1,7,1>Slot (1 lassen; nur bei mehreren Instanzen je einen eigenen)
 slider2:0<0,3,1{automatisch (nach Kanalzahl),1. Ordnung,2. Ordnung,3. Ordnung}>Ordnung
 slider3:100<20,1000,10>Mittelung (ms)
 

@@ -94,7 +94,10 @@ local function hasBit(f, b) return floor(f / b) % 2 == 1 end
 local function present(k)
   if k > win() then return false end
   local o = obj[k]
-  if hallMode(mode) ~= 0 then return o.name ~= '' end             -- v8.20: Hall-Reiter: jeder Send ist ein Platz
+  if hallMode(mode) ~= 0 then                                       -- v8.20: Hall-Reiter: jeder Send ist ein Platz
+    if mode ~= 'en' and HL.kind ~= hallMode(mode) then return false end   -- v8.22: erst anzeigen, wenn die DAW diesen Hall-Reiter beantwortet hat (sonst blinkt die alte Liste kurz auf)
+    return o.name ~= ''
+  end
   if mode ~= 'me' and o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc end
   if mode == 'mp' then return hasBit(o.flags, 2) or o.seenMp end
