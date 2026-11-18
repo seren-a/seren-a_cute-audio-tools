@@ -142,7 +142,7 @@ local function present(k)
   local o = obj[k]
   if hallMode(mode) ~= 0 then                                       -- v8.20: Hall-Reiter: jeder Send ist ein Platz
     if mode ~= 'en' and HL.kind ~= hallMode(mode) then return false end   -- v8.22: erst anzeigen, wenn die DAW diesen Hall-Reiter beantwortet hat (sonst blinkt die alte Liste kurz auf)
-    return o.name ~= ''
+    return o.name ~= '' and typeShownIn(mode, o.flags, o)            -- v8.22.3: Spurtypen je Reiter auch hier
   end
   if o.name ~= '' and not typeShown(o.flags, o) then return false end
   if mode == 'iem' then return hasBit(o.flags, 1) or o.seenEnc or rotOnly(o) end

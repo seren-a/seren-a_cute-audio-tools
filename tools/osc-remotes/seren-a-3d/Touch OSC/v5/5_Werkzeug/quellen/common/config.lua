@@ -155,7 +155,7 @@ local function cfgPaint()
   pill('cfg_col_tosc', LOOK.colors == 'tosc'); pill('cfg_col_daw', LOOK.colors == 'daw')
   for _, key in ipairs(THEME_ORDER) do pill('cfg_th_' .. key, LOOK.theme == key) end
   for _, key in ipairs(TYPE_ORDER) do pill('cfg_sh_' .. key, cfgShow()[key] ~= false) end
-  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); if m ~= 'fdn' and m ~= 'mcfx' and m ~= 'en' and m ~= 'sp' then pill('cfg_et_' .. m, cfgTab() == m) end end
+  for _, m in ipairs(TAB_ORDER) do pill('cfg_tab_' .. m, LOOK.tabs[m] ~= false); if m ~= 'sp' then pill('cfg_et_' .. m, cfgTab() == m) end end
   for _, m in ipairs(SPLIT_MODES) do pill('cfg_sp_' .. m, LOOK.split[m] ~= false) end
   for _, key in ipairs({ 'num', 'name', 'preset' }) do pill('cfg_lb_' .. key, LOOK.label == key) end
   for _, k in ipairs(TYPE_ORDER) do
@@ -207,7 +207,7 @@ local function cfgState(extra)
   add('sc', LV.scale); add('md', LV.mode); add('aes', LV.aes17 and 1 or 0); add('loud', LV.loud); add('tg', LV.target)
   add('col', LOOK.colors); add('th', LOOK.theme); add('mk', LOOK.marks and 1 or 0); add('cpu', LOOK.cpu and 1 or 0); add('ic', LOOK.icons)
   add('tabs', tabsMask()); add('tabh', hallTabsMask()); add('tabsp', LOOK.tabs.sp ~= false and 1 or 0); add('tabe', LOOK.tabs.en ~= false and 1 or 0); add('spl', splitMask()); add('lb', LOOK.label); add('xs', extraMask())
-  for _, m in ipairs(TAB_FILT) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
+  for _, m in ipairs(TAB_SHOW) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
   local names = {}
   for name in pairs(CFG_FADERS) do names[#names + 1] = name end
   table.sort(names)
@@ -241,7 +241,7 @@ local function cfgApplyState(str)                -- gibt die Tabelle zur√ºck (f√
       LOOK.extra[k] = { subs = math.floor(num('xs') / 2 ^ (2 * i - 2)) % 2 == 1, sends = math.floor(num('xs') / 2 ^ (2 * i - 1)) % 2 == 1 }
     end
   end
-  for _, m in ipairs(TAB_FILT) do
+  for _, m in ipairs(TAB_SHOW) do
     if num('sh_' .. m) then for i, k in ipairs(TYPE_ORDER) do LOOK.showBy[m][k] = math.floor(num('sh_' .. m) / 2 ^ (i - 1)) % 2 == 1 end end
   end
   for name, f in pairs(CFG_FADERS) do local v = num(name:sub(5)); if v then f[1][f[2]] = v end end

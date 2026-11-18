@@ -73,6 +73,7 @@ local function meterColor(pos) local th = theme(); return (pos >= 0.9) and th.me
 TYPE_ORDER = { 'audio', 'oa3', 'fx', 'group', 'instr' }
 TAB_ORDER = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en', 'sp' }   -- v8.20: + Hall-Reiter (Sends in einen FDN-/mcfx-Hall)
 TAB_FILT = { 'iem', 'me', 'mp', 'room' }                       -- Reiter mit eigener Spurauswahl (Hall-Reiter zeigen Sends)
+TAB_SHOW = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en' }   -- v8.22.3: Spurtypen je Reiter, jetzt auch FDN/mcfx/Energie
 SPLIT_MODES = { 'iem', 'me', 'mp', 'room' }                    -- v8.21: Felder der Split-Ansicht (Reihenfolge = Lage)
 HAS_SPLIT = false                                              -- nur die Monitore haben den Reiter „split“
 HALL_KIND = { fdn = 1, mcfx = 2, en = 3 }                              -- Art, die das DAW-Skript im Hall-Reiter anzeigt
@@ -94,6 +95,7 @@ local function typeOf(flags, o)
   return 'audio'
 end
 local function typeShown(flags, o) return LOOK.show[typeOf(flags, o)] ~= false end
+function typeShownIn(m, flags, o) local sh = LOOK.showBy[m] or LOOK.show; return sh[typeOf(flags, o)] ~= false end   -- v8.22.3
 
 -- Beschriftung statt der Nummer (v8.19): Nummer, Spurname oder Preset, gekürzt auf n Zeichen
 function abbr(s, n)

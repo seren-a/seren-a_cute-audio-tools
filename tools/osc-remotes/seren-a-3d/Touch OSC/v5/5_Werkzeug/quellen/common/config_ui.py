@@ -135,7 +135,7 @@ def build(W, H, with64=False, split=False):
         k += _fader("cfg_f_pa", x3, y, col_w, 60 * s, "Horizont-Deckkraft", 0.5); y += 68 * s
     # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
     k2 = []
-    TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
+    TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room"), ("fdn", "FDN"), ("mcfx", "mcfx"), ("en", "Energie")]
     HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall"), ("en", "Energie")] + ([("sp", "split")] if split else [])
     TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
     y = y0
@@ -145,9 +145,9 @@ def build(W, H, with64=False, split=False):
     y += ((len(HTABS) + 1) // 2) * (bh + gap) + 10 * s
     k2.append(_lbl("cfg_tab_lbl", (x1, y, col_w, 26 * s), "Spuren zeigen im Reiter", 14 * s, "#7af5ff")); y += 30 * s
     k2.append(_lbl(None, (x1, y, col_w, 20 * s), "Reiter wählen, dann die Spurtypen:", 12 * s, DIM)); y += 22 * s
-    for i, (key, cap) in enumerate(TABS):
-        k2 += _btn("cfg_et_" + key, x1 + i * (bw4 + gap), y, bw4, bh, cap, 12 * s)
-    y += bh + gap + 4 * s
+    for i, (key, cap) in enumerate(TABS):             # v8.22.3: zwei Reihen (+ FDN, mcfx, Energie)
+        k2 += _btn("cfg_et_" + key, x1 + (i % 4) * (bw4 + gap), y + (i // 4) * (bh + gap), bw4, bh, cap, 12 * s)
+    y += 2 * (bh + gap) + 4 * s
     for i, (key, cap) in enumerate(TYPES):
         k2 += _btn("cfg_sh_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 12 * s)
     y += 3 * (bh + gap) + 4 * s
