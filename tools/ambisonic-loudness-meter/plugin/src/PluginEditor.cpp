@@ -58,6 +58,7 @@ void DirectionMeter::paint(juce::Graphics& g) {
 }
 
 // ---------------------------------------------------------------------------
+// Zellen: Index -> Metrik (0..5 BS.1770, 6..15 Soundscape/Torresin)
 
 static const char* kCellNames[] = {
     "Integrated", "Max Short-Term (3s)", "Max Momentary (400ms)", "LRA",
@@ -89,6 +90,15 @@ static const char* kCellTips[] = {
 };
 static_assert(std::size(kCellTips) == 16);
 
+// Ansichten
+static const char* kViewNames[] = {
+    "PCA-Gruppen (Torresin)",   // V1: Comfort / Content / Familiarity / Broadcast
+    "Broadcast + Soundscape",   // V4: links Meter, rechts PCA-Bloecke
+    "Uebersicht (8 Kernwerte)", // V5: kompakt
+    "Alle 16 + Richtung"        // V5-Details
+};
+static constexpr int kNumViews = 4;
+
 AmbisonicLoudnessMeterEditor::AmbisonicLoudnessMeterEditor(AmbisonicLoudnessMeterProcessor& p)
     : juce::AudioProcessorEditor(&p), proc(p) {
     auto* orderParam = dynamic_cast<juce::AudioParameterChoice*>(proc.getOrderParameter());
@@ -116,13 +126,28 @@ AmbisonicLoudnessMeterEditor::AmbisonicLoudnessMeterEditor(AmbisonicLoudnessMete
     addAndMakeVisible(splSlider);
     if (splParam != nullptr) splParam->addListener(this);
 
+    viewLabel.setText("Ansicht:", juce::dontSendNotification);
+    viewLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    viewBox.addItemList(juce::StringArray{kViewNames[0], kViewNames[1], kViewNames[2], kViewNames[3]}, 1);
+    viewBox.setSelectedItemIndex(0, juce::dontSendNotification);
+    viewBox.onChange = [this] { currentView = viewBox.getSelectedItemIndex(); resized(); };
+    viewBox.setTooltip("Ansicht wechseln: PCA-Gruppen nach Torresin / Broadcast+Soundscape / Uebersicht / alle 16 Werte.");
+    addAndMakeVisible(viewLabel);
+    addAndMakeVisible(viewBox);
+
     orderBox.setTooltip("HOA-Ordnung des B-Formats (ACN/SN3D): 1 = 4 Kanaele, 2 = 9, 3 = 16. "
                         "Die ersten nCh Bus-Kanaele werden als B-Format interpretiert.");
     orderLabel.setTooltip(orderBox.getTooltip());
     splSlider.setTooltip("SPL-Kalibrierung: dB SPL, die 0 dBFS entsprechen. Default 94 dB = 1 Pa "
                          "(Mess-Recorder-Konvention). Nur wenn die Aufnahme kalibriert ist, sind die "
-                         "dB-SPL-Werte absolut; sonst nur relativ vergleichen.");
+                         "dB-SPL-Werte absolut; sonst nur relativ vergleichen. Siehe docs/SPL_KALIBRIERUNG.md.");
     splLabel.setTooltip(splSlider.getTooltip());
+
+    for (auto& h : groupHeaders) {
+        h.setColour(juce::Label::textColourId, juce::Colour(0xffffd080));
+        h.setFont(juce::Font(juce::FontOptions{11.0f, juce::Font::bold}));
+        addAndMakeVisible(h);
+    }
 
     for (int i = 0; i < kNumCells; ++i) {
         cellName[(size_t)i].setText(kCellNames[i], juce::dontSendNotification);
@@ -140,6 +165,7 @@ AmbisonicLoudnessMeterEditor::AmbisonicLoudnessMeterEditor(AmbisonicLoudnessMete
     setSize(760, 560);
     startTimerHz(10);
     updateLabels();
+    resized();
 }
 
 AmbisonicLoudnessMeterEditor::~AmbisonicLoudnessMeterEditor() {
@@ -201,27 +227,103 @@ void AmbisonicLoudnessMeterEditor::paint(juce::Graphics& g) {
 }
 
 void AmbisonicLoudnessMeterEditor::resized() {
-    auto area = getLocalBounds().reduced(8);
-    area.removeFromTop(26);  // Titel
-    auto top = area.removeFromTop(30);
+    auto area = getLocalBounds().toFloat().reduced(8.0f);
+    area.removeFromTop(26.0f);  // Titel
+    auto top = area.removeFromTop(30.0f).toNearestInt();
     orderLabel.setBounds(top.removeFromLeft(70));
     orderBox.setBounds(top.removeFromLeft(100));
     splLabel.setBounds(top.removeFromLeft(90));
-    splSlider.setBounds(top.removeFromLeft(160));
+    splSlider.setBounds(top.removeFromLeft(150));
+    viewLabel.setBounds(top.removeFromLeft(55));
+    viewBox.setBounds(top.removeFromLeft(190));
 
-    // 4x4-Raster, jede Metrik eigene Zelle (Name klein grau, Wert gross gruen)
-    constexpr int cols = 4;
-    constexpr int rows = (kNumCells + cols - 1) / cols;
-    constexpr float cellH = 46.0f;
-    auto grid = area.removeFromTop(cellH * rows);
-    const float cw = grid.getWidth() / cols;
-    for (int i = 0; i < kNumCells; ++i) {
-        juce::Rectangle<float> cell(grid.getX() + (i % cols) * cw,
-                                    grid.getY() + (i / cols) * cellH, cw, cellH);
-        cell.reduce(3.0f, 2.0f);
-        cellName[(size_t)i].setBounds(cell.removeFromTop(14.0f).toNearestInt());
-        cellVal[(size_t)i].setBounds(cell.toNearestInt());
+    auto placeCell = [&](int idx, juce::Rectangle<float> r) {
+        cellName[(size_t)idx].setVisible(true);
+        cellVal[(size_t)idx].setVisible(true);
+        r.reduce(3.0f, 2.0f);
+        cellName[(size_t)idx].setBounds(r.removeFromTop(13.0f).toNearestInt());
+        cellVal[(size_t)idx].setBounds(r.toNearestInt());
+    };
+    auto hideCell = [&](int idx) {
+        cellName[(size_t)idx].setVisible(false);
+        cellVal[(size_t)idx].setVisible(false);
+    };
+    auto setHeader = [&](int gi, const char* text, juce::Rectangle<float> r) {
+        groupHeaders[(size_t)gi].setText(text, juce::dontSendNotification);
+        groupHeaders[(size_t)gi].setVisible(true);
+        groupHeaders[(size_t)gi].setBounds(r.toNearestInt());
+    };
+    for (auto& h : groupHeaders) h.setVisible(false);
+
+    const float cellFont = currentView == 2 ? 20.0f : 14.0f;
+    for (auto& v : cellVal) v.setFont(juce::Font(juce::FontOptions{cellFont}));
+
+    if (currentView == 0) {
+        // V1: PCA-Gruppen 2x2 — Comfort / Content / Familiarity / Broadcast
+        static const char* titles[4] = {"Comfort (neg. mit N10)", "Content (pos. mit L_A10-L_A90)",
+                                        "Familiarity (neg. mit S)", "Broadcast BS.1770"};
+        static const int cells[4][4] = {{6, 9, 10, 11}, {8, 12, 3, 1}, {13, 7, 14, 15}, {0, 2, 4, 5}};
+        constexpr float gh = 18.0f, ch = 52.0f;
+        auto g = area.removeFromTop(2.0f * (gh + 2.0f * ch));
+        const float bw = g.getWidth() / 2.0f, bh = gh + 2.0f * ch;
+        for (int gi = 0; gi < 4; ++gi) {
+            juce::Rectangle<float> box(g.getX() + (gi % 2) * bw, g.getY() + (gi / 2) * bh, bw, bh);
+            setHeader(gi, titles[gi], box.removeFromTop(gh));
+            for (int k = 0; k < 4; ++k) {
+                juce::Rectangle<float> c(box.getX() + (k % 2) * (box.getWidth() / 2.0f),
+                                         box.getY() + (k / 2) * ch,
+                                         box.getWidth() / 2.0f, ch);
+                placeCell(cells[gi][k], c);
+            }
+        }
+    } else if (currentView == 1) {
+        // V4: links Broadcast-Panel, rechts Soundscape-PCA-Bloecke
+        auto left = area.removeFromLeft(area.getWidth() * 0.42f);
+        setHeader(0, "Broadcast (BS.1770)", left.removeFromTop(18.0f));
+        static const int bcells[6] = {0, 4, 3, 1, 2, 5};
+        const float ch = (left.getHeight() - 4.0f * 52.0f) / 52.0f;  // 6 Zellen + Abstaende
+        float y = left.getY();
+        for (int k = 0; k < 6; ++k) {
+            placeCell(bcells[k], juce::Rectangle<float>(left.getX(), y, left.getWidth(), 52.0f));
+            y += 52.0f + 4.0f;
+        }
+        (void)ch;
+        auto right = area;
+        setHeader(1, "Comfort (neg. mit N10)", right.removeFromTop(18.0f));
+        auto row = right.removeFromTop(52.0f);
+        for (int k = 0; k < 4; ++k) {
+            static const int comfort[4] = {6, 9, 10, 11};
+            placeCell(comfort[k], row.removeFromLeft(row.getWidth() / 4.0f));
+        }
+        setHeader(2, "Content (pos. mit L_A10-L_A90)", right.removeFromTop(18.0f));
+        row = right.removeFromTop(52.0f);
+        static const int content[2] = {8, 12};
+        for (int k = 0; k < 2; ++k)
+            placeCell(content[k], row.removeFromLeft(row.getWidth() / 2.0f));
+        setHeader(3, "Familiarity (neg. mit S)", right.removeFromTop(18.0f));
+        row = right.removeFromTop(52.0f);
+        static const int fam[4] = {13, 7, 14, 15};
+        for (int k = 0; k < 4; ++k)
+            placeCell(fam[k], row.removeFromLeft(row.getWidth() / 4.0f));
+    } else if (currentView == 2) {
+        // V5: Uebersicht — 8 Kernwerte 4x2, gross
+        static const int core[8] = {0, 3, 4, 6, 9, 12, 8, 13};
+        for (int i = 0; i < kNumCells; ++i) hideCell(i);
+        auto grid = area.removeFromTop(2.0f * 72.0f);
+        const float cw = grid.getWidth() / 4.0f;
+        for (int k = 0; k < 8; ++k)
+            placeCell(core[k], juce::Rectangle<float>(grid.getX() + (k % 4) * cw,
+                                                      grid.getY() + (k / 4) * 72.0f, cw, 72.0f));
+    } else {
+        // V5-Details: alle 16 im 4x4-Raster
+        constexpr int cols = 4;
+        constexpr float cellH = 46.0f;
+        auto grid = area.removeFromTop(cellH * (kNumCells / cols));
+        const float cw = grid.getWidth() / cols;
+        for (int i = 0; i < kNumCells; ++i)
+            placeCell(i, juce::Rectangle<float>(grid.getX() + (i % cols) * cw,
+                                                grid.getY() + (i / cols) * cellH, cw, cellH));
     }
 
-    dirMeter.setBounds(area);
+    dirMeter.setBounds(area.toNearestInt());
 }

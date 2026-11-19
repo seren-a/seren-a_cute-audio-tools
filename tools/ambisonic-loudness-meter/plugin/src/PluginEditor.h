@@ -1,5 +1,6 @@
 // PluginEditor.h -- GUI: BS.1770-Meter + Soundscape-Panel (jede Metrik eigene
 // Anzeige, siehe Torresin et al. 2020) + Richtungs-Loudness-Karte.
+// Umschaltbare Ansichten: PCA-Gruppen / Broadcast+Soundscape / Uebersicht / Alle.
 
 #pragma once
 
@@ -41,6 +42,10 @@ private:
     juce::ComboBox orderBox;
     juce::Slider splSlider;
     juce::Label orderLabel, splLabel;
+    juce::ComboBox viewBox;
+    juce::Label viewLabel;
+    std::array<juce::Label, 4> groupHeaders;  // Gruppen-Ueberschriften je Ansicht
+    int currentView = 0;
 
     // 16 Anzeige-Zellen: 6x BS.1770 + 10x Soundscape (Torresin-Tabelle)
     static constexpr int kNumCells = 16;
