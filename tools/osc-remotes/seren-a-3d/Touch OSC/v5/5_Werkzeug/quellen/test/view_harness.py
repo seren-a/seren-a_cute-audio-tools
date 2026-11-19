@@ -4,7 +4,7 @@ sys.path.insert(0, "/home/claude/mft-view")
 import py2tosc
 
 class View:
-    def __init__(self, tosc, lua_version=None):
+    def __init__(self, tosc, lua_version=None, defaults=False):
         lua = importlib.import_module("lupa." + (lua_version or os.environ.get("LUA", "lua51")))
         self.doc = py2tosc.load(tosc)
         self.L = lua.LuaRuntime(unpack_returned_tuples=True); self.g = self.L.globals()
@@ -23,6 +23,11 @@ class View:
         self.L.execute(self.doc.root.get("script"))
         self.c = self.g.controls
         self.L.execute("init()")
+        if not defaults and 'lookDefaults' in (self.doc.root.get("script") or ''):   # v8.22.8: ältere Tests erwarten „alles an“
+            self.L.execute("""for _, m in ipairs(TAB_ORDER) do LOOK_DEFAULTS.tabs[m] = true; LOOK_DEFAULTS.show[m] = { audio = true, oa3 = true, fx = true, group = true, instr = true } end
+for _, m in ipairs(SPLIT_MODES) do LOOK_DEFAULTS.split[m] = true end
+for k in pairs(LOOK_DEFAULTS.extra) do LOOK_DEFAULTS.extra[k] = { subs = false, sends = false } end
+lookDefaults()""")
         self.tick()
     def run(self, code): return self.L.execute(code)
     def tick(self, ms=16, n=1):

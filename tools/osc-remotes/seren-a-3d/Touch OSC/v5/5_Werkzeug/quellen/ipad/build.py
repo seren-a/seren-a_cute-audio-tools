@@ -86,6 +86,7 @@ def mode_pill(name, frame, caption, size=18):
             lbl(name + "_lbl", frame, caption, size, TXT, AlignH.CENTER), tap(name, frame)]
 
 
+LITE = "--lite" in sys.argv      # v8.22.8: ohne FDN/mcfx/Energie
 HDR_X0, HDR_GAP = 252, 4          # muss zu HDR_X0/HDR_GAP in space_root.lua passen (layoutTabs rückt die Kopfzeile zusammen)
 HDR = [("mode_iem", 58, "space", 14), ("mode_me", 54, "multi", 14), ("mode_mp", 64, "panner", 14),
        ("mode_room", 50, "room", 14), ("mode_fdn", 44, "fdn", 14), ("mode_mcfx", 52, "mcfx", 14), ("mode_en", 58, "energy", 14),
@@ -97,6 +98,8 @@ def header():
     k = [lbl(None, (16, 12, 232, 60), "✧ seren.a ♡ IEM space", 19, PINK)]
     x = HDR_X0
     for name, w, cap, size in HDR:
+        if LITE and name in ("mode_fdn", "mode_mcfx", "mode_en"):
+            continue
         k += mode_pill(name, (x, 16, w, 52), cap, size)
         x += w + HDR_GAP
     k.append(lbl("src", (x, 16, 56, 52), "keine DAW", 11, CYAN, AlignH.CENTER))
@@ -292,16 +295,20 @@ def build():
     root = doc.root
     root.name = "seren.a IEM space"
     common = HERE.parent / "common"
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
-        "\n" + (HERE / "space_root.lua").read_text()
+    parts = [(common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")]
+    if LITE:
+        assert parts[2].count("LITE = false") == 1
+        parts[2] = parts[2].replace("LITE = false", "LITE = true", 1)
+    root.script = "\n".join(parts) + "\n" + (HERE / "space_root.lua").read_text()
     k = header()
     k += [top_view(), pano_view(),
           square_bg("bg_top_mp", TOP, ("✧ vorn · Y +100 ✧", "hinten · Y −100", "X −100", "X +100")),
           square_bg("bg_pano_mp", PANO, ("rückansicht · Z +100 oben", "Z −100", "X −100", "X +100"))]
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO): top view in TOP, side view in PANO
-    k.append(hall_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
+    if not LITE:
+      k.append(hall_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
                            DIM=DIM, PANEL=PANEL, PANEL2=PANEL2, BG=BG))   # v8.20: Hall-Reiter (über den Ansichten, unter den Zieh-Flächen)
-    k.append(energy_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
+      k.append(energy_ui.build(t, box, lbl, tap, (16, 168, 914, 840), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT,
                              DIM=DIM, PANEL=PANEL, PANEL2=PANEL2, BG=BG))   # v8.22: Energie-Reiter
     k.append(box(TOP, BG, name="top_area", bg=False))
     k.append(box(PANO, BG, name="pano_area", bg=False))
@@ -333,7 +340,7 @@ def build():
                 14, LAV),
             lbl("mon_text", (16, 42, 882, 786), "", 15, TXT, multi=True, valign=AlignV.TOP))
     k.append(mon)
-    k.append(config_ui.build(W, H, with64=False))
+    k.append(config_ui.build(W, H, with64=False, lite=LITE))
     root.add(*k)
     from themenames import theme_script
     root.script = theme_script(doc) + root.script
@@ -346,5 +353,5 @@ if __name__ == "__main__":
     doc = build()
     for issue in doc.validate():
         print("ISSUE:", issue)
-    doc.save(out / "seren-a_IEM-Space.tosc")
+    doc.save(out / ("seren-a_IEM-Space_Lite.tosc" if LITE else "seren-a_IEM-Space.tosc"))
     print("saved", sum(1 for _ in doc.walk()), "controls")

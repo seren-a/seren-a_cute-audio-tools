@@ -19,6 +19,7 @@ import sphere_ui  # noqa: E402
 import room_ui  # noqa: E402
 
 HD = "--hd" in sys.argv          # v8.16: Full HD 1920 x 1080 (sonst 5:4, 1280 x 1024)
+LITE = "--lite" in sys.argv      # v8.22.8: ohne FDN/mcfx/Energie (weniger Steuerelemente, weniger Last)
 W, H = (1920, 1080) if HD else (1280, 1024)
 MAXO = 64
 BG, PANEL, PANEL2 = "#0a0414", "#241046", "#2e1458"
@@ -110,6 +111,8 @@ def header():
     k = [lbl(None, (10, 8, 208, 46), "✧ seren.a ♡ IEM monitor", 17, PINK)]
     x = HDR_X0
     for name, w, cap, size in HDR:
+        if LITE and name in ("mode_fdn", "mode_mcfx", "mode_en"):
+            continue
         k += pill(name, (x, 10, w, 42), cap, size)
         x += w + HDR_GAP
         if name == "lay_64":
@@ -208,7 +211,7 @@ def dot(k, size=30):
 def split_quads():
     """v8.21: vier Felder der Split-Ansicht (Zeichnung wird zur Laufzeit gesetzt, Frames hier nur Platzhalter)."""
     k = []
-    for i in (1, 2, 3, 4, 5):                  # v8.22.7: Feld 5 = Energie
+    for i in ((1, 2, 3, 4) if LITE else (1, 2, 3, 4, 5)):   # v8.22.7: Feld 5 = Energie
         n = f"spq{i}"
         parts = [box((0, 0, 10, 10), PANEL, name=n + "_bg", radius=16),
                  lbl(n + "_title", (0, 0, 10, 10), "", 14, PINK),
@@ -221,6 +224,8 @@ def split_quads():
             c.set("visible", False)
         k += parts
     # v8.22.7: Energie im Split: grobe Karte 12 x 6 (Rahmen/Felder setzt das Skript), Untertitel
+    if LITE:
+        return k
     g = t_group_spe()
     k.append(g)
     sub = lbl("spe_sub", (0, 0, 10, 10), "", 12, DIM)
@@ -246,8 +251,11 @@ def build():
     if HD:
         assert rootlua.count("local HD = false") == 1
         rootlua = rootlua.replace("local HD = false", "local HD = true")
-    root.script = "\n".join((common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")) + \
-        "\n" + rootlua
+    parts = [(common / f).read_text() for f in ("monitor.lua", "levels.lua", "look.lua", "hall.lua", "energy.lua", "config.lua", "room.lua", "cpu.lua", "bank.lua")]
+    if LITE:
+        assert parts[2].count("LITE = false") == 1
+        parts[2] = parts[2].replace("LITE = false", "LITE = true", 1)
+    root.script = "\n".join(parts) + "\n" + rootlua
     k = header()
     for i in (1, 2, 3, 4):
         k += [circle(i), circle(i, True)]
@@ -256,9 +264,10 @@ def build():
     k += room_ui.controls(box, lbl)        # ROOM view (dearVR PRO), under the dots
     k += split_quads()                     # v8.21: Split-Ansicht (Hintergründe der 4 Felder), unter den Punkten
     cx, cy, cw, ch = CA[1]
-    k.append(hall_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
+    if not LITE:
+      k.append(hall_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
                            PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.20: Hall-Reiter (Ansicht 16: Anzeige links, Sends rechts)
-    k.append(energy_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
+      k.append(energy_ui.build(t, box, lbl, tap, (cx, cy, cw, ch), PINK=PINK, PINK_DD=PINK_DD, CYAN=CYAN, TXT=TXT, DIM=DIM,
                              PANEL=PANEL, PANEL2=PANEL2, BG=BG, title=28 if not HD else 32))   # v8.22: Energie-Reiter
     for i in range(1, MAXO + 1):          # width: left/right edge of a StereoEncoder
         for side in ("wl", "wr"):
@@ -289,7 +298,7 @@ def build():
             lbl(None, (16, 10, W - 48, 24), "✧ log ✧   ◆ vom DAW-Skript erkannt   ← kommt an   → geht raus", 14, LAV),
             lbl("mon_text", (16, 42, W - 48, H - 130), "", 15, TXT, multi=True, valign=AlignV.TOP))
     k.append(mon)
-    cfg = config_ui.build(W, H, with64=True, split=True)
+    cfg = config_ui.build(W, H, with64=True, split=True, lite=LITE)
     k.append(cfg)
     root.add(*k)
     from themenames import theme_script
@@ -303,5 +312,5 @@ if __name__ == "__main__":
     doc = build()
     for issue in doc.validate():
         print("ISSUE:", issue)
-    doc.save(out / ("seren-a_IEM-Monitor_HD.tosc" if HD else "seren-a_IEM-Monitor.tosc"))
+    doc.save(out / (("seren-a_IEM-Monitor_HD" if HD else "seren-a_IEM-Monitor") + ("_Lite" if LITE else "") + ".tosc"))
     print("saved", sum(1 for _ in doc.walk()), "controls")

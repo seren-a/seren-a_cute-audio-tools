@@ -41,7 +41,7 @@ def _fader(name, x, y, w, h, title, default):
     return [_lbl(name + "_t", (x, y, w * 0.6, 20), title, 12, DIM), _lbl(name + "_val", (x + w * 0.6, y, w * 0.4, 20), "", 12, TXT, AlignH.RIGHT), f]
 
 
-def build(W, H, with64=False, split=False):
+def build(W, H, with64=False, split=False, lite=False):
     """Returns the overlay group (hidden). Coordinates scale with the page size."""
     g = t.group(name="cfg_overlay", frame=(0, 0, W, H), color="#0a0414", background=True, outline=False)
     g.visible = False
@@ -135,8 +135,10 @@ def build(W, H, with64=False, split=False):
         k += _fader("cfg_f_pa", x3, y, col_w, 60 * s, "Horizont-Deckkraft", 0.5); y += 68 * s
     # ---- Seite 2 (v8.19): Reiter, Spuren je Reiter, Beschriftung, Zusatzzeilen
     k2 = []
-    TABS = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room"), ("fdn", "FDN"), ("mcfx", "mcfx"), ("en", "Energie")]
-    HTABS = TABS + [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall"), ("en", "Energie")] + ([("sp", "split")] if split else [])
+    BASE = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")]
+    HALLT = [] if lite else [("fdn", "FDN"), ("mcfx", "mcfx"), ("en", "Energie")]     # v8.22.8: Lite ohne Hall/Energie
+    TABS = BASE + HALLT
+    HTABS = BASE + ([] if lite else [("fdn", "FDN-Hall"), ("mcfx", "mcfx-Hall"), ("en", "Energie")]) + ([("sp", "split")] if split else [])   # v8.22.8: keine doppelten Tasten mehr
     TYPES = [("audio", "Audio"), ("oa3", "3OA"), ("fx", "FX"), ("group", "Gruppe/Ordner"), ("instr", "MIDI/Instr")]
     y = y0
     k2.append(_lbl(None, (x1, y, col_w, 26 * s), "REITER zeigen", 14 * s, "#7af5ff")); y += 30 * s
@@ -147,11 +149,13 @@ def build(W, H, with64=False, split=False):
     k2.append(_lbl(None, (x1, y, col_w, 20 * s), "Reiter wählen, dann die Spurtypen:", 12 * s, DIM)); y += 22 * s
     for i, (key, cap) in enumerate(TABS):             # v8.22.3: zwei Reihen (+ FDN, mcfx, Energie)
         k2 += _btn("cfg_et_" + key, x1 + (i % 4) * (bw4 + gap), y + (i // 4) * (bh + gap), bw4, bh, cap, 12 * s)
-    y += 2 * (bh + gap) + 4 * s
+    y += ((len(TABS) + 3) // 4) * (bh + gap) + 4 * s
     for i, (key, cap) in enumerate(TYPES):
         k2 += _btn("cfg_sh_" + key, x1 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 12 * s)
     y += 3 * (bh + gap) + 4 * s
-    k2.append(_lbl(None, (x1, y, col_w, 40 * s), "3OA = Audiospur mit 16 Kanälen oder „3OA/ambiX“ im Namen (erkennt Reaper)", 11 * s, DIM))
+    k2.append(_lbl(None, (x1, y, col_w, 40 * s), "3OA = Audiospur mit 16 Kanälen oder „3OA/ambiX“ im Namen (erkennt Reaper)", 11 * s, DIM)); y += 44 * s
+    k2 += _btn("cfg_defaults", x1, y, col_w, bh, "♡ Standard je Reiter laden", 13 * s)     # v8.22.8: sinnvolle Voreinstellung je Reiter
+    k2.append(_lbl(None, (x1, y + bh + 4 * s, col_w, 34 * s), "Spurtypen, Reiter, Split-Felder und Zusatzzeilen wie im Handbuch; Palette und Pegel bleiben", 11 * s, DIM))
     y = y0
     k2.append(_lbl(None, (x2, y, col_w, 26 * s), "BESCHRIFTUNG statt Nummer", 14 * s, "#7af5ff")); y += 30 * s
     for i, (key, cap) in enumerate([("num", "Nummer"), ("name", "Spurname"), ("preset", "Preset")]):
@@ -168,8 +172,8 @@ def build(W, H, with64=False, split=False):
     if split:       # v8.21: Split-Ansicht (Monitor): welche Felder
         y = y0
         k2.append(_lbl(None, (x3, y, col_w, 26 * s), "SPLIT-ANSICHT zeigt", 14 * s, "#7af5ff")); y += 30 * s
-        k2.append(_lbl(None, (x3, y, col_w, 40 * s), "bis zu fünf Felder (space · multi · panner · room · Energie), eine gemeinsame Spurliste", 11 * s, DIM)); y += 42 * s
-        SPT = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room"), ("en", "Energie")]   # v8.22.7: + Energie
+        k2.append(_lbl(None, (x3, y, col_w, 40 * s), ("bis zu vier Felder (space · multi · panner · room), eine gemeinsame Spurliste" if lite else "bis zu fünf Felder (space · multi · panner · room · Energie), eine gemeinsame Spurliste"), 11 * s, DIM)); y += 42 * s
+        SPT = [("iem", "space"), ("me", "multi"), ("mp", "panner"), ("room", "room")] + ([] if lite else [("en", "Energie")])   # v8.22.7: + Energie
         for i, (key, cap) in enumerate(SPT):
             k2 += _btn("cfg_sp_" + key, x3 + (i % 2) * (bw2 + gap), y + (i // 2) * (bh + gap), bw2, bh, cap, 13 * s)
         y += 3 * (bh + gap) + 4 * s

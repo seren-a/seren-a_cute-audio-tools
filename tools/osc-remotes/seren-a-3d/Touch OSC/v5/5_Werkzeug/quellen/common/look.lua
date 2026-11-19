@@ -77,9 +77,46 @@ TAB_SHOW = { 'iem', 'me', 'mp', 'room', 'fdn', 'mcfx', 'en' }   -- v8.22.3: Spur
 SPLIT_MODES = { 'iem', 'me', 'mp', 'room', 'en' }                    -- v8.21: Felder der Split-Ansicht (Reihenfolge = Lage)
 HAS_SPLIT = false                                              -- nur die Monitore haben den Reiter „split“
 HALL_KIND = { fdn = 1, mcfx = 2, en = 3 }                              -- Art, die das DAW-Skript im Hall-Reiter anzeigt
+LITE = false                                                   -- v8.22.8: Lite-Fassung (ohne FDN/mcfx/Energie), setzt build.py --lite
 LOOK.showBy = {}
 for _, m in ipairs(TAB_ORDER) do LOOK.showBy[m] = { audio = true, oa3 = true, fx = true, group = true, instr = true } end
 LOOK.show = LOOK.showBy.iem
+-- v8.22.8: Standard je Reiter (aus dem Konzert-Projekt abgeleitet): Objekte mit StereoEncoder/SceneRotator auf Audio-/3OA-Spuren
+-- und Ordnern, dearVR PRO 2 auf den Raum-Ordnern (A_3_1, Bar, Küche ...), Sends in FDN/mcfx aus Spuren und Ordnern;
+-- multi/panner (MultiEncoder/MultiPanner) sind aus, Split zeigt space · room · Energie.
+-- Palette, Pegel, Beschriftung und Schieberegler bleiben unberührt.
+LOOK_DEFAULTS = {
+  show = {
+    iem  = { audio = true,  oa3 = true,  fx = false, group = true,  instr = false },
+    me   = { audio = true,  oa3 = true,  fx = false, group = true,  instr = false },
+    mp   = { audio = true,  oa3 = true,  fx = false, group = true,  instr = false },
+    room = { audio = true,  oa3 = true,  fx = true,  group = true,  instr = false },
+    fdn  = { audio = true,  oa3 = true,  fx = false, group = true,  instr = false },
+    mcfx = { audio = true,  oa3 = true,  fx = false, group = true,  instr = false },
+    en   = { audio = false, oa3 = false, fx = true,  group = true,  instr = false },
+  },
+  tabs = { iem = true, me = false, mp = false, room = true, fdn = true, mcfx = true, en = true, sp = true },
+  split = { iem = true, me = false, mp = false, room = true, en = true },
+  extra = { audio = { subs = false, sends = false }, oa3 = { subs = false, sends = false }, fx = { subs = false, sends = true },
+            group = { subs = true, sends = false }, instr = { subs = false, sends = false } },
+}
+function lookLite()                               -- Lite: Hall-/Energie-Reiter gibt es nicht
+  if not LITE then return end
+  LOOK.tabs.fdn, LOOK.tabs.mcfx, LOOK.tabs.en, LOOK.split.en = false, false, false, false
+end
+function lookDefaults()
+  for m, t in pairs(LOOK_DEFAULTS.show) do
+    LOOK.showBy[m] = LOOK.showBy[m] or {}
+    for k, v in pairs(t) do LOOK.showBy[m][k] = v end
+  end
+  for m, v in pairs(LOOK_DEFAULTS.tabs) do LOOK.tabs[m] = v end
+  for m, v in pairs(LOOK_DEFAULTS.split) do LOOK.split[m] = v end
+  for k, v in pairs(LOOK_DEFAULTS.extra) do LOOK.extra[k] = { subs = v.subs, sends = v.sends } end
+  lookLite()
+  LOOK.show = LOOK.showBy[LOOK.mode] or LOOK.showBy.iem
+end
+lookDefaults()
+function lookRef() return LOOK end            -- für Tests
 function lookMode(m)                       -- der Reiter wechselt: seine Spurauswahl gilt
   if not LOOK.showBy[m] then LOOK.showBy[m] = { audio = true, oa3 = true, fx = true, group = true, instr = true } end
   LOOK.mode = m; LOOK.show = LOOK.showBy[m]

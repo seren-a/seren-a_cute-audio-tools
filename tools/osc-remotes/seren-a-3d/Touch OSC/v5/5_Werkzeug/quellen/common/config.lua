@@ -206,6 +206,7 @@ local function cfgState(extra)
   local function add(k, v) t[#t + 1] = k .. '=' .. tostring(v) end
   add('sc', LV.scale); add('md', LV.mode); add('aes', LV.aes17 and 1 or 0); add('loud', LV.loud); add('tg', LV.target)
   add('col', LOOK.colors); add('th', LOOK.theme); add('mk', LOOK.marks and 1 or 0); add('cpu', LOOK.cpu and 1 or 0); add('ic', LOOK.icons)
+  add('dv', 2)   -- v8.22.8: Stand der Standard-Voreinstellung
   add('tabs', tabsMask()); add('tabh', hallTabsMask()); add('tabsp', LOOK.tabs.sp ~= false and 1 or 0); add('tabe', LOOK.tabs.en ~= false and 1 or 0); add('spl', splitMask()); add('lb', LOOK.label); add('xs', extraMask())
   for _, m in ipairs(TAB_SHOW) do add('sh_' .. m, showMask(LOOK.showBy[m])) end
   local names = {}
@@ -245,6 +246,8 @@ local function cfgApplyState(str)                -- gibt die Tabelle zurück (f�
     if num('sh_' .. m) then for i, k in ipairs(TYPE_ORDER) do LOOK.showBy[m][k] = math.floor(num('sh_' .. m) / 2 ^ (i - 1)) % 2 == 1 end end
   end
   for name, f in pairs(CFG_FADERS) do local v = num(name:sub(5)); if v then f[1][f[2]] = v end end
+  if (num('dv') or 0) < 2 then lookDefaults() end   -- v8.22.8: ältere Voreinstellung -> einmal die neuen Standards je Reiter
+  lookLite()
   lvReset(); cfgPaint()
   return kv
 end
@@ -263,6 +266,7 @@ local function cfgButton(name)
   elseif name:match('^cfg_th_%w+$') and THEMES[name:sub(8)] then LOOK.theme = name:sub(8)
   elseif name:match('^cfg_sh_%w+$') then local s = name:sub(8); local t = cfgShow(); t[s] = (t[s] == false)
   elseif name == 'cfg_page' then CFG2.page = (CFG2.page == 1) and 2 or 1
+  elseif name == 'cfg_defaults' then lookDefaults()   -- v8.22.8
   elseif name:match('^cfg_et_%w+$') then CFG2.tab = name:sub(8)
   elseif name:match('^cfg_tab_%w+$') then
     local m = name:sub(9); LOOK.tabs[m] = (LOOK.tabs[m] == false)
